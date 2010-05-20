@@ -1,0 +1,14 @@
+0.1.2		hardlink database: Changes handling link-count 
+		hardlink database: at end of process print content
+		set_dir_attributes(): create now also empty directories with "-R"
+		new option "-Q" : high quality recover, not use of deleted directory entry  
+		BUG: incorrect cr_time in histogram
+		BUG: recover_file():  socket Inode not ignored
+		BUG: list of special and bad Inodes produce crash
+		BUG: symlink : group and owner not correct 
+		Change some display options
+
+
+
+0.1.1		first complete version
+

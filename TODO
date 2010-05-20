@@ -1,0 +1,13 @@
+Currently known issues
+
+
+
+- the chmod of symlinks not working on all platforms (on sparc ubuntu, must be tested)
+
+- on big-endian the crtime and deleted directory entry not correct if use the
+  real libfunction for read the inode.
+  The modified version to read the Journal inode works.
+
+- on ext4  possible small memory leak (must be tested)
+
+ 

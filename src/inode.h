@@ -1,0 +1,69 @@
+/***************************************************************************
+ *   Copyright (C) 2010 by Roberto Maar   *
+ *   robi@users.berlios.de   *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+#ifndef INODE_H
+#define INODE_H
+
+
+#include <ext2fs/ext2fs.h>
+#include "util.h"
+#include "ext4magic.h"
+#include "journal.h"
+#include "ring_buf.h" 
+
+#define DUMP_LEAF_EXTENTS       0x01
+#define DUMP_NODE_EXTENTS       0x02
+#define DUMP_EXTENT_TABLE       0x04
+
+
+//help struct for list inode data blocks
+struct list_blocks_struct {
+        FILE            *f;
+        e2_blkcnt_t     total;
+        blk_t           first_block, last_block;
+        e2_blkcnt_t     first_bcnt, last_bcnt;
+        e2_blkcnt_t     first;
+};
+
+
+
+//private an helper functions
+static void dump_xattr_string(FILE*, const char*, int);//subfunction for dump_inode_extra
+static void local_dump_extents(FILE*, const char*, struct ext2_inode *,int , int, int );//print Blocks of inode (ext4)
+static void dump_inode_extra(FILE*, const char* , ext2_ino_t, struct ext2_inode_large*);//print extended attribute of Inode 
+static void finish_range(struct list_blocks_struct*);//subfunction for dump_blocks
+static int list_blocks_proc(ext2_filsys, blk_t* , e2_blkcnt_t,blk_t, int, void*);//subfunction for dump_blocks
+static void dump_blocks(FILE*, const char*, struct ext2_inode *);// print the  Datablocks from Inode (ext3)
+
+
+//functions for external use
+int intern_read_inode_full(ext2_ino_t, struct ext2_inode*, int);// read real fs inode 128++
+int intern_read_inode(ext2_ino_t, struct ext2_inode*);// read real fs inode 128
+r_item* get_undel_inode(struct ring_buf*, __u32, __u32);// return the last undelete inode in journal after ->  <-before
+r_item* get_last_undel_inode(struct ring_buf* );// return the last undeleted inode in journal
+blk_t  get_inode_pos(struct ext2_super_block* , struct inode_pos_struct*, ext2_ino_t, int);//calculate the position of inode in FS
+void print_j_inode(struct ext2_inode_large* , ext2_ino_t , __u32, int );//function for dump_inode_list
+int get_transaction_inode(ext2_ino_t, int, struct ext2_inode_large*);// get journalinode from transactionnumber 
+void dump_inode_list(struct ring_buf* , int);//print the contents of all copy of inode in the journal
+void dump_inode(FILE*, const char*, ext2_ino_t, struct ext2_inode*,int);//print the contents of inode
+int read_journal_inode( ext2_ino_t, struct ext2_inode*, __u32);// get the first Journal Inode by transaction
+struct ring_buf* get_j_inode_list(struct ext2_super_block*, ext2_ino_t);//fill all inode found in the Journal in the inode-ringbuffer
+
+
+#endif

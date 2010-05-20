@@ -1,0 +1,512 @@
+.TH extmagic 8 "May 2010" "version 0.1.2" "Administration Tool"
+.SH NAME
+ext4magic \- allows to recover deleted files on ext3/4 filesystems
+.SH SYNOPSIS
+.B ext4magic
+[\-S|\-J|\-H|\-V|\-T] [\-x] [\-j <journal_file>] [\-B n|\-I n|\-f <file_name>|\-i <input_list>] [\-t n|[[\-a n][\-p n]]] [\-d <target_dir>] [\-R|\-r|\-L|\-l] [\-Q] <filesystem>
+
+
+.SH DESCRIPTION
+The deletion of files in ext3/4 filesystems can not be easily reversed.
+Zero out of the block references in the Inodes makes that impossible.
+Experience with other programs have proved, it is often possible, to
+restore sufficient information for a recover of many data files, directly from the
+filesystem Journal. ext4magic can extract the information from the
+Journal, and can restore files in entire directory trees, provided that
+the information in the Journal are sufficient. This tool can recover
+the most file types, can recover large and sparse files, 
+recovered files with orginal filename, with the orginal owner an
+group, the orginal file mode bits, and also the old atime/ctime stamp.
+
+The filesystem Journal has a very different purpose, and it will not
+be possible to recover any file at any time. Many factors affect which data and how
+long the data store in the Journal. Read the ext4magic documentation for more
+extensive information about the filesytem Journal.
+
+.B
+Direct use of the Journal of a currently read-write open filesystem produce reading of bad blocks. Such bad blocks provide program errors and false results. You shall therefore never use the Journal of such a read-write open file system directly. 
+
+
+
+.SH OPTIONS
+.B
+Information Options: 
+These options generate generic status information from the filesystem and the Journal.
+
+.TP
+.B
+\-S
+Print the filesystem superblock, the option. 
+.B
+\-x
+allows the additional display of content of the group descriptor table.
+.TP
+.B
+\-J
+Print the content of the Journal superblock. 
+This option also can used to force loading the Journal. This has a flow control effect in ext4magic with some other options.
+.TP
+.B
+\-H
+Output a histogram of time stamps from all filesystem Inodes. Allows you to determine the exact time of changes in the filesystem. In connection with a directory name or a directory Inode, only the time stamps of this directory tree will be displayed. There are not evaluated any changes, only one per Inode. either the last change or the deletion time per Inode arrives to display. If present (ext4), it also create a histogram 
+of create time stamps. 
+ 
+The optional option 
+.B
+\-x
+allows additional a better resolution of the time intervals.
+
+.TP
+.B
+\-V
+Print the version of ext4magic and libext2fs
+
+.TP
+.B
+\-T
+Display the entire transaction list of all copies of data blocks in the Journal. In conjunction with the
+.B
+\-B ; \-I
+and
+.B
+\-f 
+, only display the corresponding data blocks for this data . The optional option 
+.B
+\-x
+allows a additional transmission time of the transactions, but only if the block is a Inode block. The print is in the same order as the data in journal. You can make conclusions from the data received in the Journal. 
+After the import of backups or after change the atime and ctime of files, the additional transmission time will display not always the real transmission time.  
+If here absolutely incorrect time entries, then check if you using a journal of a read-write open file system. 
+
+.TP
+.B
+\-x
+controls optional the output format and the information content of certain commands. Affects the following options:
+.B
+\-S ; \-H ; \-T ; \-B ; \-I ; \-f ; \-L ; \-l
+Detailed description see there.
+
+
+.PP
+.B
+Selection Options: 
+These options specify the exact files, directories, and data blocks. One hand, they produce specific information, and on the other hand,
+be used to address the data for the 
+.B
+Action Options.
+ext4magic will accept only one of these options at command.
+.TP
+.B
+\-B n
+.B
+n 
+is the data block number of a filesystem datablock. Without further options it print a "one-byte" hex+ASCII dump from the data block on the filesystem, like the 
+.B
+"hexdump \-C"
+command. The optional option
+.B
+\-x
+produced a "four byte" hex+ASCII output.
+
+With the option
+.B
+\-t n 
+it print a copy of the filesystem data block with this transaction number from the Journal.
+
+.B
+# ext4magic /dir/filesytem.iso \-B 97 \-t 22
+
+print a hexdump of the copy from filesystem block number 97, which has been writing to the Journal with the transaction number 22. All copies of a particular data block in the Journal and the associated transaction numbers you can find with the optional Option
+.B
+\-T
+
+.B
+# ext4magic /dir/filesystem.iso \-B 97  \-T
+
+will print a list with all copies of filesystem block number 97 with the transaction numbers. If this data block is a Inode block, print out the exact time for the transaction with the optional option 
+.B
+\-x
+
+
+.TP
+.B
+\-I n
+.B
+n
+is the Inode number. Without any other option, the output is the content of the real filesystem Inode. With a optional 
+.B
+\-x 
+additional output of a list of all data blocks addressed by this Inode. If Inode is a directory Inode, the content of the directory entrys also printed. 
+
+
+Together with one of the following option
+.B
+\-T ; \-J 
+the output is not the content from the real filesystem Inode. The content of all differend Inode copies found in the Journal are printed.
+
+
+with the option 
+.B
+\-t n 
+only the content of the Inode from transaction "
+.B
+n
+" are printed.
+
+
+the option 
+.B
+\-I n 
+can also be used in conjunction with the options 
+.B
+\-L ; \-l ; \-r 
+or
+.B
+\-R
+(show there)
+
+
+
+.TP
+.B
+\-f <filename>
+the function is the same as 
+.B
+\-I n
+only here is the 
+.B
+<filename>
+given instead the Inode number. ext4magic search the filesystem to find the Inode number. 
+The filename can be a directory or a filename und must be specified here from the root directory of this filesystem, and not from the root directory of the LINUX system.
+
+An example:
+the mount point for this filesystem is "
+.B
+/home
+" an the filename for Linux is "
+.B
+/home/usr1/Document
+" you can use now 
+.B
+ # extmagic /dev/sda3 -f usr1/Document
+
+The root directory of the filesystem you can use
+ 
+.B
+-f /
+ or 
+
+.B
+-f ""
+ for ext4magic this is the same.
+
+you should specify no leading "/" for all other filename. And directory names you should specify without final "/" .
+
+
+.PP
+.B
+Time Options: 
+With this options you specify the time at which the program searches for matching time stamps in the Journal data.
+ext4magic required for most internaly functions two times. A time "after" and a time "before". 
+
+Found Inode only accepted, if not deleted and there time stamp less than "before". If the delete time is less then "after", the Inode are also not used. ext4magic is still trying to find for valid directory Inode also a time-matching directory data. For a recover action "before" must always set to a value at which the data deleted, and 
+"after" must set to a value at which the data available. Inodes and directory data with other timestamps will be skipped and not used.
+
+Default, without any time option, ext4magic will search with "now" for the internal time "before", and
+"now -24 hour" for the internal time "after". If you try to recover without any time option, so you search only over the last 24 hours. If you wait a couple of days before you try to recover deleted data, you must always use time options, or you find nothing 
+
+.TP
+.B
+\-a n
+with this option you can set the "
+.B
+after
+" time
+.TP
+.B
+\-p n
+with this option you can set the "
+.B
+before
+" time
+
+.B
+n 
+is the number of seconds since 1970-01-01 00:00:00 UTC. This time information can you find in many prints of ext4magic, and you can it produce on the console with the command "date" and also insert directly in the ext4magic command line.
+
+.B
+-a $(date -d "-3day" +%s) -p $(date -d "-2day" +%s)
+
+this example set "after=now-36h" and "before=now-24h"
+
+.TP
+.B
+\-t n
+is an indirect time option. you can use it with the options
+.B
+\-B ; \-I ; \-f
+The value 
+.B
+n
+is the transaction number. With this option you can print, list, or recover the data from this transaction number.
+you can find the transaction numbers with the option 
+.B
+\-T
+or in the print of the Inode content.
+
+ 
+.PP
+.B
+File-, IN- and OUT-Options:
+With these options group, you select the filesystem, and other optional file input and output for control of ext4magic.
+.TP
+.B
+\<filesystem>
+selects the filesystem and must always be set. 
+.B
+<filesystem>
+can be a blockdevice with ext3/4 filesystem, it can also be a uncompressed file image of such a partition.
+ 
+
+.TP
+.B
+\-j <journal_file>
+optional you can select a external copy of the Journal file. Without this option, automatically the internal Journal or, if configured, the external Journal on a block device will used. 
+
+
+.TP
+.B
+\-d <target_dir>
+select the output directory. There, the recovered files were written. If it does not exist, it is created. By default, created files are written to the subdirectory "
+.B
+RECOVERDIR
+" in the workpath of the actual shell. This output directory can not be on the same filesystem to be tested filesytem, and should have sufficient space to write the recovered files. The filesystem on this directory should be also ext3/4, otherwise, not LINUX like filesytems generate some errors while writing the file properties.
+Either you must first changed with the shell in such a suitable filesystem, or you must specify the
+.B
+\-d 
+with a target to such a directory
+
+
+.TP
+.B
+\-i <input_list>
+input_list is a input file. Must contain a list with double-quoted filenames. The files from the list will be restored with option
+.B
+\-r
+or
+.B
+\-R
+
+Blank lines, not cleanly double quoted filenames and all areas before and after 
+.B
+"
+will be ignored.
+Such a double-quoted list of file names can create with options 
+.B
+\-l \-x
+or
+.B
+\-L \-x
+by ext4magic and edited by script or by hand.
+
+
+
+.PP
+.B
+Action Options: 
+This option group includes list and recover options. All functions together, they work recursiv controlled by the time options through directory trees. The starting point for search is determined by a directory name or a directory Inode number. Default is root of this Filesystem. Matching the time options, the filesystem data, inclusive directory data, taken from the Journal. If good data from the file system sections available in Journal, it is possible to see or recover the state of the filesystem at different times.
+
+
+.TP
+.B
+\-L
+Prints the list of all filenames and Inode number of the selected directory tree. Included here also are deleted files and deleted directory trees.
+With the additional option.
+.B
+\-x
+the file names are printed double-quoted. You can use it for a "Input list" with option 
+.B
+\-i
+
+
+.TP
+.B
+\-l
+Prints a list of all filenames which have not allocated data blocks. At the beginning of the line are the percentage of unallocated data blocks.
+After deletion you find here all the file names you can recover with the Journal data. If you use a very old value for the "before" time, it is possible there are files whose data blocks reused and these files in the interim also been deleted. Also included in the list all files without data blocks, symbolic links, empty and other special files.
+
+Likewise double-quoted file names with optional 
+.B
+\-x
+
+
+.TP
+.B
+\-r
+applied to directories, all files without conflicts with the occupied blocks will recovered. This are all you can sea with the option
+.B
+\-l 
+and be 100% unallocated. This options only recover deleted files and files without data blocks, in example: symbolic links or empty files.
+
+The recovered files written to the 
+.B
+RECOVERDIR/
+This can also set to an alternate <target_dir> with the option 
+.B
+\-d 
+
+All files become the old filename and if possible, also the old file properties. A subdirectory tree can set with 
+.B 
+"\-f dirname"
+oder 
+.B
+"\-I inodenumber"
+If use with a given Inode number, the directory name is set to
+.B
+<inodenumber>
+
+The Time options affect the search. If a file name already exists, or you recover again, it not overwrite files, and a new filename by added a final 
+.B
+"#"
+will created. The maximum ist the extension "
+.B
+######
+" for a filename.
+
+single files also can recovered, possible search with time-stamps or transaction number. 
+
+
+.TP
+.B
+\-R
+recovers directory tree, is the same as 
+.B
+\-r
+
+But two very important differences: 
+Recover of all matched Inodes, even if the blocks allocated, 
+and recover if possible the old directory properties. Also empty dirctories will be restored. 
+This recovers all deleted and all undeleted files, and it's possible to recover older file versions or directory versions.
+
+In completely deleted directories the behavior "
+.B
+-R
+" and "
+.B
+-r
+" is identical. The difference is there only the complete recover of all directories with option "
+.B
+-R
+". 
+You can also restore individual files with time options or a transaction number.
+
+
+.TP
+.B
+\-Q
+This is a optional high quality Option for recover and only impact with "
+.B
+-r
+" and "
+.B
+-R
+". Without this option, any valid file name restored from the directories and you can set the "
+.B
+before
+" time stamp to a time in which all files are deleted. So you will find the maximum possible number of files.
+It need not necessarily be found old directory data blocks in the Journal. 
+However, there are some files found too much. In this mode, re-used file name and reused Inode can not be noticed. As a result some file will be created with the extension "
+.B
+"#"
+or some files created with wrong content. You have to check the files and find bad files and delete itself.
+
+With option "
+.B
+-Q
+" works ext4magic more accurately, and can avoid such false and duplicate files. This requires old data blocks of the directories in the Journal. You will not find of all directories those old blocks in the Journal. Only directories in which files have been previously created or deleted, but not of directories in which no change has been a long time. You should set the time stamp "
+.B
+before
+" immediately before destruction time of the files. Are not sufficient directory data available, may be, ext4magic can't found deleted files or entire directory content.
+
+.PP
+.B
+For all recover cases
+ACL and extended attribute can not recovered in the current version. 
+
+The output starts at line with a string "--------" before the recovered file name. This is a sign of successful recover. Are not enough permissions to write the recovered files, then you will see there some "x" in the string. 
+
+At the end of the process, possibly an issue comes from the hardlink database. A positive number before a file name means : not found all hardlinks to this file. A negative number means : it created too many hardlinks to this file (possible are, reused filenames or reused Inodes, and so, too many or wrong old filenames for this hardlink. -  But also possible - all files for this hardlink are correct, the time-options was not set correct and because of that, the selected inode for the recover was not up to date.  You should check such reports.)
+
+Re-used data blocks can't realize and so it's possible, it ends in some corrupted files.
+Check in any case, all the recoverd files before you use them.
+
+
+ 
+.SH EXAMPLES
+.TP
+Print the content of a Inode, there are some possibilities.
+
+.B
+ # ext4magic /dev/sda3 -f /
+
+.B
+ # ext4magic /dev/sda3 -I 2
+
+the output is the actual filesystem Inode. In first example input the pathname, second example Inode 2 is also the root directory
+
+
+
+.B
+ # ext4magic /tmp/filesystem.iso -f / -T -x
+
+use filesystem image "/tmp/filesystem.iso", search and print all transactions of the Block which included the root Inode, and print all differend
+Inode. Inclusiv the blocklist off the data blocks. If it's a directory, then print also for each individual Inode the content of the directory.
+
+
+
+.B
+ # ext4magic /tmp/filesystem.iso -j /tmp/journal.backup -I 8195 -t 182
+
+Use filesystem image "/tmp/filesystem.iso" and read from external Journal in file "/tmp/journal.backup" and 
+print the content of the Inode number 8195 from the journal transaction number 182
+
+
+
+.B
+ # ext4magic /dev/sda3 -f user1/Documents -a $(date -d "-3 day" +%s) -p $(date -d "-2 day" +%s)
+
+print a undeleded Inode for pathname "user1/Documents" two to three days back. If it's a directory, then also the content of this directory.
+If can not found the old directory blocks in Journal, the directory content would be the actual from filesystem.
+
+
+.TP
+Examples of simple Recover
+
+.B
+ # ext4magic /dev/sda3 -r
+
+try to restore all files deleted last 24 hours. Write in directory "./RECOVERDIR/"
+
+
+.B
+ # ext4magic /dev/sda3 -RQ -f user1/Dokuments -a 1274210280 -p 1274211280 -d /mnt/testrecover
+
+try to restore the directory tree "user1/Dokuments/". The "-p" timestamp you mast set just before deleting files, the "-a" timestamp prevents found old file versions. This will only work well, if you've there created or deleted files bevor the "-p" timestamp. Write in directory "/mnt/testrecover/"
+
+
+.B
+ # ext4magic /home/filesystem.iso -Lx  -f user1 | grep "jpg" > ./tmpfile
+.B
+ # ext4magic /home/filesystem.iso -i ./tmpfile -r -d /mnt/testrecover
+
+try to restore only all deleted files from directory tree "user1/", and have "jpg" in filename. (last 24 hour) and write to "/mnt/testrecover" - use a temporary file "./tmpfile" for a list of filenames.
+
+
+.SH AUTHOR
+Roberto Maar
+
+.SH SEE ALSO
+debugfs(8)
+
+
+
+

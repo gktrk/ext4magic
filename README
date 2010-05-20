@@ -1,0 +1,222 @@
+FIXME:
+so far only draft
+
+
+
+
+
+
+
+
+What is, and what can ext4magic ?
+=================================
+
+ext4magic is a small utility and can help to recover deleted or 
+overwritten files on ext3 or ext4 filesystems. It uses the information 
+stored in the filesystem Journal to attempt to recover a file that has 
+been deleted from the partition.
+
+A reliable way to restore all deleted data from a ext3 or ext4 filesystem 
+does not exist. 
+In all official documents the ext3/ext4 developer write the same:
+
+ "it isn't possible to undelete ext3 or ext4 files." 
+
+The only way for a long time was: 
+ "to grep for parts of deleted files and hope for the best."
+
+
+There are two other programs: 
+     ext3grep     ( http://www.xs4all.nl/~carlo17/howto/undelete_ext3.html )
+     extundelete  ( http://extundelete.sourceforge.net) 
+which can restore deleted files with old journal data. ext4magic uses also 
+this experience.  The whole functionality was again developed from scratch,
+and ext4magic goes one step further.
+
+
+It handles more file types, hardlinks and softlinks, has more possibilities 
+of working with the Journal and filesystem, restore owner and group of files
+and directories, restore the modification time, can find moved and overwritten
+directories and files, can find more then one version of a file, search older 
+directory versions, prints a lot of helpful information over the Journal and 
+the contained data, and any more. 
+
+But, there is absolutely no guarantee that any particular file will be able
+to be undeleted. The program is dependent on the data on the journal and 
+the datablocks on disk. The Journal has a different purpose, it is directed
+forwarding. For a recover we can only hope, old information still available.
+And not always, we can find there for each file, was required for a recovery.
+
+
+
+
+
+You accidentally deleted files ?
+=================================
+ 
+Now, you can try it with ext4magic - probably you will find many - but not all
+deleted files.  
+
+
+
+
+How does this work ?
+=====================
+
+A file in an ext3/4 filesystem consists of several parts. The name of the file
+and a Inode nummer are in data blocks of the directory. This Inode nummer is 
+a serial number for a data structure in a tabel of these structures. 
+These structures are called Inode and are the most important part of the file.
+In the Inode are included all properties of the file and the reference to 
+there data blocks. In the data blocks store the data of the file. In example, 
+all the bytes for a jpg image
+
+During the deletion of a file, be completely destroyed all refer to the data
+blocks in inode data. The content of data blocks are not destroyed, but the 
+block now marked as free.
+If we write new files, this free data blocks can reused for new files.
+The old inode is also marked as free and is also ready for reuse.
+Name and Inode number in the directory block are only marked deleted, 
+they are skipped for now when searching for file names in this directory.
+
+Deleted files can not re-assembled, the Inode data are unsuitable for 
+this purpose.  Exactly what the developers say.
+
+But there is the filesystem Journal. Journaling ensures the integrity of the 
+filesystem by keeping a log of the ongoing disk changes.
+After deleting a file, there we found a copy of the data block in which the 
+deleted Inode is included. Well, this copy is not usable for a recover. 
+The Inode is deleted, but perhaps there is also still an even older copy of 
+the same data block.
+If we find such an older block in the Journal, then we can find there the old
+intact Inode copy of the deleted file. And with such an old Inode, we can now
+undelete the file. We find in the Inode the properties and all refer to the 
+data blocks. In the directory we find the old file name.  With a little luck,
+the data blocks are not reused.
+
+This is the principle of the ext4magic recover. 
+
+
+
+
+How we can use ext4magic ?
+===========================
+
+You need, of course, the file system from which we want try to recover deleted 
+files. The safest way is to create an image of the partition. 
+Important, for this, the filesystem must umounted or readony mounted.
+
+For example: the filesystem is on /dev/sda1
+
+ # dd  if=/dev/sda1  of=/path/to/image_name  bs=4096
+
+
+With the shell, you change to a directory, where enough free space to write 
+the data recovers.  You need also options, but that later. 
+
+We can use ext4magic:
+
+ # ext4magic  /path/to/image_name  options
+
+
+
+
+Not enough free space for a imagefile of the entire filesytem ?
+-------------------------------------------------------------
+ 
+If you can use ext4magic from a rescue system or from a LINUX Live-system,
+or on a other LINUX system, do not mount the partition and use it directly 
+
+  # ext4magic /dev/sda1 options
+
+
+
+
+You can not restart the computer or umount the partition ?
+---------------------------------------------------------
+
+Attempts to mount the partition readonly. The best way try to "umount" and then 
+"mount -o ro /dev/sda1" . If this ist noch posible?  try the following:
+
+ # mount -o remount,ro,noload  /dev/sda1
+
+if the partition is now mounted readonly, use also
+ # ext4magic /dev/sda1 options
+
+
+
+
+It is impossible to mount readonly ? 
+------------------------------------
+
+ext4magic still has a solution, but highly experimental. Please use only in 
+exceptional cases. Never use ext4magic for a not readonly mounted partition. 
+ext4magic read over the filesystem buffer from journal but the kernel write 
+unbuffered to journal.
+
+The first read is often ok, but all subsequent reads can read wrong data 
+blocks from journal. So long the journalfile is buffered, you read wrong data
+blocks at the moment of the first read.  
+First, if you can, stop all writing processes to write to that file system
+
+
+ext4magic supports external journal. 
+You can make a copy of the filesystem Journal with the following command. 
+Use this copy as external Journal. But, if mounted readwrite, here also only
+the first backup will work good, after read the journal, it is also 
+buffered and the next ext4magic process read also wrong blocks.
+
+  # debug2fs  -R  "dump <8> /path/to/journalbackup" /dev/sda1
+
+you can use this copy of Journal  
+
+  # ext4magic /dev/sda1 -j  /path/to/journalbackup options 
+
+ext4magic then only read Journal data from this Journal backup.
+  
+Warning: This procedure is at this time not fully tested, 
+this reason to say, it is very risky.
+
+
+
+
+
+
+
+       
+
+
+ 
+
+  
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

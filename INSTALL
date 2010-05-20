@@ -1,0 +1,242 @@
+Install ext4magic
+===================
+
+
+Install HOWTO  short version 
+---------------------- 
+
+You have to compile it. It install a binary program /usr/local/sbin/ext4magic and a manpage
+It works only on Linux (with a few limitations also Big-Endian-CPUs)
+Other UNIX operating systems will not compile.
+
+
+First check your current version of libext2fs with the following command
+# /sbin/fsck.ext3 -V
+
+
+if Version >= 1.41.9  
+===================
+Install the following devel packages:
+There are possibley different names according your Linux distribution
+
+openSuse                        debian
+------------------------------------------------
+libext2fs-devel                 e2fslibs-dev
+libuuid-devel                   uuid-dev
+libblkid-devel                  libblkid-dev
+
+then 
+# ./configure
+# make
+# make install
+
+
+if Version < 1.41.9
+=================
+download a actual version of e2fsprogs from http://e2fsprogs.sourceforge.net/
+ # tar -xzf e2fsprogs-1.41.9.tar.gz
+ # cd e2fsprogs-1.41.9
+ # ./configure
+ # make
+Important: Please do not install this version. 
+This could create problems with programs of your current distribution ..
+
+
+save the directory path of lib/ in a variable for future use in configure commandline.
+# EXT2LIB="$(pwd)/lib"
+
+After this, change into the code directory of ext4magic
+ # ./configure CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread"
+ # make
+ # make install
+
+ext4magic is so linked to the newer library. You can see different version of libext2fs by:
+ # ext4magic -V x
+ # /sbin/fsck.ext3 -V
+
+
+--------------------------------------------------------------------------
+
+
+
+Install HOWTO extendet german version 
+
+Installation von ext4magic  
+============================
+
+Allgemeine Voraussetzungen
+--------------------------
+Die Installation von ext4magic ist derzeit nur auf Linux möglich. Andere Unix basierende
+Betriebssyteme werden sich nicht ohne größere Änderungen am Quellcode compilieren lassen.
+Das Programm unterstützt mit derzeit noch kleinen Schönheitsfehlern auch "Big endian" basierende
+Prozessoren, getestet wurden derzeit
+
+OpenSuse x86 32/64Bit  
+Ubuntu Sparc64   
+
+
+Zum Installieren von ext4magic aus dem Quellcode werden folgende Pakete auf dem Rechner benötigt
+diese werden noch einige andere Pakete aus der Entwicklergruppe mit installieren und sollten soweit
+nicht schon vorhanden, vorher installiert werden. 
+
+gcc
+make
+
+Was weiter benötigt wird, ist abhängig von der Version einer auf ihrem System verwendeten Library.
+Auf dieser Library basieren die Befehle zum Erstellen und Verwalten der ext2/3/4 Filesysteme  
+
+
+
+Installation bei einer aktuellen Version von libext2fs
+------------------------------------------------------
+Soweit eine aktuelle Version (>= 1.41.9 ) von libext2fs auf dem Rechner installiert ist,
+kann folgende Vorgehensweise zum erstellen des Programmes genutzt werden.
+Die Version kann mit folgendem Befehl ermittet werden.
+
+ # /sbin/fsck.ext3 -V
+ e2fsck 1.41.9 (22-Aug-2009)
+        Using EXT2FS Library version 1.41.9, 22-Aug-2009
+
+weiter werden jetzt einige Devel-Pakete benötigt, diese können in den einzelnen Distributionen
+unterschiedliche Namen tragen. Hier als Beispiel der Vergleich der Paketnamen bei 
+openSuse (erste Spalte) und Debian basierenden Systemen (zweite Spalte).
+
+libext2fs-devel			e2fslibs-dev
+libuuid-devel			uuid-dev
+libblkid-devel			libblkid-dev
+
+
+Das ext4magic Archiv downloaden und entpacken und in das so entstehende Verzeichnis wechseln
+
+ # tar -xzf ext4magic-0.1.2.tar.gz 
+ # cd ext4magic-0.1.2
+
+Das Paket wird jetzt kompiliert.
+
+ # ./configure
+ # make
+
+Damit wird das binäre Programm ext4magic erstellt. Dieses befindet sich derzeit noch im
+Unterverzeichnis ext4magic/src/ und kann aber auch schon von dort aus gestartet werden.
+
+ # make install
+
+Würde das Programm nach /usr/local/sbin/ installieren. Dazu werden Root-Rechte benötigt.
+Deinstallieren dann entsprechend mit "make uninstall"
+
+
+
+
+Installation bei einer älteren Version von libext2fs
+---------------------------------------------------------------------------------------
+
+Sollte ihr Rechner aktuell noch kein ext4 Filesystem unterstützen, befindet sich auf dem Rechner 
+derzeit wahrscheinlich auch eine ältere Version von libext2fs. Damit läßt sich ext4magic nicht
+kompilieren. Eine Upgrade von libext2fs auf ein nicht zu ihrer Distribution passenden Version ist jedoch
+nicht anzuraten, da auch wichtige Administrationskommandos wie zB "mkfs.ext3" und "fsck.ext3" 
+davon betroffen sind. 
+Mit folgender Vorgehensweise kann dieses Problem umgangen werden.
+
+
+Laden sie von http://e2fsprogs.sourceforge.net/ eine Version von e2fsprogs größer oder gleich Version 1.41.9 herunter.
+Entpacken sie das Archiv und welchseln in das Verzeichnis und kompilieren sie das Programm, ohne es zu installieren.
+
+ # tar -xzf e2fsprogs-1.41.9.tar.gz
+ # cd e2fsprogs-1.41.9
+ # ./configure
+ # make
+
+Die letzten beiden Befehle werden einige Zeit benötigen und eine Reihe von Ausgaben auf dem Bildschirm machen.
+Erfolgreich ist der Vorgang, wenn in den letzen Zeilen nichts von  "ERROR" steht.
+Speichern sie jetzt das Verzeichnis in dem sie sich momentan jetzt noch befinden mit folgendem Befehl 
+in einer Variable ab
+
+ # EXT2LIB="$(pwd)/lib"
+
+
+Danach wechseln sie in das Verzeichnis von ext4magic , welches beim Entpacken des Archives von
+ext4magic angelegt wird. Nutzen sie die selbe Shell in der die EXT2LIB Variable angelegt wurde.
+
+ wie folgt compilieren
+
+ # ./configure CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread"
+ # make
+
+sollten bei make trotzdem in den letzen Zeilen Ausgaben noch "ERROR" Meldungen  erhalten die durch den 
+Befehl "ld" verursacht werden, versuchen sie bitte noch folgende Umgehung des Problems
+
+.....................................
+im Unterverzeichnis src/ von ext4magic gibt es eine Datei Namens Makefile.in - Diese mit einem Editor
+(hier im Beispiel mit vi ) öffnen und folgenden Abschnitt suchen.
+
+ # vi src/Makefile.in
+
+ 
+  .....
+  .....
+  # library search path.
+  ext4magic_CFLAGS = -O2 -g -D_FILE_OFFSET_BITS=64
+  ext4magic_LDFLAGS = -lext2fs -le2p -luuid -lblkid
+  noinst_HEADERS = block.h dir_list.h ext2fsP.h ext4magic.h hard_link_stack.h \
+        inode.h jfs_compat.h jfs_user.h journal.h kernel-jbd.h ring_buf.h util.h
+  .....
+  .....
+
+
+an den Anfang der Zeile die mit "ext4magic_LDFLAGS =" beginnt, ein '#' setzen
+
+  # ext4magic_LDFLAGS = -lext2fs -le2p -luuid -lblkid
+
+und die Datei speichern. Danach configure mit folgenden Optionen ausführen, wir benötigen die 
+gleiche Shell in der wir vorhin die Variable EXT2LIB angelegt haben. Die gesamte Befehlszeile 
+am besten von hier per copy & paste übernehmen. (ist eine zusammenhängende Zeile auch wenn sie
+bei ihnen eventuell in der Anzeige umgebrochen ist)
+
+
+ # ./configure LDFLAGS="$EXT2LIB/libext2fs.a $EXT2LIB/libcom_err.a $EXT2LIB/libe2p.a $EXT2LIB/libblkid.a $EXT2LIB/libuuid.a -lpthread" CFLAGS="-I $EXT2LIB"   
+
+danach normal mit "make" compilieren
+
+
+ist make ohne Error durchgelaufen, kann gegebenenfalls mit Root-Rechten und "make install" ext4magic
+noch unterhalb von /usr/local/sbin/ installiert werden. 
+ 
+
+Sie erhalten so ein ext4magic Programm das auf einer anderen libext2fs Version beruht, als ihre Admintools auf dem
+Rechner. Sie können damit auch ext4 Filesysteme untersuchen und auch gelöschte oder überschriebene Daten daraus
+wiederherstellen, auch wenn das Betriebssystem auf dem Rechner ext4 nicht unterstützt. 
+Die unterschiedlichen Versionen sehen sie zB. im Vergleich der Ausgabe folgender Befehle:
+ 
+
+  # ext4magic -V x
+  extmagic  version : 0.1.2
+  libext2fs version : 1.41.11
+  CPU is little endian.
+  #
+  # /sbin/fsck.ext3 -V
+  e2fsck 1.39 (29-May-2006)
+      Benutze EXT2FS Library version 1.39, 29-May-2006
+
+Sollten sie ext4magic installiert haben und dennoch nicht als root aufrufen können, liegt es wahrscheinlich an der PATH Variable.
+In vielen Distributionen ist /usr/local/sbin default entweder gar nicht in der PATH-Variable, oder nur wenn sie bei der Anmeldung
+als root wirklich eine Loginshell durchlaufen haben. In diesem Fall wechseln mit dem Befehl
+
+ # su - 
+
+noch einmal zu root. Dabei wird eine Loginshell durchlaufen und die PATH-Variable auch auf diese lokalen Systemverwalter Programme gesetzt.
+
+Das selbe was eben bei der PATH-Variable gesagt wurde, könnte sich ähnlich auch bei der  MANPATH Variable darstellen. Sollten sie die
+Manpage von ext4magic obwohl sie das Programm installiert haben, nicht aufrufen können. Überprüfen sie die MANPATH Variable.
+
+Sollten sie extmagic nicht installieren, können sie dennoch die Manpage auch ohne Installation anschauen. Aus dem Verzeichnis
+in dem sie configure und make ausführen,  starten sie folgenden Befehl um die Manpage zu lesen.
+
+
+  # nroff -man src/ext4magic.8 | more  
+ 
+-----------------------------------------------------------------------------
+
+
+
+
+
