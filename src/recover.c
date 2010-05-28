@@ -438,10 +438,6 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 			if (retval && (errno != EEXIST)){
 				rec_error -= MOVE_ERROR ;
 			}
-			retval = chown(recovername,inode_uid(*inode), inode_gid(*inode));
-				if (retval){
-					rec_error -= CHOWN_ERROR ;
-				}
 
 			if (! LINUX_S_ISLNK(inode->i_mode)){
 				retval = chown(recovername,inode_uid(*inode), inode_gid(*inode));
@@ -462,7 +458,7 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 			}
 			else {
 				retval = lchown (recovername, inode_uid(*inode), inode_gid(*inode));
-				if (retval){	
+				if (retval){
 					rec_error -= CHOWN_ERROR ;
 				}
 			}
