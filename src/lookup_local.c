@@ -82,7 +82,7 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
                 if (LINUX_S_ISDIR(inode.i_mode))
                         fprintf(stdout, "/");
                 else
-                        fprintf(stdout, "%lld/", inode.i_size | ((__u64)inode.i_size_high << 32));
+                        fprintf(stdout, "%12lld/", inode.i_size | ((__u64)inode.i_size_high << 32));
                 fprintf(stdout, "\n");
         }
         else if (ls->options & LONG_OPT) {
@@ -104,9 +104,9 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
                 }
                 fprintf(stdout, "%c%8u%c %c %4o (%d)  %5d  %5d   ", lbr, ino, rbr, get_inode_mode_type(inode.i_mode),inode.i_mode & 07777 , dirent->name_len >> 8, inode_uid(inode), inode_gid(inode));
                 if (LINUX_S_ISDIR(inode.i_mode))
-                        fprintf(stdout, "%5d", inode.i_size);
+                        fprintf(stdout, "%12d", inode.i_size);
                 else
-                        fprintf(stdout, "%5llu", inode.i_size |
+                        fprintf(stdout, "%12llu", inode.i_size |
                                 ((unsigned long long) inode.i_size_high << 32));
                 fprintf (stdout, " %s %s\n", datestr, name);
         } else {
