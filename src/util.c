@@ -240,7 +240,7 @@ void print_coll_list(__u32 t_after, __u32 t_before, int flag){
 		 break;
 			}
 			if (cr_time){
-				if ((cr_time < hist[j].time) && (c_time > hist[j-1].time)){
+				if ((cr_time < hist[j].time) && (cr_time > hist[j-1].time)){
 						hist[j].cr_count++;
 						crt_found = 1;
 						cr_time = 0 ;
