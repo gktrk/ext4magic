@@ -1,4 +1,4 @@
-.TH extmagic 8 "May 2010" "version 0.1.2" "Administration Tool"
+.TH ext4magic 8 "May 2010" "version 0.1.2" "Administrations Tool"
 .SH NAME
 ext4magic \- allows to recover deleted files on ext3/4 filesystems
 .SH SYNOPSIS
@@ -16,7 +16,7 @@ Journal, and can restore files in entire directory trees, provided that
 the information in the Journal are sufficient. This tool can recover
 the most file types, can recover large and sparse files, 
 recovered files with orginal filename, with the orginal owner an
-group, the orginal file mode bits, and also the old atime/ctime stamp.
+group, the orginal file mode bits, and also the old atime/mtime stamp.
 
 The filesystem Journal has a very different purpose, and it will not
 be possible to recover any file at any time. Many factors affect which data and how
@@ -74,7 +74,7 @@ and
 .B
 \-x
 allows a additional transmission time of the transactions, but only if the block is a Inode block. The print is in the same order as the data in journal. You can make conclusions from the data received in the Journal. 
-After the import of backups or after change the atime and ctime of files, the additional transmission time will display not always the real transmission time.  
+After the import of backups or after change of timestamps of files, the additional transmission time will display not always the real transmission time.  
 If here absolutely incorrect time entries, then check if you using a journal of a read-write open file system. 
 
 .TP
@@ -176,7 +176,7 @@ only here is the
 .B
 <filename>
 given instead the Inode number. ext4magic search the filesystem to find the Inode number. 
-The filename can be a directory or a filename und must be specified here from the root directory of this filesystem, and not from the root directory of the LINUX system.
+The filename can be a directory or a filename and must be specified here from the root directory of this filesystem, and not from the root directory of the LINUX system.
 
 An example:
 the mount point for this filesystem is "
@@ -451,7 +451,7 @@ Print the content of a Inode, there are some possibilities.
 .B
  # ext4magic /dev/sda3 -I 2
 
-the output is the actual filesystem Inode. In first example input the pathname, second example Inode 2 is also the root directory
+the output is the actual filesystem root Inode. In first example input the pathname, second example Inode 2 is also the root directory
 
 
 
