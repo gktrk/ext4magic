@@ -573,6 +573,9 @@ if (mode & INPUT_TIME){
 
 //check for the recoverdir
 if ((mode & RECOVER_INODE) && (recovermodus &  (REC_DIR_NEEDED)) || mode & RECOVER_LIST) {
+	struct stat     st_buf;
+	dev_t           file_rdev=0;
+	
 	if(!des_dir)	
 		des_dir = defaultdir;
 
@@ -589,7 +592,24 @@ if ((mode & RECOVER_INODE) && (recovermodus &  (REC_DIR_NEEDED)) || mode & RECOV
 		}
 		if (!retval){
 			if  (S_ISDIR(filestat.st_mode) && (filestat.st_mode & S_IRWXU) == S_IRWXU){
-				printf("\"%s\"  accept for recoverdir \n",des_dir);
+				if (stat(argv[optind], &st_buf) == 0) {
+                			if (S_ISBLK(st_buf.st_mode)) {
+#ifndef __GNU__ /* The GNU hurd is broken with respect to stat devices */
+                        			file_rdev = st_buf.st_rdev;
+#endif  /* __GNU__ */
+                			} else {
+                        			file_rdev = st_buf.st_dev;
+                			}
+        			}
+				if (filestat.st_dev == file_rdev){
+					fprintf(stderr,"ERROR: can not use \"%s\" for recover directory. It's the same filesystem : \"%s\"\n", des_dir, argv[optind]);
+					exitval = EXIT_FAILURE ; 
+#ifdef DEBUG
+					printf("recover_dir_dev : %d    filesystem_dev : %d\n",filestat.st_dev, file_rdev);
+#endif
+              				goto errout;
+				}	
+				printf("\"%s\"  accept for recoverdir\n",des_dir);
 			 }
 			else {
 				fprintf(stderr,"ERROR: can not use \"%s\" for recover directory\n", des_dir);
