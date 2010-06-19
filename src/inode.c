@@ -598,6 +598,9 @@ r_item* get_last_undel_inode(struct ring_buf* buf){
 		  else {
 //			if (item->inode->i_generation != generation) 
 //				buf->reuse_flag = 1;
+#ifdef DEBUG
+		printf("UD-Inode %d\n",item->transaction.start);
+#endif
 			return item;
 		}
 	}
@@ -627,6 +630,9 @@ r_item* get_last_undel_inode(struct ring_buf* buf){
 		}
 //		if (item->inode->i_generation != generation) 
 //			buf->reuse_flag = 1;
+#ifdef DEBUG
+		printf("UTD-Inode %d\n",item->transaction.start);
+#endif
 		return item;
 	}
 	return NULL;
@@ -663,6 +669,9 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 		goto errout;
 	}
 	count = get_block_list_count(block) ;
+#ifdef DEBUG
+	fprintf(stdout,"\n\nINODE_RING : %ld/%ld/%ld : ",inode_nr, pos.block, pos.offset);
+#endif
 
 	if(! count) {
 // no inode block found  
@@ -679,6 +688,9 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 		if ( ext2fs_read_inode_full(current_fs, inode_nr, (struct ext2_inode*) item->inode, pos.size))
 			goto errout;
 		item->transaction.start = item->transaction.end = 0;
+#ifdef DEBUG
+	fprintf(stdout,"*;");
+#endif
 	}
 	else {
 	
@@ -706,7 +718,7 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 //FIXME: check more bad Inode 
  		if (get_inode_mode_type(ext2fs_le16_to_cpu(inode_pointer->i_mode)) == ' '){
 #ifdef DEBUG
-			fprintf(stdout,"Transaction %d has a bad Inode, skip\n",block_list->transaction);
+			fprintf(stdout,"!%ld;",block_list->transaction);
 #endif
 			continue;
 		}
@@ -716,6 +728,9 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 				if ((ext2fs_le32_to_cpu(inode_pointer->i_size) == same_size) &&
 					(ext2fs_le16_to_cpu(inode_pointer->i_links_count == same_link_count))){
 					item->transaction.end = block_list->transaction;
+#ifdef DEBUG
+					fprintf(stdout,"-;");
+#endif
 					continue;
 				}
 			}
@@ -745,6 +760,9 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 #else
                 memcpy(item->inode, inode_buf, pos.size);
 #endif
+#ifdef DEBUG
+		fprintf(stdout,"%ld;",block_list->transaction);
+#endif
 		item->transaction.start = block_list->transaction;
 		item->transaction.end = block_list->transaction;
 		ctime = item->inode->i_ctime;
@@ -765,6 +783,9 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 		journal_tag_buf = NULL;
 	}
 	r_begin(buf);
+#ifdef DEBUG
+	fprintf(stdout,"<OK> %ld\n",buf->count);
+#endif
 	return buf;
 
 errout: 
@@ -781,6 +802,9 @@ errout:
 			ring_del(buf);
 			buf = NULL;
 	}
+#ifdef DEBUG
+	fprintf(stdout,"<NULL>\n");
+#endif
 	return NULL;
 }
 

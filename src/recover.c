@@ -81,7 +81,7 @@ void recover_list(char *des_dir, char *input_file,__u32 t_after, __u32 t_before,
 	struct ext2_inode* r_inode;
 	r_item *item = NULL;	
 	
-	f = fopen(input_file,"a+");
+	f = fopen(input_file,"r");
 	if (f) {
 		rewind(f);
 		maxlen = 512;
@@ -102,7 +102,9 @@ void recover_list(char *des_dir, char *input_file,__u32 t_after, __u32 t_before,
 						continue;
 					inode_nr = local_namei(NULL,filename,t_after,t_before,DELETED_OPT);
 					if(! inode_nr){
-//						printf("no found	%s\n",filename);
+#ifdef DEBUG
+						printf("Filename %s not found\n",filename);
+#endif
 						continue;
 					}
 					i_list = get_j_inode_list(current_fs->super, inode_nr);
@@ -113,19 +115,23 @@ void recover_list(char *des_dir, char *input_file,__u32 t_after, __u32 t_before,
 						if (! LINUX_S_ISDIR(r_inode->i_mode) ) 
 							recover_file(des_dir,"", filename, r_inode, inode_nr ,flag);
 						}
-//						else
-//							printf("no found	%s\n",filename);
+#ifdef DEBUG
+						else
+							printf("no Inode found for %s\n",filename);
+#endif
 					if (i_list) ring_del(i_list);
 				}
-//				else
-//					printf("no filename found in : \"%s\"",lineptr);	
+#ifdef DEBUG
+				else
+					printf("Filename not found in : \"%s\"",lineptr);
+#endif	
 			}
 		}
 
 	}
 
 errout:
-	fclose(f);
+	if (f) fclose(f);
 	if (lineptr)
 		free(lineptr);
 	if (filename)
@@ -181,6 +187,10 @@ static int write_block ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
 	__u32 nbytes;
 	errcode_t retval;
 	int blocksize = fs->blocksize;
+
+#ifdef DEBUG
+	printf("%c",(ext2fs_test_block_bitmap ( fs->block_map, *blocknr ))? 'X' : 'O');
+#endif
 
 	if (((struct privat*)priv)->flag){
         	int allocated = ext2fs_test_block_bitmap ( fs->block_map, *blocknr );
@@ -268,7 +278,12 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 	struct utimbuf   touchtime;
 	mode_t i_mode;
 	int major, minor, type;
-	
+
+#ifdef DEBUG
+	printf("RECOVER : INODE=%ld FILENAME=%s/%s\n",inode_nr, pathname,filename);
+	dump_inode(stdout, "",inode_nr, (struct ext2_inode *)inode, 0);
+#endif	
+
 	p1 = pathname;
 	while   (*p1 == '/') p1++;
 	helpname = malloc(strlen(des_dir) + 15);
@@ -335,6 +350,9 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 				priv.error = 0;
 				// iterate Data Blocks and if not allocated, write to file
 				retval = local_block_iterate3 ( current_fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, write_block, &priv );
+#ifdef DEBUG
+				printf("\n");
+#endif
 				if (retval || priv.error){
 					// error or blocks allocated , we delete the tempfile and goto out
 					close(priv.fd);

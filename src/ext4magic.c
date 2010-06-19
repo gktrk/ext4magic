@@ -225,6 +225,9 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
         return;
 
 errout:
+#ifdef DEBUG
+	printf("Errout : open ext2fs\n");
+#endif
         retval = ext2fs_close(current_fs);
         if (retval)
                 fprintf(stderr, "%s %d while trying to close filesystem\n", device, retval);
@@ -547,7 +550,9 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:p:a:I:H")) != EOF) {
 	if (getuid()) mode = 0;
         if (optind < argc)
                 open_filesystem(argv[optind], open_flags,superblock, blocksize, 0, data_filename);
-
+#ifdef DEBUG
+	printf("Operation-mode = %d\n");
+#endif
 
 //--------------------------------------------------------------------------------------------
 // check any parameter an options
@@ -605,7 +610,7 @@ if ((mode & RECOVER_INODE) && (recovermodus &  (REC_DIR_NEEDED)) || mode & RECOV
 					fprintf(stderr,"ERROR: can not use \"%s\" for recover directory. It's the same filesystem : \"%s\"\n", des_dir, argv[optind]);
 					exitval = EXIT_FAILURE ; 
 #ifdef DEBUG
-					printf("recover_dir_dev : %d    filesystem_dev : %d\n",filestat.st_dev, file_rdev);
+					printf("recover_dir_dev : %d    filesystem_dev : %d   ",filestat.st_dev, file_rdev);
 #endif
               				goto errout;
 				}	
@@ -904,6 +909,10 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 }  // end Operation 
 
 exitval = EXIT_SUCCESS;
+#ifdef DEBUG
+   printf("EXIT_SUCCESS : %d, close and clear\n",exitval);
+#endif
+
 
 errout: 
   if (current_fs)    {

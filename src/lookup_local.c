@@ -515,6 +515,9 @@ void lookup_local(char* des_dir, struct dir_list_head_t * dir, __u32 t_after , _
 		lookup_local(des_dir,d_list, t_after, t_before, flag);
 	}
 	else {	
+#ifdef DEBUG
+		printf(">>%s>>\n",dir->pathname);
+#endif
 		if (flag & DOUPLE_QUOTES_LIST)
 			c = '"';
 		lp = GET_FIRST(dir);
@@ -553,6 +556,9 @@ void lookup_local(char* des_dir, struct dir_list_head_t * dir, __u32 t_after , _
 				if (d_list){
 //recursion for directory
 					lookup_local(des_dir, d_list, t_after, t_before, flag);
+#ifdef DEBUG
+					printf("<<%s<<\n",dir->pathname);
+#endif
 				}
 				else{
 //function for all files apart from dir

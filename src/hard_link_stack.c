@@ -69,6 +69,10 @@ char* check_link_stack(ext2_ino_t inode_nr, __u32 generation){
 			break;
 		head.pointer = head.pointer->next;
 	}
+#ifdef DEBUG
+	if (head.pointer)
+		printf("HARD_LINK found -> %s\n",head.pointer->name);
+#endif
 	return (head.pointer) ? head.pointer->name : NULL ;
 }
 

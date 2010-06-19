@@ -454,6 +454,9 @@ int get_last_block(char *buf,  blk_t *block, __u32 t_start, __u32 t_end){
 
 	if ((!t_start)  && (!t_end)){
 //there is no transaction, it is not from a journal Inode	
+#ifdef DEBUG
+		printf("DIR_BLOCK (F) %lld\n", (blk64_t)*block);
+#endif 
 		return io_channel_read_blk(current_fs->io, *block, 1, buf);
 	}
 
@@ -479,6 +482,9 @@ int get_last_block(char *buf,  blk_t *block, __u32 t_start, __u32 t_end){
 		
 		retval = read_journal_block((j_block) ? (j_block * blksize) : (block_list->j_blocknr * blksize), 
 				 			buf , current_fs->blocksize , &got);
+#ifdef DEBUG
+		printf("DIR_BLOCK (J) %lld (%ld <-> %ld) JB=%ld : %d\n", (blk64_t)*block,t_start,t_end, j_block, retval );
+#endif 
 		if (retval) {
 			retval = BLOCK_ERROR ;	
 		}
@@ -486,6 +492,9 @@ int get_last_block(char *buf,  blk_t *block, __u32 t_start, __u32 t_end){
 	}
 	
 // if not in journal found, use real block
+#ifdef DEBUG
+		printf("DIR_BLOCK (N) %lld\n", (blk64_t)*block);
+#endif 
 		retval = io_channel_read_blk(current_fs->io, *block, 1, buf);
 
 	
@@ -569,7 +578,7 @@ static void extract_descriptor_block(char *buf, journal_superblock_t *jsb,
 	offset = sizeof(journal_header_t);
 	blocknr = *blockp;
 #ifdef DEBUG
-	fprintf(stderr, "Dumping descriptor block, sequence %u, at block %u:\n", transaction, blocknr);
+	fprintf(stdout, "D-Block %u & %u: ", transaction, blocknr);
 #endif
 	++blocknr;
 	 if (blocknr >= jsb->s_maxlen) {
@@ -601,9 +610,10 @@ static void extract_descriptor_block(char *buf, journal_superblock_t *jsb,
 			offset += 16;
 
 #ifdef DEBUG
-		fprintf(stderr, "  FS block %12lu logged at ", tag_block);
-		fprintf(stderr, "sequence %u, ", transaction);
-		fprintf(stderr, "journal block %u (flags 0x%x)\n", blocknr,tag_flags);
+//		fprintf(stderr, "  FS block %12lu logged at ", tag_block);
+//		fprintf(stderr, "sequence %u, ", transaction);
+//		fprintf(stderr, "journal block %u (flags 0x%x)\n", blocknr,tag_flags);
+		fprintf(stdout,"*");
 #endif
 		pt->f_blocknr = tag_block ;
 		if (tag_size > JBD_TAG_SIZE32) pt->f_blocknr |= (__u64)be32_to_cpu(tag->t_blocknr_high) << 32;
@@ -664,10 +674,10 @@ static int init_journal(void)
 		blocknr = (blocksize == 1024) ? 2 : 1;
 		uuid_unparse(sb->s_uuid, jsb_buffer);
 #ifdef DEBUG
-		fprintf(stderr, "Ext2 superblock header found.");
-		fprintf(stderr, "\tuuid=%s", jsb_buffer);
-		fprintf(stderr, "\tblocksize=%d", blocksize);
-		fprintf(stderr, "\tjournal data size %lu\n",(unsigned long) sb->s_blocks_count);
+		fprintf(stdout, "Ext2 superblock header found.");
+		fprintf(stdout, "\tuuid=%s", jsb_buffer);
+		fprintf(stdout, "\tblocksize=%d", blocksize);
+		fprintf(stdout, "\tjournal data size %lu\n",(unsigned long) sb->s_blocks_count);
 #endif
 		}
 
@@ -698,7 +708,7 @@ static int init_journal(void)
 	}
 
 #ifdef DEBUG
-	fprintf(stderr, "Journal starts at block %u, transaction %u\n", blocknr, transaction);	
+	fprintf(stdout, "Journal starts at block %u, transaction %u\n", blocknr, transaction);	
 #endif
 	while ( blocknr < maxlen ){
 		retval = read_journal_block(blocknr*blocksize, buf, blocksize, &got);
@@ -714,15 +724,15 @@ static int init_journal(void)
 
 		if (magic != JFS_MAGIC_NUMBER) {
 #ifdef DEBUG
-			fprintf (stderr, "No magic number at block %u: skip this block .\n", blocknr);
+//			fprintf (stdout, "No magic number at block %u: skip this block\n", blocknr);
+			fprintf(stdout,"-");
 #endif
 			if ( !  wrapflag ) wrapflag = WRAP_ON ;
 			blocknr++ ;
                   	continue;
 		}
 #ifdef DEBUG
-		fprintf (stderr, "Found expected sequence %u, type %u (%s) at block %u\n",
-				 sequence, blocktype, type_to_name(blocktype), blocknr);
+		fprintf (stdout, "\n%u (%s) T=%u JB=%u\n", blocktype, type_to_name(blocktype), sequence,  blocknr);
 #endif
 		if ( !  wrapflag ) wrapflag = WRAP_OFF ;
 
@@ -744,6 +754,9 @@ static int init_journal(void)
 			return JOURNAL_OPEN;
 		}
 	}
+#ifdef DEBUG
+	fprintf(stdout,"\nJournal init complete:  %ld block copy\n",pt_count);
+#endif
 return JOURNAL_OPEN ;
 
 errout:
