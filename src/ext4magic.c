@@ -249,7 +249,7 @@ char* progname = argv[0];
 int             retval, exitval;
 char		defaultdir[] = "RECOVERDIR" ;
 //FIXME : usage is not correct
-const char      *usage = "[-S|-J|-H|-V|-T] [-x] [-j <journal_file>] [-B n|-I n|-f <file_name>|-i <input_list>] [-t n|[[-a n][-p n]]] [-d <target_dir>] [-R|-r|-L|-l] [-Q] <filesystem>";
+const char      *usage = "ext4magic [-S|-J|-H|-V|-T] [-x] [-j <journal_file>] [-B n|-I n|-f <file_name>|-i <input_list>] [-t n|[[-a n][-b n]]] [-d <target_dir>] [-R|-r|-L|-l] [-Q] <filesystem>";
 int             c;
 int             open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
 int             exit_status = 0 ;
@@ -292,7 +292,7 @@ if ( argc < 3 )
    }
 
 // decode arguments
-while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:p:a:I:H")) != EOF) { 
+while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) { 
                 switch (c) {
                 case 'S':
                         mode |= PRINT_SUPERBLOCK ;
@@ -471,7 +471,7 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:p:a:I:H")) != EOF) {
 			strcpy(pathname,optarg);
 			break;
 			
-		case 'b'://experimental not activ at default
+		case 'v'://experimental not activ at default
                         blocksize = parse_ulong(optarg, argv[0],
                                                 "block size", 0);
                         break;
@@ -489,18 +489,18 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:p:a:I:H")) != EOF) {
 			mode |= READ_JOURNAL;
 			break;
 
-		case 'p':
+		case 'b':
                         errno = 0;
                         t_before = strtol ( optarg, NULL, 10 );
                         if ( errno )
                             {
-                              fprintf(stderr,"Error: Invalid parameter: -p  %s \n", optarg );
+                              fprintf(stderr,"Error: Invalid parameter: -b  %s \n", optarg );
                               exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
                         if ( t_before < 1 )
                             {
-                              fprintf(stderr,"Error: %s -p: time \n", progname);
+                              fprintf(stderr,"Error: %s -b: time \n", progname);
                               fprintf(stderr,"%d is out of range\n", inode_nr);
                               exitval = EXIT_FAILURE ; 
                               goto errout;
@@ -562,8 +562,8 @@ if (mode & INPUT_TIME){
 		{
 		  fprintf(stderr,"Invalide parameter: range \"AFTER <--> BEFORE\"\n");
 		  fprintf(stderr,"the automatic default parameter AFTER=\"now -1 day\" ; BEFORE=\"now\"\n");
-		  fprintf(stderr,"\"-p before-timestamp\" must greater then \"-a after-timestamp\"\n"); 
-		  fprintf(stderr,"Example : %s -H -p $(date +%%s) -a $(date -d \"-1 day\" +%%s) %s\n",progname,current_fs->device_name);
+		  fprintf(stderr,"\"-b before-timestamp\" must greater then \"-a after-timestamp\"\n"); 
+		  fprintf(stderr,"Example : %s -H -b $(date +%%s) -a $(date -d \"-1 day\" +%%s) %s\n",progname,current_fs->device_name);
 		  exitval = EXIT_FAILURE ; 
                   goto errout;
 	}

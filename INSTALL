@@ -209,7 +209,7 @@ Die unterschiedlichen Versionen sehen sie zB. im Vergleich der Ausgabe folgender
  
 
   # ext4magic -V x
-  extmagic  version : 0.1.2
+  ext4magic  version : 0.1.2
   libext2fs version : 1.41.11
   CPU is little endian.
   #
@@ -228,7 +228,7 @@ noch einmal zu root. Dabei wird eine Loginshell durchlaufen und die PATH-Variabl
 Das selbe was eben bei der PATH-Variable gesagt wurde, könnte sich ähnlich auch bei der  MANPATH Variable darstellen. Sollten sie die
 Manpage von ext4magic obwohl sie das Programm installiert haben, nicht aufrufen können. Überprüfen sie die MANPATH Variable.
 
-Sollten sie extmagic nicht installieren, können sie dennoch die Manpage auch ohne Installation anschauen. Aus dem Verzeichnis
+Sollten sie ext4magic nicht installieren, können sie dennoch die Manpage auch ohne Installation anschauen. Aus dem Verzeichnis
 in dem sie configure und make ausführen,  starten sie folgenden Befehl um die Manpage zu lesen.
 
 

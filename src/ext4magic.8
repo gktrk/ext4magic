@@ -3,7 +3,7 @@
 ext4magic \- allows to recover deleted files on ext3/4 filesystems
 .SH SYNOPSIS
 .B ext4magic
-[\-S|\-J|\-H|\-V|\-T] [\-x] [\-j <journal_file>] [\-B n|\-I n|\-f <file_name>|\-i <input_list>] [\-t n|[[\-a n][\-p n]]] [\-d <target_dir>] [\-R|\-r|\-L|\-l] [\-Q] <filesystem>
+[\-S|\-J|\-H|\-V|\-T] [\-x] [\-j <journal_file>] [\-B n|\-I n|\-f <file_name>|\-i <input_list>] [\-t n|[[\-a n][\-b n]]] [\-d <target_dir>] [\-R|\-r|\-L|\-l] [\-Q] <filesystem>
 
 
 .SH DESCRIPTION
@@ -19,7 +19,7 @@ recovered files with orginal filename, with the orginal owner an
 group, the orginal file mode bits, and also the old atime/mtime stamp.
 
 The filesystem Journal has a very different purpose, and it will not
-be possible to recover any file at any time. Many factors affect which data and how
+be possible to recover any file at any time. Many factors affects which data and how
 long the data store in the Journal. Read the ext4magic documentation for more
 extensive information about the filesytem Journal.
 
@@ -187,7 +187,7 @@ the mount point for this filesystem is "
 /home/usr1/Document
 " you can use now 
 .B
- # extmagic /dev/sda3 -f usr1/Document
+ # ext4magic /dev/sda3 -f usr1/Document
 
 The root directory of the filesystem you can use
  
@@ -205,11 +205,11 @@ you should specify no leading "/" for all other filename. And directory names yo
 .PP
 .B
 Time Options: 
-With this options you specify the time at which the program searches for matching time stamps in the Journal data.
+With this options you specify a time window at which the program searches for matching time stamps in the Journal data.
 ext4magic required for most internaly functions two times. A time "after" and a time "before". 
 
-Found Inode only accepted, if not deleted and there time stamp less than "before". If the delete time is less then "after", the Inode are also not used. ext4magic is still trying to find for valid directory Inode also a time-matching directory data. For a recover action "before" must always set to a value at which the data deleted, and 
-"after" must set to a value at which the data available. Inodes and directory data with other timestamps will be skipped and not used.
+Found Inode only accepted, if not deleted and there time stamp less than "before". If the delete time is less then "after", the Inode are also not used. ext4magic is still trying to find for valid directory Inode also a time-matching directory data. For a recover action "before" set to a value at which the data deleted, and 
+"after" set to a value at which the data available. Inodes and directory data with other timestamps will be skipped and not used.
 
 Default, without any time option, ext4magic will search with "now" for the internal time "before", and
 "now -24 hour" for the internal time "after". If you try to recover without any time option, so you search only over the last 24 hours. If you wait a couple of days before you try to recover deleted data, you must always use time options, or you find nothing 
@@ -223,7 +223,7 @@ after
 " time
 .TP
 .B
-\-p n
+\-b n
 with this option you can set the "
 .B
 before
@@ -234,7 +234,7 @@ n
 is the number of seconds since 1970-01-01 00:00:00 UTC. This time information can you find in many prints of ext4magic, and you can it produce on the console with the command "date" and also insert directly in the ext4magic command line.
 
 .B
--a $(date -d "-3day" +%s) -p $(date -d "-2day" +%s)
+-a $(date -d "-3day" +%s) -b $(date -d "-2day" +%s)
 
 this example set "after=now-36h" and "before=now-24h"
 
@@ -472,7 +472,7 @@ print the content of the Inode number 8195 from the journal transaction number 1
 
 
 .B
- # ext4magic /dev/sda3 -f user1/Documents -a $(date -d "-3 day" +%s) -p $(date -d "-2 day" +%s)
+ # ext4magic /dev/sda3 -f user1/Documents -a $(date -d "-3 day" +%s) -b $(date -d "-2 day" +%s)
 
 print a undeleded Inode for pathname "user1/Documents" two to three days back. If it's a directory, then also the content of this directory.
 If can not found the old directory blocks in Journal, the directory content would be the actual from filesystem.
@@ -488,9 +488,9 @@ try to restore all files deleted last 24 hours. Write in directory "./RECOVERDIR
 
 
 .B
- # ext4magic /dev/sda3 -RQ -f user1/Dokuments -a 1274210280 -p 1274211280 -d /mnt/testrecover
+ # ext4magic /dev/sda3 -RQ -f user1/Dokuments -a 1274210280 -b 1274211280 -d /mnt/testrecover
 
-try to restore the directory tree "user1/Dokuments/". The "-p" timestamp you mast set just before deleting files, the "-a" timestamp prevents found old file versions. This will only work well, if you've there created or deleted files bevor the "-p" timestamp. Write in directory "/mnt/testrecover/"
+try to restore the directory tree "user1/Dokuments/". The "-b" timestamp you must set just before deleting files, the "-a" timestamp prevents found old file versions. This will only work well, if you've there created or deleted files bevor the "-b" timestamp. Write in directory "/mnt/testrecover/"
 
 
 .B
