@@ -551,7 +551,7 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:p:a:I:H")) != EOF) {
         if (optind < argc)
                 open_filesystem(argv[optind], open_flags,superblock, blocksize, 0, data_filename);
 #ifdef DEBUG
-	printf("Operation-mode = %d\n");
+	printf("Operation-mode = %d\n", mode);
 #endif
 
 //--------------------------------------------------------------------------------------------
