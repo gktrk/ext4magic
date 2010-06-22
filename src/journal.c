@@ -325,15 +325,23 @@ static int bock_is_inodetable(blk64_t block){
 	int group;
 	struct ext2_group_desc *gdp;
 	blk64_t last;
+
+	last = current_fs->super->s_inodes_count / (current_fs->blocksize / current_fs->super->s_inode_size ) ;
+	last -= ((current_fs->group_desc_count - 1) * current_fs->inode_blocks_per_group );
+	
 //FIXME for struct ext4_group_desc 48/64BIT
 	for (group = 0; group < current_fs->group_desc_count; group++){
 		gdp = &current_fs->group_desc[group];
 		if (block >= (gdp->bg_inode_table + current_fs->inode_blocks_per_group)) 
 			continue;
-		if (block >= gdp->bg_inode_table)
+		if (block >= gdp->bg_inode_table){
+			if ( group == (current_fs->group_desc_count - 1 )){
+				if (block >= gdp->bg_inode_table + last)
+					break;
+			}
 			return 1;
+		}
 		else
-//FIXME: if the last group has a  small inodetable
 			break;
 	}
 return 0;
