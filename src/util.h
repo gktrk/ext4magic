@@ -52,9 +52,9 @@
 struct priv_dir_iterate_struct {
 	// char *name;
 	//	char *path;
-	//	__u32 inode;
+	__u32 time_stamp;
 	//	 ext2_ino_t *found_inode;
-     	//   int     col;
+     	//	 int     col;
         int     		options;
 	struct dir_list_head_t 	*dir_list;
 //FIXME;
@@ -91,7 +91,7 @@ unsigned long parse_ulong(const char* , const char* , const char* , int* );
 // public functions lookup_local.c
 void list_dir(ext2_ino_t inode); //list dir (using normal functions from ext2fs)
 void list_dir2(ext2_ino_t, struct ext2_inode*); //list dir (search in journal ; not automatical use the real inode from fs)
-void list_dir3(ext2_ino_t, struct ext2_inode*, trans_range_t* ); //list (search over journal; both inode as well journaldirblocks) 
+void list_dir3(ext2_ino_t, struct ext2_inode*, trans_range_t* ,__u32 ); //list (search over journal; both inode as well journaldirblocks) 
 struct dir_list_head_t* get_dir3(struct ext2_inode*,ext2_ino_t, ext2_ino_t,char*, char*,__u32,__u32,int ); //directory finder
 void lookup_local(char*, struct dir_list_head_t*, __u32 , __u32 , int ); // main worker function for recover and list
 ext2_ino_t local_namei(struct dir_list_head_t*, char* , __u32, __u32, int);// search the Inode for an pathname (use journal data)

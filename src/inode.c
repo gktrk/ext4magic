@@ -564,6 +564,7 @@ return ;
 void dump_inode_list(struct ring_buf* buf, int flag){
 	r_item* item;
 	int i, count;
+	__u32 time_stamp;
 
 	if (!buf ) return;
 	item = r_first(buf);
@@ -571,8 +572,13 @@ void dump_inode_list(struct ring_buf* buf, int flag){
 	count = r_get_count(buf);
 	for (i = 0; i < count ; i++){
 		print_j_inode(item->inode , buf->nr , item->transaction.start, flag);
-		if ( LINUX_S_ISDIR(item->inode->i_mode))
-			list_dir3(buf->nr, (struct ext2_inode*)item->inode, &(item->transaction));
+		if ( LINUX_S_ISDIR(item->inode->i_mode)){
+			time_stamp = (item->transaction.start) ? get_trans_time(item->transaction.start) : 0 ;
+#ifdef DEBUG
+			printf ("Transaction-time for search %ld : %s\n", time_stamp, time_to_string(time_stamp));
+#endif
+			list_dir3(buf->nr, (struct ext2_inode*)item->inode, &(item->transaction),time_stamp);
+		}
 		item = r_next(item);	
 	}
 return;
@@ -807,6 +813,29 @@ errout:
 #endif
 	return NULL;
 }
+
+// get the first Journal Inode by time_stamp	
+int read_time_match_inode( ext2_ino_t inode_nr, struct ext2_inode* inode_buf, __u32 time_stamp){
+	struct ring_buf* i_ring;
+	r_item* item;
+	int retval = 1;
+	
+	i_ring = get_j_inode_list(current_fs->super, inode_nr);
+	if (i_ring) {
+		item = r_last(i_ring);
+
+		while ((ext2fs_le32_to_cpu(item->inode->i_ctime)  > time_stamp) && ( item != r_first(i_ring)))
+				item = r_prev(item);
+
+//FIXME
+		memcpy(inode_buf,item->inode,EXT2_GOOD_OLD_INODE_SIZE);
+		ring_del(i_ring);
+		retval= 0;
+	}
+return retval;
+}
+
+
 
 
 

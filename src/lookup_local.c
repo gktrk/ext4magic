@@ -88,7 +88,8 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
         else if (ls->options & LONG_OPT) {
                 if ((ino && (ino <= current_fs->super->s_inodes_count))) {
 			if (ls->options & ONLY_JOURNAL)
-				retval = read_journal_inode( ino,&inode, ls->transaction->start);
+//				retval = read_journal_inode( ino, &inode, ls->transaction->start);
+				retval = read_time_match_inode( ino, &inode, ls->time_stamp);
 			if (retval || !(ls->options & ONLY_JOURNAL))	
                         	if (intern_read_inode(ino, &inode))
                                 	return 0;
@@ -627,7 +628,7 @@ if(d_list)
 
 
 // list dir over journal inode and journal dir blocks an journal dir-entry-inodes
-void list_dir3(ext2_ino_t ino, struct ext2_inode *inode, trans_range_t* transaction)
+void list_dir3(ext2_ino_t ino, struct ext2_inode *inode, trans_range_t* transaction ,__u32 time_stamp)
 {
         int             retval;
         int             flags; 
@@ -639,6 +640,7 @@ void list_dir3(ext2_ino_t ino, struct ext2_inode *inode, trans_range_t* transact
         ls.options |= LONG_OPT;
         ls.options |= DELETED_OPT;
 	ls.options |= ONLY_JOURNAL;
+	ls.time_stamp = time_stamp;
 	
 	if (! ext2fs_test_inode_bitmap ( current_fs->inode_map, ino )) ls.options |= DELETED_DIR ;
 

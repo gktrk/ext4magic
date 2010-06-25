@@ -36,6 +36,7 @@ extern int journal_close(void); // close the journal (last function in main() if
 static int init_journal(void); // main for extract the journal to the local private data
 static const char *type_to_name(int);
 int get_block_list_count(blk64_t block);//get count of journal blocklist 
+__u32 get_trans_time( __u32); //get the transactiontime of a transactionnumber
 int get_block_list(journal_descriptor_tag_t *, blk64_t, int);//get a sortet list of all copys of a filesystemblock
 int read_journal_block(off_t, char*, int, unsigned int*);
 void print_block_list(int);

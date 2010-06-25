@@ -63,6 +63,7 @@ int get_transaction_inode(ext2_ino_t, int, struct ext2_inode_large*);// get jour
 void dump_inode_list(struct ring_buf* , int);//print the contents of all copy of inode in the journal
 void dump_inode(FILE*, const char*, ext2_ino_t, struct ext2_inode*,int);//print the contents of inode
 int read_journal_inode( ext2_ino_t, struct ext2_inode*, __u32);// get the first Journal Inode by transaction
+int read_time_match_inode( ext2_ino_t, struct ext2_inode*, __u32);// get the first Journal Inode by time_stamp	
 struct ring_buf* get_j_inode_list(struct ext2_super_block*, ext2_ino_t);//fill all inode found in the Journal in the inode-ringbuffer
 
 

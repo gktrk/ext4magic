@@ -884,6 +884,7 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
        	{
 		struct ring_buf* i_list;
 		r_item *item = NULL;
+		__u32 time_stamp;
 
 		i_list = get_j_inode_list(current_fs->super, inode_nr);
 		if (i_list){ 
@@ -891,8 +892,13 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 				item = get_undel_inode(i_list,t_after,t_before);	
 				if(item){
 					dump_inode(stdout, "",inode_nr, (struct ext2_inode *)item->inode, format);
-					if ( LINUX_S_ISDIR(item->inode->i_mode))
-						list_dir3(inode_nr, (struct ext2_inode*) item->inode, &(item->transaction));
+					if ( LINUX_S_ISDIR(item->inode->i_mode)){
+						time_stamp = (item->transaction.start) ? get_trans_time(item->transaction.start) : 0 ;
+#ifdef DEBUG
+						printf ("Transaction-time for search %ld : %s\n", time_stamp, time_to_string(time_stamp));
+#endif
+						list_dir3(inode_nr, (struct ext2_inode*) item->inode, &(item->transaction) , time_stamp);
+					}
 				}
 				else
 					printf("No entry with this time found\n");

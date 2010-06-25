@@ -321,7 +321,7 @@ static const char *type_to_name(int btype)
 
 
 //check if block is a inodeblock local function
-static int bock_is_inodetable(blk64_t block){
+static int block_is_inodetable(blk64_t block){
 	int group;
 	struct ext2_group_desc *gdp;
 	blk64_t last;
@@ -381,6 +381,25 @@ return t_time;
 }
 
 
+
+//get the transactiontime of a transactionnumber
+__u32 get_trans_time( __u32 transaction){
+	journal_descriptor_tag_t *pointer;
+	__u32	counter;
+
+	pointer = pt_buff;
+	for (counter=0 ; counter<pt_count ; counter++, pointer++) {
+		if (pointer->transaction != transaction) continue;
+
+		if (block_is_inodetable(pointer->f_blocknr)) {
+			return get_transaction_time(pointer->j_blocknr);
+		}
+		else continue;
+	}
+	return 0;
+}
+
+
 //print all usable copy of filesystem blocks are found in journal
 void print_block_list(int flag){
 	journal_descriptor_tag_t *pointer;
@@ -393,7 +412,7 @@ void print_block_list(int flag){
 	
 	for (counter=0 ; counter<pt_count ; counter++) {
 		if (flag){
-			if (bock_is_inodetable (pointer->f_blocknr)){
+			if (block_is_inodetable (pointer->f_blocknr)){
 				transaction_time = get_transaction_time(pointer->j_blocknr);	
 			}
 			else transaction_time = 0;
@@ -416,7 +435,7 @@ void print_block_transaction(blk64_t block_nr, int flag){
 	int is_inode_block = 0;
 	__u32	transaction_time = 0;
 
-	if (flag) is_inode_block = bock_is_inodetable(block_nr);
+	if (flag) is_inode_block = block_is_inodetable(block_nr);
 		
 	pointer = pt_buff;
 	printf("\nTransactions of Filesystemblock %llu in Journal\n",block_nr); 
