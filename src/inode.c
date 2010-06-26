@@ -824,7 +824,7 @@ int read_time_match_inode( ext2_ino_t inode_nr, struct ext2_inode* inode_buf, __
 	if (i_ring) {
 		item = r_last(i_ring);
 
-		while ((ext2fs_le32_to_cpu(item->inode->i_ctime)  > time_stamp) && ( item != r_first(i_ring)))
+		while ((item->inode->i_ctime  > time_stamp) && ( item != r_first(i_ring)))
 				item = r_prev(item);
 
 //FIXME
