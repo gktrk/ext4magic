@@ -606,11 +606,11 @@ if ((mode & RECOVER_INODE) && (recovermodus &  (REC_DIR_NEEDED)) || mode & RECOV
                         			file_rdev = st_buf.st_dev;
                 			}
         			}
-				if (filestat.st_dev == file_rdev){
+				if ((filestat.st_dev == file_rdev) && (S_ISBLK(st_buf.st_mode))){
 					fprintf(stderr,"ERROR: can not use \"%s\" for recover directory. It's the same filesystem : \"%s\"\n", des_dir, argv[optind]);
 					exitval = EXIT_FAILURE ; 
 #ifdef DEBUG
-					printf("recover_dir_dev : %d    filesystem_dev : %d   ",filestat.st_dev, file_rdev);
+					printf("recover_dir_dev : %d    filesystem_dev : %d\n",(int)filestat.st_dev, (int)file_rdev);
 #endif
               				goto errout;
 				}	
