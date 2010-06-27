@@ -732,7 +732,7 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
  		if (ext2fs_le32_to_cpu(inode_pointer->i_ctime) == ctime){
 			if (item) {
 				if ((ext2fs_le32_to_cpu(inode_pointer->i_size) == same_size) &&
-					(ext2fs_le16_to_cpu(inode_pointer->i_links_count == same_link_count))){
+					(ext2fs_le16_to_cpu(inode_pointer->i_links_count) == same_link_count)){
 					item->transaction.end = block_list->transaction;
 #ifdef DEBUG
 					fprintf(stdout,"-;");
