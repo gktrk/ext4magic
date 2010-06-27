@@ -270,18 +270,6 @@ static int convert_dir_block(char *buf, int flags){
 
 
 
-
-void read_extern(char* buf){
-FILE* stream;
-int size_t;
-
-stream = fopen("/tmp/dirblock.defekt","r");
-size_t = fread (buf, 4096, 1, stream);
-fclose(stream);
-return;
-
-}
-
 /*
  * Helper function which is private to this module.  Used by
  * local_dir_iterate3() (modi of ext2fs_process_dir_block
@@ -318,7 +306,6 @@ return;
 	if(!ctx->errcode)
 		ctx->errcode = convert_dir_block(ctx->buf,0); 
 #endif
-//read_extern(ctx->buf);
 	if (ctx->errcode)
                 return BLOCK_ABORT;
 
