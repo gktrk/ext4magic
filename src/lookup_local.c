@@ -34,6 +34,7 @@
 #include "util.h"
 #include "inode.h"
 
+#define DIRENT_MIN_LENGTH 12
 extern ext2_filsys     current_fs ;
 
 static const char *monstr[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -145,7 +146,7 @@ void list_dir(ext2_ino_t inode)
         retval = ext2fs_dir_iterate2(current_fs, inode, flags,0, list_dir_proc, &ls);
         fprintf(stdout, "\n");
         if (retval)
-                fprintf(stderr,"Error %d \n", retval);
+                fprintf(stderr,"Error: %d directory data error\n", retval);
 
         return;
 }
@@ -173,7 +174,6 @@ static int local_validate_entry(ext2_filsys fs, char *buf,
         struct ext2_dir_entry *dirent;
         unsigned int rec_len = 0;
 	
-#define DIRENT_MIN_LENGTH 12
 
         while ((offset < final_offset) &&
                (offset <= fs->blocksize - DIRENT_MIN_LENGTH)) {
@@ -193,10 +193,40 @@ static int local_validate_entry(ext2_filsys fs, char *buf,
 
 
 
+#ifdef WORDS_BIGENDIAN
+//---------------------------------------------------------------
+/*
+ * This function checks to see whether or not a potential deleted
+ * directory entry looks valid. Returns 1 if the deleted entry looks valid,
+ * zero if not valid.
+ *
+ * only from convert_dir_block() on bigendian
+ */
+static int local_validate_entry2(char *p , char *end, unsigned int offset, unsigned int final_offset)
+{
+        struct ext2_dir_entry_2 *dirent;
+        __u16   rec_len = 0; 
+
+        while ((offset < final_offset) &&
+               (offset <= (unsigned int) (end - p - DIRENT_MIN_LENGTH))) {
+                dirent = (struct ext2_dir_entry_2 *)(p + offset);
+			rec_len = ext2fs_swab16(dirent->rec_len);
+			if ((rec_len == 0 ) || (rec_len == 65535 )) 
+				rec_len = current_fs->blocksize ;
+
+                	offset += rec_len;
+                	if ((rec_len < 8) || ((rec_len % 4) != 0) || (((unsigned) dirent->name_len +8) > rec_len))
+                        	return 0;
+        }
+        return (offset == final_offset);
+}
+
+
 // convert dir_block for bigendian inclusive deleted entry
 static int convert_dir_block(char *buf, int flags){
        	errcode_t       retval;
         char            *p, *end;
+	char		real_len;
         struct ext2_dir_entry *dirent;
         unsigned int    name_len, rec_len;
 
@@ -204,16 +234,16 @@ static int convert_dir_block(char *buf, int flags){
         end = (char *) buf + current_fs->blocksize;
         while (p < end-8) {
                 dirent = (struct ext2_dir_entry *) p;
-#ifdef WORDS_BIGENDIAN
+
                 dirent->inode = ext2fs_swab32(dirent->inode);
                 dirent->rec_len = ext2fs_swab16(dirent->rec_len);
                 dirent->name_len = ext2fs_swab16(dirent->name_len);
-#endif
+
                 name_len = dirent->name_len;
-#ifdef WORDS_BIGENDIAN
+
                 if (flags & EXT2_DIRBLOCK_V2_STRUCT)
                         dirent->name_len = ext2fs_swab16(dirent->name_len);
-#endif
+
                 if ((retval = ext2fs_get_rec_len(current_fs, dirent, &rec_len)) != 0)
                         return retval;
                 if ((rec_len < 8) || (rec_len % 4)) {
@@ -221,12 +251,36 @@ static int convert_dir_block(char *buf, int flags){
                         retval = EXT2_ET_DIR_CORRUPTED;
                 } else if (((name_len & 0xFF) + 8) > rec_len)
                         retval = EXT2_ET_DIR_CORRUPTED;
-              //  p += rec_len;
-		  p += ((name_len & 0xFF) + 11) & ~3;
+		real_len = ((name_len & 0xFF) + 11) & ~3;
+		if ((rec_len > real_len) && ((real_len + DIRENT_MIN_LENGTH) <= rec_len)){
+ 		//	p += ((name_len & 0xFF) + 11) & ~3;
+//FIXME
+                        unsigned int offset = real_len;
+
+		        while (offset < rec_len &&  !local_validate_entry2(p , end , offset, rec_len))
+				offset += 4;
+			p += offset;
+		}
+		else
+              		 p += rec_len;
         }
         return retval;
 }
+#endif 
 
+
+
+
+void read_extern(char* buf){
+FILE* stream;
+int size_t;
+
+stream = fopen("/tmp/dirblock.defekt","r");
+size_t = fread (buf, 4096, 1, stream);
+fclose(stream);
+return;
+
+}
 
 /*
  * Helper function which is private to this module.  Used by
@@ -264,6 +318,7 @@ static int convert_dir_block(char *buf, int flags){
 	if(!ctx->errcode)
 		ctx->errcode = convert_dir_block(ctx->buf,0); 
 #endif
+//read_extern(ctx->buf);
 	if (ctx->errcode)
                 return BLOCK_ABORT;
 
@@ -434,7 +489,7 @@ void list_dir2(ext2_ino_t ino, struct ext2_inode *inode)
         retval = local_dir_iterate3(current_fs,ino, inode, flags,0, list_dir_proc, &ls);
         fprintf(stdout, "\n");
         if (retval)
-                fprintf(stderr,"Error %d \n", retval);
+                fprintf(stderr,"Error: %d inode or directory data error\n", retval);
 
         return;
 }
@@ -653,7 +708,7 @@ void list_dir3(ext2_ino_t ino, struct ext2_inode *inode, trans_range_t* transact
         retval = local_dir_iterate3(current_fs,ino, inode, flags,0, list_dir_proc, &ls);
         fprintf(stdout, "\n");
         if (retval)
-                fprintf(stderr,"Error %d \n", retval);
+                fprintf(stderr,"Error %d inode or journal directory data error\n", retval);
 
         return;
 }
