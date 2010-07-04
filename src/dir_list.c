@@ -126,7 +126,7 @@ return ret;
 }	
 
 
-// sort of invalid values by data copy
+// sort out invalid values by data copy
 struct  dir_list_head_t* clean_up_dir_list(struct dir_list_head_t* o_dir ){
 	struct dir_list_head_t* n_dir;
 	int i;

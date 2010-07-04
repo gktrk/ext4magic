@@ -1,3 +1,12 @@
+0.1.3		BUG: crash if no write access to input filename list
+		changes: time option to "-a ...." and "-b ...."
+		changes: time match search for inode in directory
+		changes: BIG ENDIAN swap dirblock
+		changes: checking recover device
+		fix: some small bugs 
+		
+
+
 0.1.2		hardlink database: Changes handling link-count 
 		hardlink database: at end of process print content
 		set_dir_attributes(): create now also empty directories with "-R"

@@ -108,8 +108,8 @@ libblkid-devel			libblkid-dev
 
 Das ext4magic Archiv downloaden und entpacken und in das so entstehende Verzeichnis wechseln
 
- # tar -xzf ext4magic-0.1.2.tar.gz 
- # cd ext4magic-0.1.2
+ # tar -xzf ext4magic-0.1.3.tar.gz 
+ # cd ext4magic-0.1.3
 
 Das Paket wird jetzt kompiliert.
 
@@ -159,6 +159,8 @@ ext4magic angelegt wird. Nutzen sie die selbe Shell in der die EXT2LIB Variable 
 
  wie folgt compilieren
 
+ # tar -xzf ext4magic-0.1.3.tar.gz 
+ # cd ext4magic-0.1.3
  # ./configure CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread"
  # make
 
@@ -209,7 +211,7 @@ Die unterschiedlichen Versionen sehen sie zB. im Vergleich der Ausgabe folgender
  
 
   # ext4magic -V x
-  ext4magic  version : 0.1.2
+  ext4magic  version : 0.1.3
   libext2fs version : 1.41.11
   CPU is little endian.
   #
