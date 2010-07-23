@@ -474,7 +474,7 @@ void dump_inode(FILE *out, const char *prefix,
                 }
                 fprintf(out, "%sDevice major/minor number: %02d:%02d (hex %02x:%02x)\n\n",
                         devnote, major, minor, major, minor);
-        } else if (do_dump_blocks) {
+        } else if (do_dump_blocks && !(inode->i_dtime)) {
                 if (inode->i_flags & EXT4_EXTENTS_FL)
                         local_dump_extents(out, prefix, inode,
                                      DUMP_LEAF_EXTENTS, 0, 0);

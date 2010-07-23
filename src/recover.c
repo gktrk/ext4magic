@@ -380,8 +380,7 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 
 //symbolic link	
 		case LINUX_S_IFLNK :
-			if(inode->i_blocks){
-//FIXME: not work if linkname bigger as the blocksize 
+			  if (ext2fs_inode_data_blocks(current_fs,inode)){
 				buf = malloc(current_fs->blocksize); 
 				if (buf) {
 					priv.buf = buf;
@@ -396,7 +395,7 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 			else {
 				int i;
 			
-				if(! inode->i_size || (inode->i_size > 60)) 
+				if(! inode->i_size || (inode->i_size >= 60)) 
 					goto errout; 
 				buf = malloc(inode->i_size + 1);
 				linkname = (char*) &(inode->i_block[0]);
@@ -507,7 +506,7 @@ int check_file_recover(struct ext2_inode *inode){
 
 	stat.allocated = 0;
 	stat.not_allocated = 0;
-	if (! inode->i_blocks)
+	if ((! inode->i_blocks) || (LINUX_S_ISLNK(inode->i_mode) && (inode->i_size < EXT2_N_BLOCKS*4)))
 		retval = 100;
 	else{
 		retval = local_block_iterate3 ( current_fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, check_block, &stat );
