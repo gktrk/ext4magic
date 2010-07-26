@@ -44,10 +44,19 @@
 #define CHOWN_ERROR	0x10
 #define CHMOD_ERROR	0x08
 #define UTIME_ERROR	0x04
+#define ATTRI_ERROR	0x02
 
 //in this version unused
-#define ATTRI_ERROR	0x02
 #define ACL_ERROR	0x01
+
+
+//#define FILE_ATTR 
+#ifdef FILE_ATTR
+#include "e2p/e2p.h"
+//#FLAGS_MODIFIABLE = EXT2_NOATIME_FL | EXT2_SYNC_FL | EXT2_DIRSYNC_FL | EXT2_APPEND_FL | EXT2_COMPR_FL | EXT2_NODUMP_FL |
+// EXT2_IMMUTABLE_FL | EXT3_JOURNAL_DATA_FL | EXT2_SECRM_FL | EXT2_UNRM_FL | EXT2_NOTAIL_FL | EXT2_TOPDIR_FL 
+#define FLAGS_MODIFIABLE	0x0001E0FF
+#endif
 
 
 extern ext2_filsys current_fs;
@@ -472,6 +481,19 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 				if (retval){
 					rec_error -= UTIME_ERROR ;
 				}
+#ifdef FILE_ATTR
+				if( LINUX_S_ISREG(inode->i_mode)){
+					unsigned long flags;
+					if (fgetflags(recovername, &flags) == -1) {
+						rec_error -= ATTRI_ERROR;
+					}
+					else {
+						if (fsetflags(recovername, flags | (inode->i_flags & FLAGS_MODIFIABLE )) == -1 ){
+							rec_error -= ATTRI_ERROR;
+						}
+					}		
+				}
+#endif
 			}
 			else {
 				retval = lchown (recovername, inode_uid(*inode), inode_gid(*inode));
@@ -506,7 +528,8 @@ int check_file_recover(struct ext2_inode *inode){
 
 	stat.allocated = 0;
 	stat.not_allocated = 0;
-	if ((! inode->i_blocks) || (LINUX_S_ISLNK(inode->i_mode) && (inode->i_size < EXT2_N_BLOCKS*4)))
+	if ((! inode->i_blocks) || (LINUX_S_ISLNK(inode->i_mode) && (inode->i_size < EXT2_N_BLOCKS*4)) ||
+		 ! (ext2fs_inode_data_blocks(current_fs,inode)))
 		retval = 100;
 	else{
 		retval = local_block_iterate3 ( current_fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, check_block, &stat );
@@ -556,6 +579,7 @@ void set_dir_attributes(char* des_dir,char* pathname,struct ext2_inode *inode){
 	mode_t i_mode;
 	struct stat  filestat;
 	struct utimbuf   touchtime;
+	unsigned long flags;
 
 	fullname = malloc(strlen(des_dir) + strlen(pathname) + 3);
 	if (fullname){
@@ -589,6 +613,16 @@ void set_dir_attributes(char* des_dir,char* pathname,struct ext2_inode *inode){
 		if (retval){
 			rec_error -= UTIME_ERROR ;
 		}
+#ifdef FILE_ATTR
+		if (fgetflags(fullname, &flags) == -1) {
+			rec_error -= ATTRI_ERROR;
+		}
+		else {
+			if (fsetflags(fullname, flags | (inode->i_flags & FLAGS_MODIFIABLE )) == -1 ){
+				rec_error -= ATTRI_ERROR;
+			}
+		}		
+#endif
 		printf("%s	%s\n",get_error_string(err_string,rec_error),fullname);
 		
 	free(fullname);
