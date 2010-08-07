@@ -378,8 +378,18 @@ void dump_inode(FILE *out, const char *prefix,
         else if (LINUX_S_ISSOCK(inode->i_mode)) i_type = "socket";
         else i_type = "bad type";
         fprintf(out, "%sInode: %u   Type: %s    ", prefix, inode_num, i_type);
-        fprintf(out, "%sMode:  %04o   Flags: 0x%x\n",
+        fprintf(out, "%sMode:  %04o   Flags: 0x%x ",
                 prefix, inode->i_mode & 0777, inode->i_flags);
+#ifdef FILE_ATTR
+	if (do_dump_blocks && inode->i_flags) {
+		fprintf(out,"[");
+		print_flags(out, inode->i_flags, 0);
+		fprintf(out,"]\n");
+	}
+	else
+#endif
+	fprintf(out,"\n");
+
         if (is_large_inode && large_inode->i_extra_isize >= 24) {
                 fprintf(out, "%sGeneration: %u    Version: 0x%08x:%08x\n",
                         prefix, inode->i_generation, large_inode->i_version_hi,
@@ -607,6 +617,8 @@ r_item* get_last_undel_inode(struct ring_buf* buf){
 #ifdef DEBUG
 		printf("UD-Inode %d\n",item->transaction.start);
 #endif
+			if(! item->inode->i_links_count) 
+				item->inode->i_links_count = 1 ;
 			return item;
 		}
 	}
@@ -636,6 +648,8 @@ r_item* get_last_undel_inode(struct ring_buf* buf){
 		}
 //		if (item->inode->i_generation != generation) 
 //			buf->reuse_flag = 1;
+		if(! item->inode->i_links_count) 
+			item->inode->i_links_count = 1 ;
 #ifdef DEBUG
 		printf("UTD-Inode %d\n",item->transaction.start);
 #endif
