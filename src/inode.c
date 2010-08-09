@@ -617,7 +617,8 @@ r_item* get_last_undel_inode(struct ring_buf* buf){
 #ifdef DEBUG
 		printf("UD-Inode %d\n",item->transaction.start);
 #endif
-			if(! item->inode->i_links_count) 
+			if((! item->inode->i_links_count)&&(item->inode->i_ctime)
+				&&(item->inode->i_mode))
 				item->inode->i_links_count = 1 ;
 			return item;
 		}
@@ -648,7 +649,7 @@ r_item* get_last_undel_inode(struct ring_buf* buf){
 		}
 //		if (item->inode->i_generation != generation) 
 //			buf->reuse_flag = 1;
-		if(! item->inode->i_links_count) 
+		if((! item->inode->i_links_count)&&(item->inode->i_ctime)&&(item->inode->i_mode))
 			item->inode->i_links_count = 1 ;
 #ifdef DEBUG
 		printf("UTD-Inode %d\n",item->transaction.start);
@@ -796,7 +797,7 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 		if ( ext2fs_read_inode_full(current_fs, inode_nr, (struct ext2_inode*)inode_buf, pos.size))
 			goto errout;
 		inode_pointer = (struct ext2_inode*) inode_buf ;
-		if(! inode_pointer->i_dtime){
+		if((! inode_pointer->i_dtime) && inode_pointer->i_ctime){
 			item = r_item_add(buf);
 			if ( ! item){
 				fprintf(stderr,"Error: can not allocate memory for inode\n");

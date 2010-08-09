@@ -291,6 +291,9 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 	printf("RECOVER : INODE=%ld FILENAME=%s/%s\n",inode_nr, pathname,filename);
 	dump_inode(stdout, "",inode_nr, (struct ext2_inode *)inode, 0);
 #endif	
+	
+	if (!(inode->i_mode & LINUX_S_IFMT)) //no type flag - no recover
+		return 1;
 
 	p1 = pathname;
 	while   (*p1 == '/') p1++;
@@ -524,6 +527,9 @@ return retval;
 int check_file_recover(struct ext2_inode *inode){
 	int retval =-1;
 	struct alloc_stat stat;
+
+	if (!(inode->i_mode & LINUX_S_IFMT)) // no type flag
+		return 0;
 
 	stat.allocated = 0;
 	stat.not_allocated = 0;

@@ -501,7 +501,7 @@ void list_dir2(ext2_ino_t ino, struct ext2_inode *inode)
 	struct priv_dir_iterate_struct 	fl;
 	struct dir_list_head_t * 	l_dir = NULL;
 		
-		if(d_inode) d_inode->i_links_count = 0;  //set flag for test 
+		if(d_inode) memset(d_inode, 0 , current_fs->super->s_inode_size);
 		i_list = (struct ring_buf*) get_j_inode_list(current_fs->super, ino);
 		if (! i_list) return NULL;
 
