@@ -1,3 +1,11 @@
+0.1.4		BUG: #17387 symlink not restored
+		BUG: #17423 undeleted directory not found
+		BUG: #17425 run-time error "segmentation fault" at the beginning of a directory
+		enable optional support for ext2/3/4 file attributes
+		restore unlinked files
+
+
+
 0.1.3		BUG: crash if no write access to input filename list
 		changes: time option to "-a ...." and "-b ...."
 		changes: time match search for inode in directory
