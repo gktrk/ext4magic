@@ -308,8 +308,10 @@ static int convert_dir_block(char *buf, int flags){
 #endif
 	if (ctx->errcode)
                 return BLOCK_ABORT;
-
-        while (offset < fs->blocksize) {
+	if (bmap)
+		ext2fs_mark_generic_bitmap(bmap, *blocknr);
+	
+	while (offset < fs->blocksize) {
                 dirent = (struct ext2_dir_entry *) (ctx->buf + offset);
                 if (ext2fs_get_rec_len(fs, dirent, &rec_len))
                         return BLOCK_ABORT;
@@ -504,13 +506,17 @@ void list_dir2(ext2_ino_t ino, struct ext2_inode *inode)
 		if(d_inode) memset(d_inode, 0 , current_fs->super->s_inode_size);
 		i_list = (struct ring_buf*) get_j_inode_list(current_fs->super, ino);
 		if (! i_list) return NULL;
-
+//FIXME
+		if (imap){
+			ext2fs_mark_generic_bitmap(imap,ino);
+//			printf("mark inode %10u\n",ino);
+		}
 		item = get_undel_inode(i_list , t_after , t_before);
 		if ( item && item->inode ) {
 			inode = (struct ext2_inode*)item->inode;
 			if(d_inode) 
 				memcpy(d_inode,inode,current_fs->super->s_inode_size);	
-			if (!ino || (! LINUX_S_ISDIR(inode->i_mode)))  
+			if (!ino || (! LINUX_S_ISDIR(inode->i_mode)))
 				goto errout;
 			
 //get dir
@@ -550,6 +556,7 @@ void lookup_local(char* des_dir, struct dir_list_head_t * dir, __u32 t_after , _
 	r_item 				*item = NULL;
 	char			c = ' ';
 	int allocated;
+	int recursion = 0;
 		
 	if (! dir) {
 		d_list = get_dir3(NULL, EXT2_ROOT_INO , EXT2_ROOT_INO , "","", t_after,t_before, flag);
@@ -597,11 +604,18 @@ void lookup_local(char* des_dir, struct dir_list_head_t * dir, __u32 t_after , _
 					dir->pathname,lp->filename,t_after,t_before, flag);
 
 				if (d_list){
+//FIXME search for lost dir
+					recursion = 1;
+					if (flag & LOST_DIR_SEARCH) 
+						 recursion = check_find_dir(des_dir,lp->inode_nr,dir->pathname,lp->filename);
+
 //recursion for directory
-					lookup_local(des_dir, d_list, t_after, t_before, flag);
+					if(recursion) {
+						lookup_local(des_dir, d_list, t_after, t_before, flag);
 #ifdef DEBUG
-					printf("<<%s<<\n",dir->pathname);
+						printf("<<%s<<\n",dir->pathname);
 #endif
+					}
 				}
 				else{
 //function for all files apart from dir

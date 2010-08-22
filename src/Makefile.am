@@ -1,6 +1,6 @@
 sbin_PROGRAMS = ext4magic
-ext4magic_SOURCES = block.c dir_list.c ext4magic.c \
-	hard_link_stack.c inode.c journal.c lookup_local.c recover.c ring_buf.c util.c
+ext4magic_SOURCES = block.c dir_list.c ext4magic.c hard_link_stack.c \
+	imap_search.c inode.c journal.c lookup_local.c recover.c ring_buf.c util.c
 
 # set the include path found by configure
 INCLUDES= $(all_includes)

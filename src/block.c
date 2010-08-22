@@ -26,9 +26,13 @@
 #define EXT2_FLAT_INCLUDES 0
 #endif
 
+
 //#include <ext2fs/ext2fs.h>
 #include "ext2fsP.h"
 #include "block.h"
+
+
+extern ext2fs_block_bitmap 	  	bmap ; 
 
 struct block_context {
 	ext2_filsys	fs;
@@ -174,6 +178,37 @@ errcode_t local_ext2fs_extent_open(ext2_filsys fs, struct ext2_inode inode,
 }
 
 
+static int mark_extent_block(ext2_filsys fs, char *extent_block ){
+	struct ext3_extent_header 	*eh;
+	struct ext3_extent_idx		*idx;
+	int i, ret;
+	blk_t index_bl;
+	char *buf = NULL;
+
+	eh = (struct ext3_extent_header*) extent_block;
+	if (eh->eh_magic != ext2fs_cpu_to_le16(EXT3_EXT_MAGIC))
+				return 1; 
+	if (ext2fs_le16_to_cpu(eh->eh_depth)) {
+		for (i = 1; ((i <= ext2fs_le16_to_cpu(eh->eh_entries)) && (i <= ext2fs_le16_to_cpu(eh->eh_max))); i++){
+			idx = (struct ext3_extent_idx*) &(extent_block[12 * i]);
+			index_bl = ext2fs_le32_to_cpu(idx->ei_leaf);
+			if (index_bl && index_bl <= fs->super->s_blocks_count ){ 
+				if (bmap){
+					ext2fs_mark_generic_bitmap(bmap, index_bl);
+					buf = malloc(fs->blocksize);
+					if (buf){
+						ret = read_block (fs, &index_bl, buf );
+						if (!ret)
+							ret = mark_extent_block(fs,buf);
+						free(buf);
+					}
+				}			
+			}
+		} 
+	}
+return ret;
+}
+
 
 
 #define check_for_ro_violation_return(ctx, ret)				\
@@ -226,7 +261,9 @@ static int block_iterate_ind(blk_t *ind_block, blk_t ref_block,
 		ret |= BLOCK_ERROR;
 		return ret;
 	}
-
+	if (bmap)
+		ext2fs_mark_generic_bitmap(bmap, *ind_block);
+	
 	block_nr = (blk_t *) ctx->ind_buf;
 	offset = 0;
 	if (ctx->flags & BLOCK_FLAG_APPEND) {
@@ -305,7 +342,9 @@ static int block_iterate_dind(blk_t *dind_block, blk_t ref_block,
 		ret |= BLOCK_ERROR;
 		return ret;
 	}
-
+	if (bmap)
+		ext2fs_mark_generic_bitmap(bmap, *dind_block);
+	
 	block_nr = (blk_t *) ctx->dind_buf;
 	offset = 0;
 	if (ctx->flags & BLOCK_FLAG_APPEND) {
@@ -386,6 +425,8 @@ static int block_iterate_tind(blk_t *tind_block, blk_t ref_block,
 		ret |= BLOCK_ERROR;
 		return ret;
 	}
+	if (bmap)
+		ext2fs_mark_generic_bitmap(bmap, *tind_block);
 
 	block_nr = (blk_t *) ctx->tind_buf;
 	offset = 0;
@@ -592,6 +633,8 @@ errcode_t local_block_iterate3(ext2_filsys fs,
 					break;
 			}
 		}
+	if (bmap)
+		mark_extent_block(fs, (char*) inode.i_block);
 
 	extent_errout:
 		local_ext2fs_extent_free(handle);
@@ -628,8 +671,9 @@ errcode_t local_block_iterate3(ext2_filsys fs,
 	if (inode.i_block[EXT2_TIND_BLOCK] || (flags & BLOCK_FLAG_APPEND)) {
 		ret |= block_iterate_tind(&inode.i_block[EXT2_TIND_BLOCK],
 					  0, EXT2_TIND_BLOCK, &ctx);
-		if (ret & BLOCK_ABORT)
+		if (ret & BLOCK_ABORT){
 			goto abort_exit;
+		}
 	}
 
 abort_exit:

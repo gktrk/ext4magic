@@ -174,14 +174,21 @@ static int read_syslink_block ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t bloc
 	errcode_t retval;
 	int blocksize = fs->blocksize;
 
-        int allocated = ext2fs_test_block_bitmap ( fs->block_map, *blocknr );
-        if ( allocated ){
-//		fprintf(stderr,"Block %10lu is allocated.\n",*blocknr);
-                return (BLOCK_ABORT | BLOCK_ERROR);
+	if (((struct privat*)priv)->flag){
+        	int allocated = ext2fs_test_block_bitmap ( fs->block_map, *blocknr );
+        	if ( allocated ){
+			((struct privat*)priv)->error = 1;
+//			fprintf(stderr,"Block %10lu is allocated.\n",*blocknr);
+                	return (BLOCK_ABORT | BLOCK_ERROR);
+		}
 	}
 	retval = io_channel_read_blk ( fs->io,  *blocknr,  1,  charbuf );
-	if (retval)
-		{ return (BLOCK_ERROR);}
+	if (retval){
+		((struct privat*)priv)->error = retval;
+		 return (BLOCK_ERROR);
+	}
+	if (bmap)
+		ext2fs_mark_generic_bitmap(bmap, *blocknr);
 return 0;
 }
 
@@ -214,6 +221,9 @@ static int write_block ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
 		 ((struct privat*)priv)->error = BLOCK_ERROR ;
 		 return (BLOCK_ERROR);
 	}
+	if (bmap)
+		ext2fs_mark_generic_bitmap(bmap, *blocknr);
+
  	lseek(fd,(unsigned long long )blocksize * blockcnt, SEEK_SET);
 
 	nbytes = write(fd, charbuf, blocksize);
@@ -226,8 +236,8 @@ return retval;
 }
 
 
-//local check if the target directory existent, (recursive function)
-static int check_dir(char* pathname){
+//check if the target directory existent, (recursive function)
+ int check_dir(char* pathname){
 	char *buffer;
 	struct stat  filestat;
 	char *p1;
@@ -395,7 +405,11 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 				buf = malloc(current_fs->blocksize); 
 				if (buf) {
 					priv.buf = buf;
+					priv.error = 0;
+					
 					retval = local_block_iterate3 ( current_fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, read_syslink_block, &priv );
+					if (retval || priv.error)
+							 goto errout;
 				}
 				else {
 					fprintf(stderr,"ERROR: can no allocate memory\n");

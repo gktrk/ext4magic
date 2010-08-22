@@ -217,47 +217,48 @@ void print_coll_list(__u32 t_after, __u32 t_before, int flag){
 	__u16		crt_found = 0;
 	int		inode_size = EXT2_INODE_SIZE(current_fs->super);
 
+	if (collect && collect->count){
+		cm = (flag) ? 2*HIST_COUNT : HIST_COUNT ;
 
-	cm = (flag) ? 2*HIST_COUNT : HIST_COUNT ;
-
-	struct time_counter hist[(HIST_COUNT * 2)+1];
-	for (i = 0 ; i<= cm; i++){
-		hist[i].c_count = 0;
-		hist[i].d_count = 0;
-		hist[i].cr_count = 0;
-		hist[i].time = ((t_before - t_after)/ cm * i) + t_after;
-	}
-	pointer = collect->list;
-	for (i = 0; i < collect->count; i++ ,pointer++){
-		intern_read_inode_full(*pointer, inode_buf , (inode_size > 256) ? 256 : inode_size );
-		c_time = inode->i_ctime;
-		d_time = inode->i_dtime;
-		cr_time = ((inode_size > EXT2_GOOD_OLD_INODE_SIZE) && (inode->i_extra_isize >= 24)) ? inode->i_crtime : 0 ;
+		struct time_counter hist[(HIST_COUNT * 2)+1];
+		for (i = 0 ; i<= cm; i++){
+			hist[i].c_count = 0;
+			hist[i].d_count = 0;
+			hist[i].cr_count = 0;
+			hist[i].time = ((t_before - t_after)/ cm * i) + t_after;
+		}
+		pointer = collect->list;
+		for (i = 0; i < collect->count; i++ ,pointer++){
+			intern_read_inode_full(*pointer, inode_buf , (inode_size > 256) ? 256 : inode_size );
+			c_time = inode->i_ctime;
+			d_time = inode->i_dtime;
+			cr_time = ((inode_size > EXT2_GOOD_OLD_INODE_SIZE) && (inode->i_extra_isize >= 24)) ? inode->i_crtime : 0 ;
 			
-		for (j=1;j <= cm ; j++){
-			if ((d_time < hist[j].time) && (d_time > hist[j-1].time)){
-		 		hist[j].d_count++; 
-		 break;
-			}
-			if (cr_time){
-				if ((cr_time < hist[j].time) && (cr_time > hist[j-1].time)){
+			for (j=1;j <= cm ; j++){
+				if ((d_time < hist[j].time) && (d_time > hist[j-1].time)){
+			 		hist[j].d_count++; 
+			 break;
+				}
+				if (cr_time){
+					if ((cr_time < hist[j].time) && (cr_time > hist[j-1].time)){
 						hist[j].cr_count++;
 						crt_found = 1;
 						cr_time = 0 ;
+					}
+				}
+				if ((c_time < hist[j].time) && (c_time > hist[j-1].time)){
+					hist[j].c_count++; 
+			 break;
 				}
 			}
-			if ((c_time < hist[j].time) && (c_time > hist[j-1].time)){
-				hist[j].c_count++; 
-		 break;
-			}
 		}
-	}
 	
-	dump_hist(hist, cm, t_after, t_before, crt_found);
-	if (collect->list) free(collect->list);
-	if (collect){
-		free(collect);
-		collect = NULL;
+		dump_hist(hist, cm, t_after, t_before, crt_found);
+		if (collect->list) free(collect->list);
+		if (collect){
+			free(collect);
+			collect = NULL;
+		}
 	}
 return;
 } 

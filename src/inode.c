@@ -110,6 +110,7 @@ static void local_dump_extents(FILE *f, const char *prefix, struct ext2_inode * 
         unsigned int            printed = 0;
         errcode_t               errcode;
 
+	
         errcode = local_ext2fs_extent_open(current_fs, *inode, &handle);
         if (errcode)
                 return;
@@ -487,7 +488,7 @@ void dump_inode(FILE *out, const char *prefix,
         } else if (do_dump_blocks && !(inode->i_dtime)) {
                 if (inode->i_flags & EXT4_EXTENTS_FL)
                         local_dump_extents(out, prefix, inode,
-                                     DUMP_LEAF_EXTENTS, 0, 0);
+                                     DUMP_LEAF_EXTENTS|DUMP_EXTENT_TABLE, 8, 8);
                 else
                         dump_blocks(out, prefix, inode);
         }

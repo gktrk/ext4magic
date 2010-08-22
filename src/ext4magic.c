@@ -58,9 +58,10 @@ extern char *optarg;
 
 
 
-ext2_filsys     current_fs = NULL;
-ext2_ino_t      root, cwd;
-
+ext2_filsys     		current_fs = NULL;
+ext2_ino_t      		root, cwd;
+ext2fs_inode_bitmap 		imap = NULL ;
+ext2fs_block_bitmap 	  	bmap = NULL ; 
 
 
 //print Versions an CPU-endian-type
@@ -158,7 +159,7 @@ void show_super_stats(int header_only)
 
 //open and init the Filesystem, use in main()
 static void open_filesystem(char *device, int open_flags, blk_t superblock,
-                            blk_t blocksize, int catastrophic,
+                            blk_t blocksize, int magicscan,
                             char *data_filename)
 {
         int     retval;
@@ -184,8 +185,7 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
                 }
         }
 
-        if (catastrophic && (open_flags & EXT2_FLAG_RW)) {
-                fprintf(stderr,"opening read-only because of catastrophic mode\n");
+        if (open_flags & EXT2_FLAG_RW) {
                 open_flags &= ~EXT2_FLAG_RW;
         }
 
@@ -198,20 +198,31 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
         }
 
 
-        if (catastrophic)
-                fprintf(stderr,"%s catastrophic mode - not reading inode or group bitmaps\n", device);
-        else {
-                retval = ext2fs_read_inode_bitmap(current_fs);
-                if (retval) {
-                        fprintf(stderr,"%s %d while reading inode bitmap\n", device, retval);
-                        goto errout;
-                }
-                retval = ext2fs_read_block_bitmap(current_fs);
-                if (retval) {
-                        fprintf(stderr,"%s %d while reading block bitmap\n",device, retval);
-                        goto errout;
-                }
+        retval = ext2fs_read_inode_bitmap(current_fs);
+        if (retval) {
+                fprintf(stderr,"%s %d while reading inode bitmap\n", device, retval);
+                goto errout;
         }
+        retval = ext2fs_read_block_bitmap(current_fs);
+        if (retval) {
+        fprintf(stderr,"%s %d while reading block bitmap\n",device, retval);
+                goto errout;
+        }
+//FIXME
+	if (magicscan){	
+//		switch on magic scan function 
+		if( ext2fs_copy_bitmap(current_fs->inode_map, &imap) || ext2fs_copy_bitmap(current_fs->block_map, &bmap)){
+			fprintf(stderr,"%s Error while copy bitmap\n",device );
+			imap = NULL;
+			bmap = NULL;
+		}else{
+			int i;
+			ext2fs_clear_inode_bitmap(imap);
+			for (i = 1; i < current_fs->super->s_first_ino; i++)
+				ext2fs_mark_generic_bitmap(imap,i); //mark inode 1-8
+			ext2fs_clear_block_bitmap(bmap);
+		}
+	}
 
         if (data_io) {
                 retval = ext2fs_set_data_io(current_fs, data_io);
@@ -262,7 +273,7 @@ char 		*input_filename = NULL;
 blk_t           superblock = 0;
 blk_t           blocksize = 0;
 int		transaction_nr = 0;
-//int             catastrophic = 0;
+int             magicscan = 0;
 char            *data_filename = 0;
 int             mode = 0;
 ext2_ino_t      inode_nr = EXT2_ROOT_INO ;
@@ -294,6 +305,10 @@ if ( argc < 3 )
 // decode arguments
 while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) { 
                 switch (c) {
+		case 'M':
+			//not active, still in development
+			magicscan = 1;
+			break;
                 case 'S':
                         mode |= PRINT_SUPERBLOCK ;
                         break; 
@@ -549,7 +564,7 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 
 	if (getuid()) mode = 0;
         if (optind < argc)
-                open_filesystem(argv[optind], open_flags,superblock, blocksize, 0, data_filename);
+                open_filesystem(argv[optind], open_flags,superblock, blocksize, magicscan, data_filename);
 #ifdef DEBUG
 	printf("Operation-mode = %d\n", mode);
 #endif
@@ -766,12 +781,16 @@ if (mode & READ_JOURNAL){
 	   		fprintf(stderr,"Error: Inode not found for \"%s\"\n",pathname);
 			fprintf(stderr,"Check the valid PATHNAME \"%s\" and the BEFORE option \"%s\"\n", pathname,time_to_string(t_before));
 			exitval = EXIT_FAILURE ; 
-                  	goto errout;
+                  	goto journalout;
 		}
 	}
 	else{
 		if (mode & COMMAND_INODE){
 			pathname = malloc(20);
+			if (!pathname) {
+				fprintf(stderr,"ERROR: can not allocate memory\n");
+				goto journalout;
+			}
 			if (inode_nr == EXT2_ROOT_INO)
 				*pathname = 0;
 			else
@@ -854,10 +873,14 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 
 				dir = get_dir3(NULL,0, inode_nr , "",pathname, t_after,t_before, recoverquality );
 				if (dir) {
-//FIXME: recovermodus
 					lookup_local(des_dir, dir,t_after,t_before, recoverquality | recovermodus );
 					if (recovermodus & HIST_DIR )
 						print_coll_list(t_after, t_before, format);
+//Magic step 1 + 2
+					if (imap){
+						search_imap_inode(des_dir, t_after, t_before, 1); //search for lost fragments of directorys
+						search_imap_inode(des_dir, t_after, t_before, 0); //search for lost files
+					}
 				}
 				else
 					printf("Inode %lu is a directory but not found after %lu and before %lu\n",inode_nr,t_after,t_before);
@@ -909,7 +932,7 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 		if (i_list) ring_del(i_list);
 		}
 	}
-
+journalout:
    if(!journal_flag) journal_flag = journal_close();
    }// end open Journal
 }  // end Operation 
@@ -922,6 +945,16 @@ exitval = EXIT_SUCCESS;
 
 errout: 
   if (current_fs)    {
+//FIXME in development	
+	if (bmap){
+	//	struct ext2fs_struct_loc_generic_bitmap *pmap;
+	//	pmap=bmap;
+	//	blockhex(stdout,(void*)pmap->bitmap,0,current_fs->super->s_blocks_count >> 3);
+		ext2fs_free_block_bitmap(bmap);
+	}
+	if (imap) ext2fs_free_inode_bitmap(imap);
+	imap = NULL;
+	bmap = NULL;
         retval = ext2fs_close(current_fs);
         if (retval) {
            fprintf(stderr, "ext2fs_close\n");

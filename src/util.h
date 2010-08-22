@@ -30,6 +30,7 @@
 
 // control flags for recover- and listmodus
 #define DOUPLE_QUOTES_LIST	0x0100
+#define LOST_DIR_SEARCH	0x0400
 #define LIST_ALL	0x1000
 #define LIST_STATUS	0x2000
 #define RECOV_DEL	0x4000
@@ -73,7 +74,25 @@ struct inode_nr_collect{
 	 ext2_ino_t count;
 	 ext2_ino_t *list;
 };
+
+
+//FIXME
+//struct for generic bitmap  (only temporarily for the development)
+struct ext2fs_struct_loc_generic_bitmap {
+        errcode_t       magic;
+        ext2_filsys     fs;
+        __u32           start, end;
+        __u32           real_end;
+        char    *       description;
+        char    *       bitmap;
+        errcode_t       base_error_code;
+        __u32           reserved[7];
+};
+
+
 #define ALLOC_SIZE 1024
+extern ext2fs_inode_bitmap 		imap ;
+extern ext2fs_block_bitmap 	  	bmap ; 
 
 // public functions util.c
 void read_all_inode_time(ext2_filsys , __u32 , __u32 , int ); //analyse an print histogram
@@ -102,5 +121,11 @@ void recover_list(char*, char*,__u32, __u32, int); // recover files from a "doub
 int recover_file( char* ,char* , char* , struct ext2_inode* , ext2_ino_t, int); //recover all filetypes
 int check_file_recover(struct ext2_inode*); // return percentage of not allocated blocks
 void set_dir_attributes(char* ,char* ,struct ext2_inode*); //set owner,file mode bits an timestamps for directory
+int check_dir(char*);//check if the target directory existent
+
+
+//public functions imap_search.c
+void search_imap_inode(char* , __u32, __u32, int); // search inode by imap (step1 + step2)
+int check_find_dir(char*, ext2_ino_t, char*, char*); //check if the directory always recovert; then move
 
 #endif

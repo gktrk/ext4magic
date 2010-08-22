@@ -60,6 +60,36 @@ errout:
 		free(this);
 }
 
+
+
+int rename_hardlink_path(char *old, char *neu){
+	char *newname;
+	char *endname;
+	int size = strlen(old);
+	
+	head.pointer = head.begin;
+	while (head.pointer) {
+		if (! strcmp(old,head.pointer->name)){
+			newname=malloc(strlen(neu) + strlen(head.pointer->name) - size +1);
+			if (! newname)
+				return 1;				 
+			strcpy(newname,neu);
+			endname = head.pointer->name + size;
+			strcat(newname,endname);
+			free(head.pointer->name);
+			head.pointer->name = newname;
+//#ifdef DEBUG
+			fprintf(stderr,"HL-DB change %s -> %s\n",old,neu);
+//#endif
+
+		}
+		head.pointer = head.pointer->next;
+	}
+}
+
+
+
+
 		
 char* check_link_stack(ext2_ino_t inode_nr, __u32 generation){
 
@@ -69,6 +99,7 @@ char* check_link_stack(ext2_ino_t inode_nr, __u32 generation){
 			break;
 		head.pointer = head.pointer->next;
 	}
+
 #ifdef DEBUG
 	if (head.pointer)
 		printf("HARD_LINK found -> %s\n",head.pointer->name);

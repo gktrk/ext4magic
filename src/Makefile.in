@@ -51,7 +51,8 @@ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man8dir)"
 PROGRAMS = $(sbin_PROGRAMS)
 am_ext4magic_OBJECTS = ext4magic-block.$(OBJEXT) \
 	ext4magic-dir_list.$(OBJEXT) ext4magic-ext4magic.$(OBJEXT) \
-	ext4magic-hard_link_stack.$(OBJEXT) ext4magic-inode.$(OBJEXT) \
+	ext4magic-hard_link_stack.$(OBJEXT) \
+	ext4magic-imap_search.$(OBJEXT) ext4magic-inode.$(OBJEXT) \
 	ext4magic-journal.$(OBJEXT) ext4magic-lookup_local.$(OBJEXT) \
 	ext4magic-recover.$(OBJEXT) ext4magic-ring_buf.$(OBJEXT) \
 	ext4magic-util.$(OBJEXT)
@@ -213,8 +214,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-ext4magic_SOURCES = block.c dir_list.c ext4magic.c \
-	hard_link_stack.c inode.c journal.c lookup_local.c recover.c ring_buf.c util.c
+ext4magic_SOURCES = block.c dir_list.c ext4magic.c hard_link_stack.c \
+	imap_search.c inode.c journal.c lookup_local.c recover.c ring_buf.c util.c
 
 
 # set the include path found by configure
@@ -318,6 +319,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-dir_list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-ext4magic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-hard_link_stack.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-imap_search.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-inode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-journal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-lookup_local.Po@am__quote@
@@ -401,6 +403,20 @@ ext4magic-hard_link_stack.obj: hard_link_stack.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='hard_link_stack.c' object='ext4magic-hard_link_stack.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-hard_link_stack.obj `if test -f 'hard_link_stack.c'; then $(CYGPATH_W) 'hard_link_stack.c'; else $(CYGPATH_W) '$(srcdir)/hard_link_stack.c'; fi`
+
+ext4magic-imap_search.o: imap_search.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-imap_search.o -MD -MP -MF $(DEPDIR)/ext4magic-imap_search.Tpo -c -o ext4magic-imap_search.o `test -f 'imap_search.c' || echo '$(srcdir)/'`imap_search.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ext4magic-imap_search.Tpo $(DEPDIR)/ext4magic-imap_search.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='imap_search.c' object='ext4magic-imap_search.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-imap_search.o `test -f 'imap_search.c' || echo '$(srcdir)/'`imap_search.c
+
+ext4magic-imap_search.obj: imap_search.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-imap_search.obj -MD -MP -MF $(DEPDIR)/ext4magic-imap_search.Tpo -c -o ext4magic-imap_search.obj `if test -f 'imap_search.c'; then $(CYGPATH_W) 'imap_search.c'; else $(CYGPATH_W) '$(srcdir)/imap_search.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ext4magic-imap_search.Tpo $(DEPDIR)/ext4magic-imap_search.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='imap_search.c' object='ext4magic-imap_search.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-imap_search.obj `if test -f 'imap_search.c'; then $(CYGPATH_W) 'imap_search.c'; else $(CYGPATH_W) '$(srcdir)/imap_search.c'; fi`
 
 ext4magic-inode.o: inode.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-inode.o -MD -MP -MF $(DEPDIR)/ext4magic-inode.Tpo -c -o ext4magic-inode.o `test -f 'inode.c' || echo '$(srcdir)/'`inode.c
