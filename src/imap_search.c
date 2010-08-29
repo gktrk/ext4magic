@@ -1,14 +1,25 @@
-/*
-*  C Implementation: imap_search
-*
-* Description: 
-*
-*
-* Author: Roberto Maar <robi@users.berlios.de>, (C) 2010
-*
-* Copyright: See COPYING file that comes with this distribution
-*
-*/
+/***************************************************************************
+ *   Copyright (C) 2010 by Roberto Maar                                    *
+ *   robi@users.berlios.de                                                 *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ *                                                                         *
+ *                                                                         * 
+ * C Implementation: imap_search                                           *
+ ***************************************************************************/
 
 //header  util.h
 
@@ -22,7 +33,7 @@ extern ext2_filsys current_fs;
 
 
 // search inode by use imap (step1: flag 1 = only directory ; step2: flag 0 = only file)
-void search_imap_inode(char* des_dir, __u32 t_after, __u32 t_before, int flag)
+static void search_imap_inode(char* des_dir, __u32 t_after, __u32 t_before, int flag)
 {
 struct ext2_group_desc 			*gdp;
 struct 	ext2_inode_large 		*inode;
@@ -181,6 +192,16 @@ if (recovername && dirname){
 
 return retval;
 }
+}
+
+
+//2 step search for journalinode, will find some lost directory and files 
+void imap_search(char* des_dir, __u32 t_after, __u32 t_before){
+	printf("MAGIC-1 : start lost directory search\n"); 
+	search_imap_inode(des_dir, t_after, t_before, 1); //search for lost fragments of directorys
+	printf("MAGIC-2 : start lost file search\n");
+	search_imap_inode(des_dir, t_after, t_before, 0); //search for lost files
+return;
 }
 
 

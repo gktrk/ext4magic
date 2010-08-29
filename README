@@ -1,12 +1,25 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             !!!!  Important Warning  !!!!
+If you see this note in the README, then you've probably downloaded an 
+unstable version of the source code via CVS.
+There are many new features in development. These functions are not
+activated and still do not work correctly. You'll also get problems 
+if you try to compile this source code.
+
+Please use instead the source code of release 0.1.4
+
+Thank you for your interest! The next release will include a lot of
+new features. I work hard on it.
+
+robi@users.berlios.de
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+--------------------------------------------------------------------
+
+
+
 FIXME:
 so far only draft
-
-
-
-
-
-
-
 
 What is, and what can ext4magic ?
 =================================

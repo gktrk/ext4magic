@@ -54,6 +54,7 @@ am_ext4magic_OBJECTS = ext4magic-block.$(OBJEXT) \
 	ext4magic-hard_link_stack.$(OBJEXT) \
 	ext4magic-imap_search.$(OBJEXT) ext4magic-inode.$(OBJEXT) \
 	ext4magic-journal.$(OBJEXT) ext4magic-lookup_local.$(OBJEXT) \
+	ext4magic-magic_block_scan.$(OBJEXT) \
 	ext4magic-recover.$(OBJEXT) ext4magic-ring_buf.$(OBJEXT) \
 	ext4magic-util.$(OBJEXT)
 ext4magic_OBJECTS = $(am_ext4magic_OBJECTS)
@@ -215,7 +216,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ext4magic_SOURCES = block.c dir_list.c ext4magic.c hard_link_stack.c \
-	imap_search.c inode.c journal.c lookup_local.c recover.c ring_buf.c util.c
+	imap_search.c inode.c journal.c lookup_local.c magic_block_scan.c recover.c \
+	ring_buf.c util.c
 
 
 # set the include path found by configure
@@ -224,9 +226,10 @@ man_MANS = ext4magic.8
 
 # the library search path.
 ext4magic_CFLAGS = -O2 -g -D_FILE_OFFSET_BITS=64
-ext4magic_LDFLAGS = -lext2fs -le2p -luuid -lblkid
-noinst_HEADERS = block.h dir_list.h ext2fsP.h kernel-list.h ext4magic.h hard_link_stack.h \
-	inode.h jfs_compat.h jfs_user.h journal.h kernel-jbd.h ring_buf.h util.h ext4magic.8
+ext4magic_LDFLAGS = -lext2fs -le2p -luuid -lblkid -lmagic
+noinst_HEADERS = block.h dir_list.h ext2fsP.h ext4magic.8 ext4magic.h \
+	hard_link_stack.h inode.h jfs_compat.h jfs_user.h journal.h kernel-jbd.h kernel-list.h \
+	magic.h ring_buf.h util.h
 
 all: all-am
 
@@ -323,6 +326,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-inode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-journal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-lookup_local.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-magic_block_scan.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-recover.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-ring_buf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-util.Po@am__quote@
@@ -459,6 +463,20 @@ ext4magic-lookup_local.obj: lookup_local.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='lookup_local.c' object='ext4magic-lookup_local.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-lookup_local.obj `if test -f 'lookup_local.c'; then $(CYGPATH_W) 'lookup_local.c'; else $(CYGPATH_W) '$(srcdir)/lookup_local.c'; fi`
+
+ext4magic-magic_block_scan.o: magic_block_scan.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-magic_block_scan.o -MD -MP -MF $(DEPDIR)/ext4magic-magic_block_scan.Tpo -c -o ext4magic-magic_block_scan.o `test -f 'magic_block_scan.c' || echo '$(srcdir)/'`magic_block_scan.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ext4magic-magic_block_scan.Tpo $(DEPDIR)/ext4magic-magic_block_scan.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='magic_block_scan.c' object='ext4magic-magic_block_scan.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-magic_block_scan.o `test -f 'magic_block_scan.c' || echo '$(srcdir)/'`magic_block_scan.c
+
+ext4magic-magic_block_scan.obj: magic_block_scan.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-magic_block_scan.obj -MD -MP -MF $(DEPDIR)/ext4magic-magic_block_scan.Tpo -c -o ext4magic-magic_block_scan.obj `if test -f 'magic_block_scan.c'; then $(CYGPATH_W) 'magic_block_scan.c'; else $(CYGPATH_W) '$(srcdir)/magic_block_scan.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ext4magic-magic_block_scan.Tpo $(DEPDIR)/ext4magic-magic_block_scan.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='magic_block_scan.c' object='ext4magic-magic_block_scan.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-magic_block_scan.obj `if test -f 'magic_block_scan.c'; then $(CYGPATH_W) 'magic_block_scan.c'; else $(CYGPATH_W) '$(srcdir)/magic_block_scan.c'; fi`
 
 ext4magic-recover.o: recover.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-recover.o -MD -MP -MF $(DEPDIR)/ext4magic-recover.Tpo -c -o ext4magic-recover.o `test -f 'recover.c' || echo '$(srcdir)/'`recover.c

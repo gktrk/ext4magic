@@ -158,9 +158,11 @@ return ;
 		return BLOCK_ERROR;
 	struct alloc_stat *stat = priv;
         if ( ext2fs_test_block_bitmap ( fs->block_map, *blocknr ))
-		(stat->allocated)++ ;
+		(stat->allocated)++ ;	
 	else
 		(stat->not_allocated)++ ;
+	if (bmap)
+		ext2fs_mark_generic_bitmap(bmap, *blocknr);
 return 0;
 }
 

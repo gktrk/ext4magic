@@ -68,6 +68,7 @@ char					jsb_buffer[1024];  //buffer for journal-superblock (be_to_CPU)
 void*					pt_buff;  /*pointer of the privat descriptor Table */
 journal_descriptor_tag_t		*pt;	/*pointer for descriptor Table*/
 __u32					pt_count; /*counter for privat descriptor Table */
+struct j_bitmap_list_t			jbbm  ;  /* for Block Bitmaps of Journal */
 
 
 //print journal superblock
@@ -469,7 +470,7 @@ return journal_nr;
 }
 
 
-// get the last dir-block for transaction from journal or if not found the real block
+// get the last dir-block for transaction from journal or if not, found the real block
 //FIXME: blk64_t ????
 int get_last_block(char *buf,  blk_t *block, __u32 t_start, __u32 t_end){
 	int	retval = 0;
@@ -549,7 +550,7 @@ static int sort_block_list(journal_descriptor_tag_t *pointer, int counter ){
 	journal_descriptor_tag_t p1;
 	int c1,c2,flag=1;
 	c1 = 0;
-//FIXME : for the faster double-sided Bubblesort
+//FIXME : for faster sort
 	while (flag) {
 		flag = 0;
 		for (c2 = 0;c2 < (counter -c1 -1);c2++){
@@ -586,6 +587,7 @@ int get_block_list(journal_descriptor_tag_t *pointer, blk64_t block , int counte
 		}
 	return j;
 }
+
 
 //extract the journal in the local intern blocklist
 static void extract_descriptor_block(char *buf, journal_superblock_t *jsb,
@@ -794,6 +796,186 @@ errout:
 	}
 	return JOURNAL_ERROR ;
 
+}
+
+
+
+//get a list of all copy of blockbitmap from journal
+int get_block_bitmap_list( journal_bitmap_tag_t **bitmap_list){
+	int 				count, sum, i, j;
+	char*				tag_buf = NULL;
+	journal_bitmap_tag_t 		*fill_pointer ;
+	journal_descriptor_tag_t 	*list_pointer = pt_buff ;
+	
+	count = sum = 0;
+	for (i = 0; i < pt_count ; i++, list_pointer++ )
+		for (j = 0 ; j < current_fs->group_desc_count; j++ )
+			if (list_pointer->f_blocknr == (blk64_t) current_fs->group_desc[j].bg_block_bitmap) count++ ;
+
+	if (count && (tag_buf = malloc((sizeof(journal_bitmap_tag_t) * count)))){
+		fill_pointer = (journal_bitmap_tag_t*)tag_buf ;
+		list_pointer = pt_buff ;
+		for ( i = 0 ; (i < pt_count && sum < count); i++ , list_pointer++ ) 
+			for ( j = 0; j < current_fs->group_desc_count; j++ )
+				if (list_pointer->f_blocknr == (blk64_t) current_fs->group_desc[j].bg_block_bitmap) {
+					fill_pointer->blockgroup = (blk64_t) j;
+					fill_pointer->j_blocknr = list_pointer->j_blocknr;
+					fill_pointer->transaction = list_pointer->transaction;
+					fill_pointer++ ;
+					sum++;
+				}
+
+	list_pointer = (journal_descriptor_tag_t*) tag_buf;
+	sort_block_list( list_pointer,sum );	
+	*bitmap_list = 	(journal_bitmap_tag_t*) tag_buf;
+	}
+return sum;
+}
+
+
+
+//create and init the the journal block bitmap
+//return the count of all blockbitmap copies or 0
+ int init_block_bitmap_list(ext2fs_block_bitmap *d_bmap, __u32 t_after){
+	__u32	t;  
+	jbbm.list = NULL;
+	jbbm.block_buf = NULL;
+
+	if (ext2fs_copy_bitmap(current_fs->block_map, d_bmap)){
+		fprintf(stderr,"Error: while duplicate bitmap\n");
+		return 0;
+	}
+	ext2fs_clear_block_bitmap(*d_bmap);
+
+	jbbm.count = get_block_bitmap_list( &jbbm.list);
+	jbbm.block_buf = malloc(current_fs->blocksize * 2);
+	if (! jbbm.block_buf){
+		fprintf(stderr,"Error: can't allocate Memory\n");
+		return 0;
+	}
+	if (jbbm.count){
+		jbbm.pointer = jbbm.list + jbbm.count - 1;
+//		jbbm.last_trans = jbbm.pointer->transaction;
+		jbbm.last_trans = 0;
+		jbbm.groups = current_fs->group_desc_count;	
+	
+		while ((jbbm.pointer > jbbm.list) && (get_trans_time(jbbm.pointer->transaction) >= t_after)) {
+			t = jbbm.pointer->transaction;
+			while (jbbm.pointer->transaction == t) 
+				jbbm.pointer-- ;
+		}
+		jbbm.pointer++;
+		jbbm.first_trans = jbbm.pointer->transaction ;
+		jbbm.pointer = jbbm.list + jbbm.count - 1;
+		jbbm.blocksize = current_fs->blocksize;
+		jbbm.blocklen = current_fs->super->s_blocks_per_group >> 3 ;
+		jbbm.last_blocklen = (current_fs->super->s_blocks_count >> 3) % jbbm.blocklen;
+		jbbm.last_blocklen += (current_fs->super->s_blocks_count % 8) ? 1 : 0 ;
+	}
+return jbbm.count;
+}
+
+
+
+//destroy the journal block bitmap 
+void clear_block_bitmap_list(ext2fs_block_bitmap d_bmap){
+	if (jbbm.list) 
+		free (jbbm.list);
+	if (jbbm.block_buf)
+		free (jbbm.block_buf);
+	jbbm.list = NULL;
+	jbbm.block_buf = NULL;
+	ext2fs_free_block_bitmap(d_bmap);
+}
+
+
+
+//produces a differential block bitmap for a transaction from the Journal
+//return 1 if bitmap is differenzial ; an 2 if bitmap is empty
+int next_block_bitmap(ext2fs_block_bitmap d_bmap){
+	struct ext2fs_struct_loc_generic_bitmap 	*fs_bitmap, *df_bitmap;
+	journal_bitmap_tag_t 				*p1;
+	journal_bitmap_tag_t 				*p2;
+	__u32						blockg, skip,i;
+	int						got,retval,len;
+	char						*diff_buf;
+
+	if (jbbm.pointer->transaction < jbbm.first_trans)
+		return 0;
+
+//	printf(" Transaction:  %u   ; Minimum ist %u \n", jbbm.pointer->transaction,jbbm.first_trans);
+
+	fs_bitmap = (struct ext2fs_struct_loc_generic_bitmap*) current_fs->block_map;
+	df_bitmap = (struct ext2fs_struct_loc_generic_bitmap*) d_bmap;
+	ext2fs_clear_block_bitmap(d_bmap);
+
+	if (jbbm.last_trans == 0 ){
+// last transaction compared with fs blockbitmap 
+		jbbm.last_trans = jbbm.pointer->transaction;
+		p2 = jbbm.pointer;
+		while ((p2 >= jbbm.list) && (p2->transaction == jbbm.pointer->transaction)){
+			blockg = (__u32)p2->blockgroup;
+			skip = (jbbm.blocklen * blockg);
+			len = ((blockg + 1) == jbbm.groups) ? jbbm.last_blocklen : jbbm.blocklen;
+
+			retval = read_journal_block((__u32)p2->j_blocknr * jbbm.blocksize, jbbm.block_buf, jbbm.blocksize, &got);
+			if (retval || got != jbbm.blocksize){
+				fprintf(stderr,"Error: while reading journal\n");
+				goto errout;
+			}
+
+			for (i = 0 ; i < len ; i++){
+				*((df_bitmap->bitmap)+skip+i) = *(jbbm.block_buf + i) ^ *((fs_bitmap->bitmap)+skip+i) ;
+			}
+		p2--;
+		}
+	}
+	else{
+
+//all other transactions compared with previous block copy
+		p1 = jbbm.pointer;
+		diff_buf = jbbm.block_buf + jbbm.blocksize ;
+
+		while ((p1->transaction >= jbbm.first_trans) && (p1->transaction == jbbm.pointer->transaction)){
+			p2 = p1 -1;
+			blockg = (__u32)p1->blockgroup;
+			skip = (jbbm.blocklen * blockg);
+			len = ((blockg + 1) == jbbm.groups) ? jbbm.last_blocklen : jbbm.blocklen;
+			while ((p2 > jbbm.list) && ((__u32)p2->blockgroup != blockg))
+				p2-- ;
+			retval = read_journal_block((__u32)p1->j_blocknr * jbbm.blocksize, jbbm.block_buf, jbbm.blocksize, &got);
+			if (retval || got != jbbm.blocksize){
+				fprintf(stderr,"Error: while reading journal\n");
+				goto errout;
+			}
+			if ((p2 == jbbm.list) && ((__u32)p2->blockgroup != blockg)){
+				//no previous block copy found, create difference to the entire block group
+				for (i = 0 ; i < len ; i++){
+					*((df_bitmap->bitmap)+skip+i) = *(jbbm.block_buf + i) ^ 0xFF ;
+				}
+			}
+			else{
+				retval = read_journal_block((__u32)p2->j_blocknr * jbbm.blocksize, diff_buf, jbbm.blocksize, &got);
+				if (retval || got != jbbm.blocksize){
+					fprintf(stderr,"Error: while reading journal\n");
+					goto errout;
+				}
+				//previous block copy is found, create difference to this copy
+				for (i = 0 ; i < len ; i++){
+					*((df_bitmap->bitmap)+skip+i) = *(jbbm.block_buf + i) ^ *(diff_buf + i ) ;
+				}
+			}
+			p1--;	
+		}
+		jbbm.pointer = p1;
+	}
+
+i = 0;
+while (! *((df_bitmap->bitmap)+i)) i++;
+return  ( i <= (fs_bitmap->real_end >> 3)) ? 1 : 2 ;
+
+errout:
+	return 0;
 }
 
 

@@ -63,7 +63,6 @@ ext2_ino_t      		root, cwd;
 ext2fs_inode_bitmap 		imap = NULL ;
 ext2fs_block_bitmap 	  	bmap = NULL ; 
 
-
 //print Versions an CPU-endian-type
 void print_version ( void )
 {
@@ -572,6 +571,11 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 //--------------------------------------------------------------------------------------------
 // check any parameter an options
 // check time option
+if (magicscan){
+	printf("Warning: Activate magic scan,  may be some command line options ignored\n");
+	}
+
+
 if (mode & INPUT_TIME){
 	if (! ((t_after > 315601200) && (t_after < t_before))) // 315601200 = "1980-01-01 20:00:00"
 		{
@@ -591,8 +595,9 @@ if (mode & INPUT_TIME){
 } 
 
 
+
 //check for the recoverdir
-if ((mode & RECOVER_INODE) && (recovermodus &  (REC_DIR_NEEDED)) || mode & RECOVER_LIST) {
+if ((mode & RECOVER_INODE) && (recovermodus &  (REC_DIR_NEEDED)) || mode & RECOVER_LIST || magicscan) {
 	struct stat     st_buf;
 	dev_t           file_rdev=0;
 	
@@ -755,6 +760,7 @@ if (mode & READ_JOURNAL){
 	}
 
 
+
 //recover from inputlist
 	if(mode & RECOVER_LIST){
 		recover_list(des_dir, input_filename,t_after,t_before,(recovermodus & RECOV_ALL )? 0 : 1);
@@ -876,16 +882,18 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 					lookup_local(des_dir, dir,t_after,t_before, recoverquality | recovermodus );
 					if (recovermodus & HIST_DIR )
 						print_coll_list(t_after, t_before, format);
-//Magic step 1 + 2
+//Magic step 1 + 2 +3
 					if (imap){
-						search_imap_inode(des_dir, t_after, t_before, 1); //search for lost fragments of directorys
-						search_imap_inode(des_dir, t_after, t_before, 0); //search for lost files
+						imap_search(des_dir, t_after, t_before);
+// I think imap is no longer needed from here, free the allocated memory 
+						ext2fs_free_inode_bitmap(imap);
+						imap = NULL;
+						magic_block_scan(des_dir, t_after);
 					}
+					clear_dir_list(dir);
 				}
 				else
 					printf("Inode %lu is a directory but not found after %lu and before %lu\n",inode_nr,t_after,t_before);
-				
-				if (dir) clear_dir_list(dir);
 			}
 			else {
 				if (recovermodus & (RECOV_ALL | RECOV_DEL))
@@ -946,13 +954,12 @@ exitval = EXIT_SUCCESS;
 errout: 
   if (current_fs)    {
 //FIXME in development	
-	if (bmap){
-	//	struct ext2fs_struct_loc_generic_bitmap *pmap;
-	//	pmap=bmap;
-	//	blockhex(stdout,(void*)pmap->bitmap,0,current_fs->super->s_blocks_count >> 3);
-		ext2fs_free_block_bitmap(bmap);
-	}
+/*	if (d_bmap){
+		struct ext2fs_struct_loc_generic_bitmap *d_bmap;
+		blockhex(stdout,(void*)d_bmap->bitmap,0,current_fs->super->s_blocks_count >> 3);
+	}*/
 	if (imap) ext2fs_free_inode_bitmap(imap);
+	if (bmap) ext2fs_free_inode_bitmap(bmap);
 	imap = NULL;
 	bmap = NULL;
         retval = ext2fs_close(current_fs);
