@@ -441,3 +441,115 @@ unsigned long parse_ulong(const char *str, const char *cmd,
         return 0;
 }
 
+
+unsigned long long get_nblock_len(char *buf, blk_t *blk){
+	(*blk)++;
+	return current_fs->blocksize ;
+}
+
+
+unsigned long long get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next){
+	unsigned long long 	len;
+	int			i = (current_fs->blocksize >> 2)- 1;
+	char			*priv_buf = NULL;
+	blk_t			block, *p_block;
+	int 			flag = 0;
+
+	priv_buf = malloc(current_fs->blocksize);
+	if (! priv_buf){
+		fprintf(stderr,"can not allocate memory\n");
+		return 0;
+	}
+	p_block = (blk_t*)buf;
+	p_block += i;
+	while ( i >=0 ){
+		block = ext2fs_le32_to_cpu(*p_block);
+		if (! block){
+			i--;
+			p_block-- ;
+			flag++;
+		}
+		else break;
+	}
+	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
+		fprintf(stderr,"ERROR: while read block %10u\n",block);
+		return 0;
+	}
+	*next = (flag) ? 0 : block+1 ;
+	*last = block; 
+	len = get_nblock_len(priv_buf, blk) + (i * (current_fs->blocksize)) ;
+	*blk += (i + 1) ;
+	free(priv_buf);
+return len;
+}
+
+
+
+unsigned long long get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next){
+	unsigned long long 	len;
+	int			i = (current_fs->blocksize >> 2)- 1;
+	char			*priv_buf = NULL;
+	blk_t			block, *p_block;
+
+	priv_buf = malloc(current_fs->blocksize);
+	if (! priv_buf){
+		fprintf(stderr,"can not allocate memory\n");
+		return 0;
+	}
+	p_block = (blk_t*)buf;
+	p_block += i;
+	while ( i >=0 ){
+		block = ext2fs_le32_to_cpu(*p_block);
+		if (! block){
+			i--;
+			p_block-- ;
+		}
+		else break;
+	}
+	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
+		fprintf(stderr,"ERROR: while read ind-block %10u\n",block);
+		return 0;
+	}
+	
+	len = get_ind_block_len(priv_buf, blk, last, next) + (i * current_fs->blocksize * (current_fs->blocksize >>2) ) ;
+	*next = ( i == ((current_fs->blocksize >> 2)- 1)) ? *last : 0 ;
+	*blk += ((i * ((current_fs->blocksize >>2) + 1)) + 1) ;
+	free(priv_buf);
+return len;
+}
+
+
+
+unsigned long long get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next){
+	unsigned long long 	len;
+	int			i = (current_fs->blocksize >> 2)- 1;
+	char			*priv_buf = NULL;
+	blk_t			block, *p_block;
+
+	priv_buf = malloc(current_fs->blocksize);
+	if (! priv_buf){
+		fprintf(stderr,"can not allocate memory\n");
+		return 0;
+	}
+	p_block = (blk_t*)buf;
+	p_block += i;
+	while ( i >=0 ){
+		block = ext2fs_le32_to_cpu(*p_block);
+		if (! block){
+			i--;
+			p_block-- ;
+		}
+		else break;
+	}
+	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
+		fprintf(stderr,"ERROR: while read dind-block %10u\n",block);
+		return 0;
+	}
+	
+	len = get_dind_block_len(priv_buf, blk, last, next) + (i * current_fs->blocksize * (current_fs->blocksize >>2) * (current_fs->blocksize >>2) ) ;
+	*blk += ((i * ((current_fs->blocksize >>2) + 1) * (current_fs->blocksize >>2)) + 1) ;
+	*next = 0;
+	free(priv_buf);
+return len;
+}
+

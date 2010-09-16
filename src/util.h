@@ -39,6 +39,33 @@
 #define REC_FILTER	0xF800
 #define REC_DIR_NEEDED   RECOV_ALL | RECOV_DEL
 
+//Definitions to magic scan functions
+#define  M_SIZE		0x00003FFF
+#define  M_BLANK	0x00010000
+#define  M_DATA		0x00020000
+#define  M_TXT		0x00040000
+#define	 M_IMAGE	0x00080000
+#define  M_AUDIO	0x00100000
+#define  M_VIDEO	0x00200000
+#define  M_APPLI	0x00400000
+#define  M_MESSAGE	0x00800000
+#define  M_MODEL	0x00004000
+#define  M_IS_FILE	0x00FC4000
+#define  M_IS_DATA	0x00060000
+
+#define  M_BINARY	0x01000000
+#define	 M_ASCII	0x02000000
+#define  M_UTF		0x04000000
+#define  M_IS_CHARSET	0x07000000
+
+#define  M_ARCHIV	0x08000000
+
+#define  M_ACL		0x80000000
+#define  M_EXT4_META	0x40000000
+#define  M_EXT3_META	0x20000000
+#define  M_DIR		0x10000000
+#define  M_IS_META	0xF0000000
+
 
 /* Definitions to allow ext4magic compilation with old e2fsprogs */
 #ifndef EXT4_EXTENTS_FL
@@ -89,6 +116,23 @@ struct ext2fs_struct_loc_generic_bitmap {
 };
 
 
+
+//struct for collect data for magic_scan recover
+struct found_data_t{
+blk_t				first;
+blk_t				last;
+blk_t				leng;
+unsigned long long		size;
+int (*func)(char*, int*, __u32, int, struct found_data_t*);
+__u32				scan;
+__u32				type;
+char				*scan_result;
+char				*name;
+struct ext2_inode_large		*inode;
+};
+
+
+
 #define ALLOC_SIZE 1024
 extern ext2fs_inode_bitmap 		imap ;
 extern ext2fs_block_bitmap 	  	bmap ; 
@@ -129,6 +173,6 @@ int check_find_dir(char*, ext2_ino_t, char*, char*); //check if the directory al
 
 
 //public functions magic_block_scan.c
-void magic_block_scan(char* , __u32);
+//void magic_block_scan(char* , __u32);
 
 #endif

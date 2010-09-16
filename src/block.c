@@ -31,6 +31,7 @@
 #include "ext2fsP.h"
 #include "block.h"
 #include "journal.h"
+#include "util.h"
 
 extern ext2fs_block_bitmap 	  	bmap ; 
 
@@ -693,16 +694,4 @@ errout:
 }
 //___________________________________________________________________________________________________
 
-#include "magic.h"
-//FIXME in work 
-int magic_check_block(char* buf,magic_t cookie, __u32 size, blk_t blk){
-	char	msg_buf[200];
-	int	count = size;
- 	
-	strncpy(msg_buf,magic_buffer(cookie,buf,size),199);
-	while (*(buf+count) == 0) count-- ;
-	printf("Scan Result :  %s    %d\n", msg_buf , count+1) ;
-	
-	blockhex(stdout,buf,0,(count < (size -5)) ? count + 5 : size );
-	return count+1;
-}
+

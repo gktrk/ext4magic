@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -891,4 +892,110 @@ int read_journal_inode( ext2_ino_t inode_nr, struct ext2_inode* inode_buf, __u32
 		retval= 0;
 	}
 return retval;
+}
+
+
+
+
+struct ext2_inode_large* new_inode(){
+	struct ext2_inode_large			*inode;
+	__u32 					a_time;
+	time_t  				help_time;
+	
+	time( &help_time ); 
+	a_time = (__u32) help_time;
+	inode = malloc(EXT2_INODE_SIZE(current_fs->super));
+	if (! inode )
+		return NULL;
+	
+	memset(inode, 0 , EXT2_INODE_SIZE(current_fs->super));
+	inode->i_mode = LINUX_S_IFREG | LINUX_S_IRUSR | LINUX_S_IWUSR | LINUX_S_IRGRP | LINUX_S_IROTH ;
+	inode->i_ctime = inode->i_mtime = inode->i_atime = a_time;
+	inode->i_links_count = 1 ;
+	if (current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) {
+		inode->i_flags = EXT4_EXTENTS_FL ;
+	}
+return inode;
+}
+
+
+
+int inode_add_block(struct ext2_inode_large* inode , blk_t blk , __u32 size) {
+	int				i = 0 ; 
+	unsigned long long		i_size;
+	
+	if (! (inode->i_flags & EXT4_EXTENTS_FL)){
+	//ext3
+		while ((i < EXT2_N_BLOCKS) && inode->i_block[i] )
+			i++;
+		if ( i >= EXT2_NDIR_BLOCKS){
+//			printf("faulty Block %u  as i_block %d \n", i,blk); 
+			//indirect blocks
+			return 0;
+		}
+
+		inode->i_block[i] = blk;
+		i_size = (unsigned long long)(inode->i_size | ((unsigned long long)inode->i_size_high << 32));
+		i_size += size;
+		inode->i_size = i_size & 0xffffffff ;
+		inode->i_size_high = i_size >> 32 ;
+		inode->i_blocks += (current_fs->blocksize / 512);
+	}
+	else{
+//		printf("ERROR: ext3 block %u : but is a ext4_inode\n", blk);
+	//FIXME ext4
+	}
+return 1;
+} 
+
+
+
+blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *last, char *buf ){
+	blk_t 				b_blk,block_count, next;
+	blk_t				count=0;
+	int 				i;
+	unsigned long long		i_size = 0;
+	
+	i = 0;
+	block_count = 0;
+	next = 0;
+	if (! (inode->i_flags & EXT4_EXTENTS_FL)){
+		
+		while ((i < EXT2_N_BLOCKS) && inode->i_block[i] )
+			i++;
+
+		switch (i){
+			case EXT2_IND_BLOCK :
+				i_size = get_ind_block_len(buf, &block_count, last, &next);
+				break;
+			case EXT2_DIND_BLOCK :
+				i_size = get_dind_block_len(buf, &block_count, last,  &next);
+				break;
+			case EXT2_TIND_BLOCK :
+				i_size = get_tind_block_len(buf, &block_count, last, &next);
+				break;
+			default:
+//				printf("faulty Block %u as indirekter_block %d \n", i,blk); 
+				return 0;
+				break;
+		}
+
+		if (i_size){
+			i_size += (((unsigned long long)inode->i_size_high << 32)| inode->i_size);
+			inode->i_size = i_size & 0xffffffff ;
+			inode->i_size_high = i_size >> 32 ;
+			inode->i_blocks += (block_count * (current_fs->blocksize / 512));
+			inode->i_block[ i ] = blk;
+		}
+		else 
+			next = 0;
+					
+		return next;
+	}
+	else{
+//		printf("ERROR: ext3 indirect block %u ; but is a ext4_inode\n", blk);
+	//FIXME ext4
+	}
+
+ return 1;
 }

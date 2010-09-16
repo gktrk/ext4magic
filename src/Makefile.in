@@ -51,6 +51,7 @@ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man8dir)"
 PROGRAMS = $(sbin_PROGRAMS)
 am_ext4magic_OBJECTS = ext4magic-block.$(OBJEXT) \
 	ext4magic-dir_list.$(OBJEXT) ext4magic-ext4magic.$(OBJEXT) \
+	ext4magic-file_type.$(OBJEXT) \
 	ext4magic-hard_link_stack.$(OBJEXT) \
 	ext4magic-imap_search.$(OBJEXT) ext4magic-inode.$(OBJEXT) \
 	ext4magic-journal.$(OBJEXT) ext4magic-lookup_local.$(OBJEXT) \
@@ -215,9 +216,9 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-ext4magic_SOURCES = block.c dir_list.c ext4magic.c hard_link_stack.c \
-	imap_search.c inode.c journal.c lookup_local.c magic_block_scan.c recover.c \
-	ring_buf.c util.c
+ext4magic_SOURCES = block.c dir_list.c ext4magic.c file_type.c \
+	hard_link_stack.c imap_search.c inode.c journal.c lookup_local.c magic_block_scan.c \
+	recover.c ring_buf.c util.c
 
 
 # set the include path found by configure
@@ -321,6 +322,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-block.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-dir_list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-ext4magic.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-file_type.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-hard_link_stack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-imap_search.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-inode.Po@am__quote@
@@ -393,6 +395,20 @@ ext4magic-ext4magic.obj: ext4magic.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ext4magic.c' object='ext4magic-ext4magic.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-ext4magic.obj `if test -f 'ext4magic.c'; then $(CYGPATH_W) 'ext4magic.c'; else $(CYGPATH_W) '$(srcdir)/ext4magic.c'; fi`
+
+ext4magic-file_type.o: file_type.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-file_type.o -MD -MP -MF $(DEPDIR)/ext4magic-file_type.Tpo -c -o ext4magic-file_type.o `test -f 'file_type.c' || echo '$(srcdir)/'`file_type.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ext4magic-file_type.Tpo $(DEPDIR)/ext4magic-file_type.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='file_type.c' object='ext4magic-file_type.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-file_type.o `test -f 'file_type.c' || echo '$(srcdir)/'`file_type.c
+
+ext4magic-file_type.obj: file_type.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-file_type.obj -MD -MP -MF $(DEPDIR)/ext4magic-file_type.Tpo -c -o ext4magic-file_type.obj `if test -f 'file_type.c'; then $(CYGPATH_W) 'file_type.c'; else $(CYGPATH_W) '$(srcdir)/file_type.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ext4magic-file_type.Tpo $(DEPDIR)/ext4magic-file_type.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='file_type.c' object='ext4magic-file_type.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-file_type.obj `if test -f 'file_type.c'; then $(CYGPATH_W) 'file_type.c'; else $(CYGPATH_W) '$(srcdir)/file_type.c'; fi`
 
 ext4magic-hard_link_stack.o: hard_link_stack.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-hard_link_stack.o -MD -MP -MF $(DEPDIR)/ext4magic-hard_link_stack.Tpo -c -o ext4magic-hard_link_stack.o `test -f 'hard_link_stack.c' || echo '$(srcdir)/'`hard_link_stack.c

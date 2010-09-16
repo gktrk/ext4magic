@@ -896,8 +896,8 @@ int next_block_bitmap(ext2fs_block_bitmap d_bmap){
 	struct ext2fs_struct_loc_generic_bitmap 	*fs_bitmap, *df_bitmap;
 	journal_bitmap_tag_t 				*p1;
 	journal_bitmap_tag_t 				*p2;
-	__u32						blockg, skip,i;
-	int						got,retval,len;
+	__u32						blockg, skip,i,len;
+	int						got,retval;
 	char						*diff_buf;
 
 	if (jbbm.pointer->transaction < jbbm.first_trans)
@@ -971,8 +971,10 @@ int next_block_bitmap(ext2fs_block_bitmap d_bmap){
 	}
 
 i = 0;
-while (! *((df_bitmap->bitmap)+i)) i++;
-return  ( i <= (fs_bitmap->real_end >> 3)) ? 1 : 2 ;
+len = fs_bitmap->real_end >> 3;
+while ((i < len) && (!(*(df_bitmap->bitmap +i))))
+		 i++;
+return  ( i == len) ? 2 : 1 ;
 
 errout:
 	return 0;
