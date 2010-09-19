@@ -870,7 +870,10 @@ return sum;
 		jbbm.blocksize = current_fs->blocksize;
 		jbbm.blocklen = current_fs->super->s_blocks_per_group >> 3 ;
 		jbbm.last_blocklen = (current_fs->super->s_blocks_count >> 3) % jbbm.blocklen;
-		jbbm.last_blocklen += (current_fs->super->s_blocks_count % 8) ? 1 : 0 ;
+		if (!jbbm.last_blocklen)
+			jbbm.last_blocklen = jbbm.blocklen;
+		else
+			jbbm.last_blocklen += (current_fs->super->s_blocks_count % 8) ? 1 : 0 ;
 	}
 return jbbm.count;
 }

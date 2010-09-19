@@ -42,14 +42,14 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 //Please do not modify the following lines.
 //they are used for indices to the filestypes
 	char	typestr[] ="application/ audio/ image/ message/ model/ text/ video/ ";
-	char	imagestr[] ="gif jp2 jpeg png svg+xml tiff vnd.adobe.photoshop vnd.djvu x-coreldraw x-cpi x-ico x-ms-bmp x-niff x-portable-bitmap x-portable-greymap x-portable-pixmap x-psion-sketch x-quicktime x-unknown x-xcursor x-xpmi ";
+	char	imagestr[] ="gif jp2 jpeg png svg+xml tiff vnd.adobe.photoshop vnd.djvu x-coreldraw x-cpi x-ico x-ms-bmp x-niff x-portable-bitmap x-portable-greymap x-portable-pixmap x-psion-sketch x-quicktime x-unknown x-xcursor x-xpmi x-tga";
 	char	videostr[] ="3gpp h264 mp2p mp2t mp4 mp4v-es mpeg mpv quicktime x-flc x-fli x-flv x-jng x-mng x-msvideo x-sgi-movie x-unknown ";
 	char	audiostr[] ="basic midi mp4 mpeg x-adpcm x-aiff x-dec-basic x-flac x-hx-aac-adif x-hx-aac-adts x-mod x-mp4a-latm x-pn-realaudio x-unknown x-wav ";
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument.text vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip ";
-	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd ";
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 image Image ";
+	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text";
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite ";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -141,11 +141,13 @@ int file_default(char *buf, int *size, __u32 scan , int flag, struct found_data_
 				if (*size < (current_fs->blocksize -4))
 					ret = 3;
 				else 
-					if (*size < (current_fs->blocksize -64))
+					break;
+				if (*size < (current_fs->blocksize -64))
 						ret = 2;
-					else
-						if (*size < (current_fs->blocksize -256))
-							ret=1;
+				else
+					break;
+				if (*size < (current_fs->blocksize -256))
+					ret=1;
 			}
 
 			break;
@@ -192,7 +194,7 @@ int file_gzip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 	switch (flag){
 		case 0 :
 			if(*size < (current_fs->blocksize -4)){
-				ret = 1 ;
+				ret = 2 ;
 				*size += 3;
 			}
 			break;
@@ -205,7 +207,7 @@ int file_gzip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 
 
 //zip    ???????????
-int file_zip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){ //340d
+int file_zip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int		ret = 0;
 	int		j,i;
 	char		token[5];
@@ -216,7 +218,7 @@ int file_zip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 		case 0 :
 			if((*size) > 22){
 				j = strlen(token) -1;
-				i = (*size -10);
+				i = (*size -12);
 				while((i > ((*size)-22)) && (buf[i] != token[j])){
 					i--;
 				}
@@ -229,6 +231,8 @@ int file_zip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 					ret =1;
 				} 	
 			}
+			else
+				ret = 2;
 			break;
 		case 1 :
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT | M_BLANK)) ? 0 :1 ;
@@ -248,14 +252,14 @@ int file_iso9660(char *buf, int *size, __u32 scan , int flag , struct found_data
 	char		cd_str[] = "CD001";
 
 	switch (flag){
-		case 0 :if (f_data->size){
+		case 0 :if ((f_data->size)&&(f_data->size <= (__u64)f_data->inode->i_size | ((__u64)f_data->inode->i_size_high<<32))){
 				ssize = (f_data->size % current_fs->blocksize);
 				*size = (ssize)? ssize : current_fs->blocksize;
 				ret = 1;
 			}
 			else {
-				*size = current_fs->blocksize;
-				ret =2;
+			//	*size = current_fs->blocksize;
+				ret =0;
 			}
 			break; 
 		case 1 :
@@ -271,7 +275,7 @@ int file_iso9660(char *buf, int *size, __u32 scan , int flag , struct found_data
 			}
 			break;
 	}
-return ret;
+	return ret;
 }
 
 
@@ -282,15 +286,15 @@ __u32		ssize;
 int		ret = 0;
 	switch (flag){
 		case 0 : 
-			if (f_data->size){
+			if ((f_data->size) && (f_data->size <= (__u64)f_data->inode->i_size | ((__u64)f_data->inode->i_size_high<<32))){
 				ssize = (f_data->size % current_fs->blocksize);
 				if (*size < ssize)
 					*size = ssize;
 				ret = 1;
 			}
 			else{
-				*size +=7;
-				ret = 2;
+			//	*size +=7;
+				ret = 0;
 			}
 			break;
 		case 1 :
@@ -341,7 +345,44 @@ int file_cpio(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 			return (scan & (M_IS_META | M_IS_FILE)) ? 0 :1 ;
 			break;
 	}
+	return ret;
 }	 
+
+
+
+//pdf
+int file_pdf(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	i,j;
+	int 	ret = 0;
+	char	token[6];
+	sprintf(token,"%c%c%c%c%c",0x25,0x45,0x4f,0x46,0x0a);
+
+	switch (flag){
+		case 0 :
+			if ((*size) < 3)
+				ret =2;
+				else{ 
+				j = strlen(token) -2;
+				i = (*size) -2;
+				if(buf[i] != (char)0x46)
+					i--;
+	
+				while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
+					i--;
+					j--;
+				}
+				if ((i == -1) || (j == -1)){
+					ret=1;
+				}
+			}
+			break;
+		case 1 :
+			return (scan & (M_IS_META)) ? 0 :1 ;
+			break;
+		}
+	return ret;
+}
+
 
 
 //tar
@@ -351,20 +392,27 @@ int file_tar(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 	switch (flag){
 		case 0 :
-			if (!(*size))
-				 *size = current_fs->blocksize;
-			else
-				*size = ((*size) + 1023) & ~1023 ;
-
-			if (f_data->inode->i_block[12])   //FIXME for ext4
-				ret = 1;
-			else
-				ret = 2;
+			if ((((__u64)f_data->inode->i_size |((__u64)f_data->inode->i_size_high<<32)) >= (__u64)0x2800 ) &&
+				((*size) < (current_fs->blocksize - 0x4ff))){
+				if (!(*size))
+					*size = current_fs->blocksize;
+				else
+					*size = ((*size) + 1023) & ~1023 ;
+	
+				if (f_data->inode->i_block[12])   //FIXME for ext4
+					ret = 1;
+				else
+					ret = 2;
+			}
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE)) ? 0 :1 ;
+			if (scan & M_TAR)
+				ret = 1;
+			 else 
+				ret = (scan & (M_IS_META | (M_IS_FILE & (~ M_TXT)))) ? 0 :1 ;
 			break;
 	}
+	return ret;
 }	 
 
 
@@ -388,6 +436,12 @@ int file_binary(char *buf, int *size, __u32 scan , int flag, struct found_data_t
 					*size = 7;
 					ret = 1;
 				}
+				else{
+					if ((buf[(*size)-1] != (char)0x01)&&(*size < current_fs->blocksize - 128)){
+						*size +=1;
+						ret = 2;
+					}
+				}	
 			}
 		}
 			break;
@@ -395,6 +449,7 @@ int file_binary(char *buf, int *size, __u32 scan , int flag, struct found_data_t
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
 			break;
 	}
+	return ret;
 }			 
 
 	
@@ -422,7 +477,7 @@ int file_object(char *buf, int *size, __u32 scan , int flag, struct found_data_t
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
 			break;
 	}
-	
+	return ret;
 }
 
 
@@ -443,8 +498,52 @@ int file_jpeg(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
 			break;
 	}
+	return ret;
 }
 
+
+
+//gif
+int file_gif(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	ret = 0;
+
+	switch (flag){
+		case 0 :
+			if ((*size) && (*size < current_fs->blocksize) && (buf[(*size)-1] == (char)0x3b))
+					ret = 1;
+			break;
+		case 1 :
+			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}
+			
+
+
+//bmp
+int file_bmp(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	__u32	*p_32;
+	int 	ret = 0;
+
+	switch (flag){
+		case 0 : 
+			if (f_data->inode->i_size >= f_data->size){
+				*size = f_data->size % current_fs->blocksize;
+				ret =1;
+			}
+			break;
+		case 1 :
+			return (scan & M_IS_META) ? 0 :1 ;
+			break;
+
+		case 2 :
+			p_32 = (__u32*)(buf+2);
+			f_data->size = (__u64)ext2fs_le32_to_cpu(*p_32);
+			ret =1;
+	}
+	return ret;
+}
 
 
 //png
@@ -463,6 +562,7 @@ int file_png(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
 			break;
 	}
+	return ret;
 }
 
 
@@ -482,7 +582,63 @@ int file_mng(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
 			break;
 	}
+	return ret;
 }
+
+
+//tga
+int file_tga(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	i,j;
+	int 	ret = 0;
+	char	token[]="-XFILE.";
+
+	switch (flag){
+		case 0 :
+				j = strlen(token) -1;
+				i = (*size) -1;
+				while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
+					i--;
+					j--;
+				}
+				if ((i == -1) || (j == -1)){
+					*size = (*size) + 1 ;
+					ret=1;
+				}	
+			break;
+		case 1 :	
+			return (scan & (M_IS_META | M_IS_FILE | M_TXT )) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}	
+
+
+//mpeg
+int file_mpeg(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	i,j;
+	int 	ret = 0;
+	char	token[5];
+	sprintf(token,"%c%c%c%c",0x00,0x00,0x01,0xb9);
+	switch (flag){
+		case 0 :
+				j = 3 ; //strlen(token) -1;
+				i = (*size) -1;
+				while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
+					i--;
+					j--;
+				}
+				if ((i == -1) || (j == -1)){
+					ret=1;
+				}	
+			break;
+		case 1 :	
+			return (scan & (M_IS_META | M_TXT )) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}	
+
+
 	
 //riff
 int file_riff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
@@ -493,14 +649,13 @@ int file_riff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 
 	switch (flag){
 		case 0 :
-			if (f_data->size){
+			if ((f_data->size) && (f_data->size <= f_data->inode->i_size)){
 				ssize = (f_data->size % current_fs->blocksize);
 				*size = (ssize >= *size)? ssize : (*size) + 2;
 				ret = 1;
 			}
 			else {
-				*size = (*size) + 2;
-				ret =2;
+				ret =0;
 			}
 			break;
 		case 1 :
@@ -509,11 +664,21 @@ int file_riff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 		case 2 :
 			p_32 = (__u32*)buf;
 			p_32++;
-			lsize = (__u64) ext2fs_le32_to_cpu(*p_32) + 8 ;
+			switch (buf[3]){
+				case 'F' :
+					lsize = (__u64) ext2fs_le32_to_cpu(*p_32) + 8 ;
+					break;
+				case 'X' :
+					lsize = (__u64) ext2fs_be32_to_cpu(*p_32) + 8 ;
+					break;
+				default :
+					lsize = 0;
+			}
 			f_data->size = lsize;
 			ret=1;
 		break;
 	}
+	return ret;
 }
 
 // tiff
@@ -553,6 +718,7 @@ int file_tiff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 			
 		break;
 	}
+	return ret;
 }
 						
 
@@ -572,14 +738,72 @@ int file_mod(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
 			break;
 	}
+	return ret;
 }
-	
+
+
+//CDF    FIXME ????????????????
+int file_CDF(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+
+	switch (flag){
+		case 0 :
+			if (*size < (current_fs->blocksize -7) && ((*size ) && buf[(*size)-1] == (char)0xff )){
+			*size = ((*size) +8) ;
+			ret = 3;
+		}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}
+
+
+
+//SQLite   FIXME ????????????????
+int file_SQLite(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+	__u16		*p_16;
+	__u64		lsize;
+	int		ssize;
+
+	switch (flag){
+		case 0 :
+			if (f_data->size ) {
+				ssize = (int) f_data->size;
+				if (ssize < current_fs->blocksize){
+					*size += ssize -1;
+					*size &= (~(ssize-1));
+					ret = 2;
+				}
+				else{
+					*size = current_fs->blocksize;
+					ret = 3;
+				}
+			}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			break;
+		
+		case 2:
+			p_16 = (__u16*)(buf+16);
+			lsize = (__u64)ext2fs_be16_to_cpu(*p_16);
+			f_data->size = lsize;
+			ret = 1;
+		break;
+	}
+	return ret;
+}
+
 
 //change this only carefully
 //Although the scanner is controlled here, but you can not directly configure whether a file is found or not.
 //This function has a strong influence on the accuracy of the result.
 void get_file_property(struct found_data_t* this){
-//this->func = file_txt;
+//this->func = file_t
 	switch (this->type){
 	//Application
 		case 0x0101     :               //dicom
@@ -608,7 +832,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0106     :               //pdf
-	//              this->func = file_pdf ;
+	              this->func = file_pdf ;
 		strncat(this->name,".pdf",7);
 		break;
 	
@@ -705,8 +929,6 @@ void get_file_property(struct found_data_t* this){
 		case 0x0119     :               //x-arc
 	//              this->func = file_x-arc ;
 	//              strncat(this->name,".x-arc",7);
-
-		
 		break;
 	
 		case 0x011a     :               //x-arj
@@ -1078,7 +1300,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x020f     :               //x-wav
-	//              this->func = file_x-wav ;
+	              this->func = file_riff ;
 		strncat(this->name,".wav",7);
 		break;
 	
@@ -1086,7 +1308,7 @@ void get_file_property(struct found_data_t* this){
 	//----------------------------------------------------------------
 	//Images
 		case 0x0301     :               //gif
-	//              this->func = file_gif ;
+	              this->func = file_gif ;
 		strncat(this->name,".gif",7);
 		break;
 	
@@ -1126,7 +1348,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0309     :               //x-coreldraw
-	//              this->func = file_x-coreldraw ;
+	              this->func = file_riff ;
 	              strncat(this->name,".cdr",7);
 		break;
 	
@@ -1141,7 +1363,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x030c     :               //x-ms-bmp
-	//              this->func = file_x-ms-bmp ;
+	              this->func = file_bmp ;
 		strncat(this->name,".bmp",7);
 		break;
 	
@@ -1190,17 +1412,21 @@ void get_file_property(struct found_data_t* this){
 	              strncat(this->name,".xpm",7);
 		break;
 	
+		case 0x0316     :               //x-tga
+	              this->func = file_tga ;
+	              strncat(this->name,".tga",7);
+		break;
 	
 	
 	//----------------------------------------------------------------
 	//Messages
 		case 0x0401     :               //news
-	//              this->func = file_news ;
-		strncat(this->name,".news",7);
+	              this->func = file_txt ;
+	//	strncat(this->name,".news",7);
 		break;
 	
 		case 0x0402     :               //rfc822
-	//              this->func = file_rfc822 ;
+	              this->func = file_txt ;
 	//              strncat(this->name,".rfc822",7);
 		break;
 	
@@ -1242,7 +1468,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0605     :               //troff
 		this->func = file_txt ;
-		strncat(this->name,".troff",7);
+		strncat(this->name,".man",7);
 		break;
 	
 		case 0x0606     :               //vnd.graphviz
@@ -1260,9 +1486,9 @@ void get_file_property(struct found_data_t* this){
 		strncat(this->name,".diff",7);
 		break;
 	
-		case 0x0609     :               //x-fortran
+		case 0x0609     :               //x-fortran  (often c files)
 		this->func = file_txt ;
-	//              strncat(this->name,".x-fortran",7);
+	              strncat(this->name,".f",7);
 		break;
 	
 		case 0x060a     :               //x-gawk
@@ -1271,13 +1497,13 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x060b     :               //x-info
-	//              this->func = file_txt ;
+	              this->func = file_txt ;
 		strncat(this->name,".info",7);
 		break;
 	
-		case 0x060c     :               //x-lisp
-	//              this->func = file_x-lisp ;
-	//              strncat(this->name,".x-lisp",7);
+		case 0x060c     :               //x-lisp   (often c files)
+	             this->func = file_txt ;
+	              strncat(this->name,".l",7);
 		break;
 	
 		case 0x060d     :               //x-lua
@@ -1312,7 +1538,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0613     :               //x-texinfo
 		this->func = file_txt ;
-		strncat(this->name,".tex",7);
+		strncat(this->name,".texi",7);
 		break;
 	
 		case 0x0614     :               //x-tex
@@ -1321,8 +1547,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0615     :               //x-vcard
-	//              this->func = file_x-vcard ;
-	//              strncat(this->name,".x-vcard",7);
+	              this->func = file_txt;
+	              strncat(this->name,".vcf",7);
 		break;
 	
 		case 0x0616     :               //x-xmcd
@@ -1330,6 +1556,45 @@ void get_file_property(struct found_data_t* this){
 	//              strncat(this->name,".x-xmcd",7);
 		break;
 	
+		case 0x0617     :               //plain
+	              this->func = file_bin_txt ;
+	              strncat(this->name,".txt",7);
+		break;
+
+		case 0x0618     :               //x-pascal (often c files)
+	              this->func = file_txt ;
+	              strncat(this->name,".c",7);
+		break;
+
+		case 0x0619     :               //c++
+	              this->func = file_txt ;
+	              strncat(this->name,".c++",7);
+		break;
+
+		case 0x061a     :               //c
+	              this->func = file_txt ;
+	              strncat(this->name,".c",7);
+		break;
+
+		case 0x061b     :               //x-mail
+	              this->func = file_txt ;
+	//              strncat(this->name,".x-mail",7);
+		break;
+
+		case 0x061c     :               //x-makefile
+	              this->func = file_txt ;
+	//              strncat(this->name,".x-makefile",7);
+		break;
+	
+		case 0x061d     :               //x-asm
+	              this->func = file_txt ;
+	              strncat(this->name,".S",7);
+		break;
+
+		case 0x061e     :               //text (for all unknown)
+	              this->func = file_txt ;
+	//              strncat(this->name,".txt",7);
+		break;
 	
 	//----------------------------------------------------------------
 	//Video
@@ -1423,12 +1688,12 @@ void get_file_property(struct found_data_t* this){
 	//----------------------------------------------------------------
 	//Reservoir found in application/octet-stream
 		case 0x0801     :               //MPEG
-	//              this->func = file_MPEG ;
+	              this->func = file_mpeg ;
 		strncat(this->name,".mpeg",7);
 		break;
 	
 		case 0x0802     :               //Targa
-	//              this->func = file_Targa ;
+	              this->func = file_tga ;
 		strncat(this->name,".tga",7);
 		break;
 	
@@ -1482,16 +1747,21 @@ void get_file_property(struct found_data_t* this){
 		strncat(this->name,".iso",7);
 		break;
 	
-		case 0x080d     :               //image
-	//              this->func = file_image ;
-	//              strncat(this->name,".image",7);
-		break;
-	
-		case 0x080e     :               //Image
+		case 0x080d     :               //Image
 	//              this->func = file_Image ;
 	//              strncat(this->name,".Image",7);
 		break;
 	
+		case 0x080e     :               //CDF
+	              this->func = file_CDF ;
+	//              strncat(this->name,".doc",7);
+		break;
+
+		case 0x080f     :               //SQLite
+	              this->func = file_SQLite ;
+	              strncat(this->name,".sql",7);
+		break;
+
 	//----------------------------------------------------------------
 		default:
 			this->func = file_default ;

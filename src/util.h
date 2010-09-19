@@ -59,6 +59,7 @@
 #define  M_IS_CHARSET	0x07000000
 
 #define  M_ARCHIV	0x08000000
+#define  M_TAR		0x00008000
 
 #define  M_ACL		0x80000000
 #define  M_EXT4_META	0x40000000

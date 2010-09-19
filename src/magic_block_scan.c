@@ -133,7 +133,7 @@ __u32 add_file_data(struct found_data_t* this, blk_t blk, __u32 scan ,__u32 *f){
         if (inode_add_block(this->inode , blk , current_fs->blocksize)){
 		this->leng++;
 		this->last = blk;
-		*f++ ;
+		(*f)++ ;
 	}
 return *f ;
 }
@@ -182,9 +182,11 @@ int check_data_passage(char *a_buf, char *b_buf){
 
 
 //FIXME obsolete: must switch to FLAG=1 of func() of the filetype
-int check_file_data_possible(struct found_data_t* this, __u32 scan ,char *buf, __u32 follow){
+int check_file_data_possible(struct found_data_t* this, __u32 scan ,char *buf){
 	int ret = 0;
-	switch (this->scan & M_IS_FILE){
+	int size ;
+	ret = this->func(buf, &size ,scan ,1 , this);
+/*	switch (this->scan & M_IS_FILE){
 //		case (M_TXT | M_APPLI) :
 		case M_TXT :
 			if (scan & M_TXT) ret = 1;
@@ -198,8 +200,9 @@ int check_file_data_possible(struct found_data_t* this, __u32 scan ,char *buf, _
 			if (!(scan & M_IS_META)) ret = 1;
 		break;
 	}
+
 	if (!(this->scan & M_IS_FILE))
-		ret = 1; 
+		ret = 1; */
 	return ret;
 }
 
@@ -234,25 +237,27 @@ return (next_meta) ? 0 : 1 ;
 
 
 
-blk_t check_indirect_meta3(char *block_buf,blk_t blk, __u32 blocksize){
+int check_indirect_meta3(char *block_buf){
 	blk_t  	*pb_block;
 	blk_t	last;
-	int 	i = blocksize/sizeof(blk_t);
+	int 	i = current_fs->blocksize/sizeof(blk_t);
 	int	count=0;
+	int	next =0;
 	
 	pb_block = (blk_t*)block_buf;
 	last = ext2fs_le32_to_cpu(*pb_block);
 	while (i && last ) {
 		pb_block++;
 		i--;
+		count++;
 		if ((ext2fs_le32_to_cpu(*pb_block) -1) == last)
-			count++;
+			next++;
 		if (ext2fs_le32_to_cpu(*pb_block))
 			last = ext2fs_le32_to_cpu(*pb_block);
 		else 
 			break;
 	}
-	return (count>3) ? last : blk ;
+	return (next >= (count>>1)) ? 1 : 0;
 }
 
 
@@ -355,12 +360,13 @@ return flag;
 
 //magic scanner 
 int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_buf, __u32 size, blk_t blk){
-	int	count = size-1;
+	//int	count = size-1;
+	int	count = current_fs->blocksize -1 ;
 	int	*i , len;
-	char	text[100];
+	char	text[100] = "";
 	char 	*p_search;
 	__u32	retval = 0;
-	char	searchstr[] = "7-zip cpio image Image filesystem CD-ROM MPEG 9660 Targa Kernel boot Linux x86 ";
+	char	searchstr[] = "7-zip cpio Image filesystem CD-ROM MPEG 9660 Targa Kernel boot Linux x86 SQLite ";
 	char	token[10]; 
  	
 	strncpy(text,magic_buffer(cookie_f,buf , size),99);
@@ -378,7 +384,7 @@ int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_b
 		}	
 	}
 
-	if((strstr(magic_buf,"text/")) && (strstr(text,"text"))){
+	if((strstr(magic_buf,"text/")) || (strstr(magic_buf,"application/") && (strstr(text,"text")))){
 		retval |= M_TXT ;
 	}
 
@@ -390,7 +396,7 @@ int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_b
 		retval |= M_DATA;
 	}
 
-	if ((retval & M_DATA) || (count < 32) || (ext2fs_le32_to_cpu(*(blk_t*)buf) == blk +1)) {
+	if ((retval & M_DATA) || (*(buf+7) < EXT2_FT_MAX) || (count < 32) || (ext2fs_le32_to_cpu(*(blk_t*)buf) == blk +1)) {
 		if (check_meta3_block(buf, blk, count+1)){
 				retval = M_EXT3_META ;	
 				goto out;
@@ -446,6 +452,8 @@ int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_b
 
 	if (strstr(magic_buf,"application/")){
 		retval |= M_APPLI;
+		if (strstr(magic_buf,"x-tar"))
+			retval |= M_TAR ;
 		goto out;
 	}
 	
@@ -473,6 +481,12 @@ int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_b
 		retval |= M_MODEL;
 		goto out;
 	}
+
+	if (strstr(magic_buf,"CDF V2 Document")){
+		retval |= (M_APPLI | M_ARCHIV);
+		goto out;
+	}
+	
 
 out:
 	printf("BLOCK_SCAN : 0x%08x\n",retval & 0xffffe000);
@@ -530,6 +544,68 @@ return count;
 
 
 
+int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, char* buf, blk_t* p_flag){
+	blk_t  			begin;
+	blk_t			end;
+	int 			count=0;
+	int			i;
+	for (begin = *p_blk; begin < ds_bmap->real_end ; begin++){
+		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap))
+			printf("jump to %d \n",begin);
+
+		if (ext2fs_test_block_bitmap ( d_bmap, begin) && (! ext2fs_test_block_bitmap( bmap, begin)))
+			break;
+	}
+	*p_blk = begin;
+	if (begin >= ds_bmap->real_end)
+		return 0;
+	
+	i = 0;
+	for (end = begin,count=1 ; ((count <= MAX_RANGE) && (end < ds_bmap->real_end)); ){
+		if (ext2fs_test_block_bitmap(d_bmap, end) && (! ext2fs_test_block_bitmap( bmap, end))){
+			count++;
+			if (!begin)
+				begin = end;
+			*p_flag = end++;
+			p_flag++;
+			i++;
+		}
+		else { 
+			if (i){
+				if (io_channel_read_blk ( current_fs->io, begin , i,  buf )){
+					fprintf(stderr,"ERROR: while read block %10u + %d\n",begin,count);
+					return 0;
+				}
+			}
+			end++;
+			buf += (current_fs->blocksize *i);
+			begin = 0;
+			i = 0;
+		}
+	}
+	*(p_blk+1) = end;
+	if (io_channel_read_blk ( current_fs->io, begin , i,  buf )){
+		fprintf(stderr,"ERROR: while read block %10u + %d\n",begin,count);
+		return 0;
+	}
+return count-1;
+}	
+
+
+
+blk_t block_backward(blk_t blk , int count){
+	int 	i=count;
+	while (i && blk){
+		if (ext2fs_test_block_bitmap(d_bmap, blk) && (! ext2fs_test_block_bitmap( bmap, blk)))
+			i--;
+		blk--;
+	}
+	return (!i) ? blk+1 : 0;
+}
+
+
+
+
 //magic_block_scan_main
 int magic_block_scan(char* des_dir, __u32 t_after){
 magic_t 					cookie = 0;
@@ -538,11 +614,13 @@ struct 	ext2fs_struct_loc_generic_bitmap 	*ds_bmap;
 struct found_data_t				*file_data = NULL;
 blk_t						blk[2] ;
 blk_t						j;
+blk_t						flag[MAX_RANGE];
+blk_t						fragment_flag;
 char 						*buf = NULL;
 char						*magic_buf = NULL;
 char						*tmp_buf = NULL;
-int						blocksize, ds_retval,count,i;// step;
-__u32						scan,follow;
+int						blocksize, ds_retval,count,i,ret;
+__u32						scan,follow, size;
 
 
 blocksize = current_fs->blocksize ;
@@ -576,10 +654,12 @@ while (ds_retval){
 	while (count){
 		printf(" %d    %d    %d\n", blk[0],blk[1],count);
 		for (i = 0; i< ((count>12) ? MAX_RANGE - 12 : count) ;i++){
-			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i);
-			if(scan & (M_DATA | M_BLANK | M_IS_META))
+			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize * ((count >=9) ? 9 : count) ,blk[0]+i);
+			if(scan & (M_DATA | M_BLANK | M_IS_META)){
+				if (scan & (M_ACL | M_EXT4_META | M_DIR))
+					ext2fs_mark_generic_bitmap(bmap, blk[0]+i);
 				continue;
-			
+			}			
 			printf("SCAN %d : %09x : %s\n",blk[0]+i,scan,magic_buf);
 			if (((count -i) > 12) && (ext2fs_le32_to_cpu(*(__u32*)(buf +((i+12)*blocksize))) == blk[0] + i +1 + 12)){
 				follow = 0;
@@ -606,15 +686,100 @@ while (ds_retval){
 //				printf(" %d not matches %d    == %d  \n\n\n",  blk[0]+i, ext2fs_le32_to_cpu(*(buf +((i+12)*blocksize))), blk[0] + i + 12+1);
 			}	
 		} 
-				
-
-
-		
 		blk[0] += (i)?i:1;
 		count = get_range(blk ,ds_bmap,buf);
+	}
+	count = 0;
+	blk[0] = 0;
+	fragment_flag = 0;
+	count = get_full_range(blk ,ds_bmap, buf,flag);
+	while (count){
+		printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d - %d\n",flag[0],flag[1],flag[2],flag[3],flag[4],flag[5],flag[6],flag[7],flag[8],flag[9],flag[10],flag[11],flag[12],flag[13],flag[14],flag[15],count);
+		
+		for (i = 0; i< ((count>12) ? MAX_RANGE - 12 : count) ;i++){
+			follow = 0;
+			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i);
+			if(scan & (M_DATA | M_BLANK | M_IS_META)){
+				continue;
+			}	
+			printf("SCAN %d : %09x : %s\n",blk[0]+i,scan,magic_buf);
+			if (((count -i) > 12) && (ext2fs_le32_to_cpu(*(__u32*)(buf +((i+12)*blocksize))) == flag[12+i]+1)){
+				file_data = new_file_data(flag[i],scan,magic_buf,buf+(i*blocksize),&follow);
+				for(j=i; j<(12+i);j++)
+					add_file_data(file_data, flag[j], scan ,&follow);
+				scan = magic_check_block(buf+((i+12)*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i+12);	
+				if (scan & M_EXT3_META){
+					if (add_ext3_file_meta_data(file_data, buf+((i+12)*blocksize), flag[j])){
+						io_channel_read_blk (current_fs->io, file_data->last,  1, tmp_buf);
+						file_data = soft_border(des_dir, tmp_buf, file_data, &follow, j);
+						break;
+					}
+					else
+						file_data = forget_file_data(file_data, &follow);				
+				}
+				else
+					file_data = forget_file_data(file_data, &follow);
+			}
+			else{ 
+				if (scan & M_IS_FILE){
+					
+					for (j=i; j< 12+i; j++){
+						if (!follow){
+							file_data = new_file_data(flag[i],scan,magic_buf,buf+(i*blocksize),&follow);
+							add_file_data(file_data, flag[i], scan ,&follow);
+						}
+						else{
+							scan = magic_check_block(buf+(j*blocksize), cookie, cookie_f , magic_buf , blocksize ,flag[j]);
+							if ( check_file_data_possible(file_data, scan ,buf+(j*blocksize))){
+								add_file_data(file_data, flag[j], scan ,&follow);
+							}
+							else{	
+								j--;
+								file_data = soft_border(des_dir,buf+(j*blocksize), file_data, &follow, flag[j]); 
+								 if ((!fragment_flag) && (scan & M_EXT3_META) && (check_indirect_meta3(buf+((j+1)*blocksize)))){
+									printf("try a fragment recover for metablock %ld\n",flag[j]+1);
+									blk[1] = block_backward(flag[j] , 12);
+									if (blk[1]){
+										blk[0] = blk[1];
+										fragment_flag = flag[j+1];
+										goto load_new;
+									}
+								}
+								break;
+							}
+
+						}
+						size = (scan & M_SIZE ); //get_block_len(buf+(i*blocksize));
+						ret = file_data->func(buf+(j*blocksize), &size ,scan ,0 , file_data);
+						if (ret ==1){
+							 if (file_data_correct_size(file_data,size)){
+								file_data = recover_file_data(des_dir, file_data, &follow);
+							}
+							else{ 
+								file_data = forget_file_data(file_data, &follow);	
+								printf("Don't recover this file, current block %d \n",blk);
+							}
+							break;
+						}
+					}
+					if (follow){
+						printf("stop no file-end\n");
+						file_data = soft_border(des_dir,buf+((j-1)*blocksize), file_data, &follow, flag[j-1]);
+						i = j - 11;
+					}
+					else
+						i = j;
+				}	
+				
+			}		
+		}
+		blk[0]+=(i)?i:1;
+		if (fragment_flag && (blk[0] > fragment_flag))
+			fragment_flag = 0;
+load_new :
+		count = get_full_range(blk ,ds_bmap, buf,flag);
 		
 	}
-
 
 	}//operation
 } //while transactions
