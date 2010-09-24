@@ -1,6 +1,5 @@
 #ifndef BLOCK_H
 #define BLOCK_H
-
  
 #include <ext2fs/ext2fs.h>
 

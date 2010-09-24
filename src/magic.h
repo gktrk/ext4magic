@@ -24,6 +24,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+// this is a copie from file-5.03. (Please do not change here.)
+// We need this because not all Distibution have a DEVEL packages for libmagic.
+
 #ifndef _MAGIC_H
 #define _MAGIC_H
 

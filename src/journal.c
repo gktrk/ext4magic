@@ -834,7 +834,7 @@ return sum;
 
 
 
-//create and init the the journal block bitmap
+//create and init the journal block bitmap
 //return the count of all blockbitmap copies or 0
  int init_block_bitmap_list(ext2fs_block_bitmap *d_bmap, __u32 t_after){
 	__u32	t;  
@@ -905,8 +905,6 @@ int next_block_bitmap(ext2fs_block_bitmap d_bmap){
 
 	if (jbbm.pointer->transaction < jbbm.first_trans)
 		return 0;
-
-//	printf(" Transaction:  %u   ; Minimum ist %u \n", jbbm.pointer->transaction,jbbm.first_trans);
 
 	fs_bitmap = (struct ext2fs_struct_loc_generic_bitmap*) current_fs->block_map;
 	df_bitmap = (struct ext2fs_struct_loc_generic_bitmap*) d_bmap;

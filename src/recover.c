@@ -67,10 +67,10 @@ struct privat {
 	char flag; 
 	int error;};
 
+
 struct alloc_stat{
 	__u32 allocated;
 	__u32 not_allocated;};
-
 
 
 
@@ -562,33 +562,6 @@ int check_file_recover(struct ext2_inode *inode){
 return retval;
 }
 
-
-
-/*
-//FIXME: If we ever need this function, we rewrite this
-int create_all_dir(char* des_dir,char* pathname, ext2_ino_t ino_nr ){
-	char *fullname;
-	char *p1;
-	int retval;
-	
-	if (ino_nr == EXT2_ROOT_INO)
-		return 0;
-
-	fullname = malloc(strlen(des_dir) + strlen(pathname) + 3);
-	if (fullname){
-		p1 = pathname;
-		while   (*p1 == '/') p1++;
-		strcpy(fullname,des_dir);
-		strcat(fullname,"/");
-		strcat(fullname,p1);
-		retval = mkdir(fullname,S_IRWXU);
-		if (retval && (errno != EEXIST))
-			fprintf(stderr,"Error: mkdir %s\n", fullname);
-		free(fullname);
-	}
-return retval;
-} 
-*/
 
 
 //set all attributes for directory

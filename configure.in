@@ -1,13 +1,35 @@
 AC_INIT(configure.in)
 
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(ext4magic, 0.1.4)
+AM_INIT_AUTOMAKE(ext4magic, 0.2.0-pv0)
 
 AC_LANG_C
 AC_PROG_CC
 AM_PROG_LIBTOOL
+
+fail=0
+AC_CHECK_HEADER([ext2fs/ext2fs.h],[],[fail=1])
+AC_CHECK_HEADER([blkid/blkid.h],[],[fail=1])
+AC_CHECK_HEADER([e2p/e2p.h],[],[fail=1])
+AC_CHECK_HEADER([uuid/uuid.h],[],[fail=1])
+test $fail = 1 &&
+AC_MSG_ERROR([You must install the develop packages "ext2fs , blkid , e2p , uuid" to build ext4magic])
+
+if pkg-config --exists 'ext2fs < 1.41.9' ; then
+AC_MSG_ERROR([You must have ext2fs version >= 1.41.9 to build ext4magic])
+fi
+
+fail=0
+AC_SEARCH_LIBS([magic_buffer], [magic], [], [fail=1])
+test $fail = 1 &&
+AC_MSG_ERROR([The library libmagic.so not found, install the package "file" to build ext4magic])
+
+
+
 AC_ARG_ENABLE(debug,[  --enable-debug            Turn on debugging ],
          [if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG"; fi])
+AC_ARG_ENABLE(debug-magic,[  --enable-debug-magic            Turn on debugging magic-scan-engine ],
+         [if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG_MAGIC_SCAN"; fi])
 AC_ARG_ENABLE(file-attr,[  --enable-file-attr            enable restore of file attribute ],
          [if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DFILE_ATTR"; fi])
 

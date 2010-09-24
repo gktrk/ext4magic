@@ -35,6 +35,7 @@
 #define RECOVER_INODE                0x2000
 #define RECOVER_LIST		     0x4000
 
+#define MASK_MAGIC_SCAN		     0x3100
 // journal status flags
 #define JOURNAL_OPEN		     0
 #define JOURNAL_CLOSE		     1

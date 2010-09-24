@@ -34,9 +34,12 @@
 #define ext4magic_be64_to_cpu(x) ext2fs_swab64((x))
 #endif
 
+//#define DEBUG_MAGIC_SCAN
+
+
 extern ext2_filsys     current_fs ;
 
-
+// index of the files corresponding magic result strings
 int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf){
 
 //Please do not modify the following lines.
@@ -121,7 +124,9 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 		p_search++;
 	}
 	if(!flag) minor=255;
+#ifdef DEBUG_MAGIC_SCAN
 	printf("major : %d   minor : %d\n", major,minor);
+#endif
 	*scan = (major <<8)| minor; 
 return 1;
 }

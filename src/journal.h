@@ -29,6 +29,7 @@ typedef struct journal_descriptor_tag_s
 	__u32		transaction; 	/* Transaction Sequence*/
 } journal_descriptor_tag_t;
 
+
 //struct for cache the block bitmap data
 typedef struct journal_bitmap_tag_s
 {
@@ -38,6 +39,8 @@ typedef struct journal_bitmap_tag_s
 } journal_bitmap_tag_t;
 
 
+
+//head struct for collect the Block Bitmaps of Journal
 struct j_bitmap_list_t
 {
 	int 			count;
@@ -52,6 +55,7 @@ struct j_bitmap_list_t
 	char*			block_buf;
 		
 };
+
 
 void dump_journal_superblock( void); //print journal superblock
 extern int journal_open(char* , int );// open an extract the blocklist from journal 

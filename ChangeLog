@@ -1,3 +1,9 @@
+0.2.0-pv0	BUG: #017447 ; #017453
+		enable the first version of the magic-funktions for ext3
+		new Options "-M" and "-n"
+		check header und library in configure
+
+
 0.1.4		BUG: #17387 symlink not restored
 		BUG: #17423 undeleted directory not found
 		BUG: #17425 run-time error "segmentation fault" at the beginning of a directory

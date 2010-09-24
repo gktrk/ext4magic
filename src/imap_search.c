@@ -31,7 +31,6 @@
 extern ext2_filsys current_fs;
 
 
-
 // search inode by use imap (step1: flag 1 = only directory ; step2: flag 0 = only file)
 static void search_imap_inode(char* des_dir, __u32 t_after, __u32 t_before, int flag)
 {
@@ -203,5 +202,4 @@ void imap_search(char* des_dir, __u32 t_after, __u32 t_before){
 	search_imap_inode(des_dir, t_after, t_before, 0); //search for lost files
 return;
 }
-
 

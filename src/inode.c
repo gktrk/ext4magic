@@ -896,7 +896,7 @@ return retval;
 
 
 
-
+//create a new inode
 struct ext2_inode_large* new_inode(){
 	struct ext2_inode_large			*inode;
 	__u32 					a_time;
@@ -919,7 +919,7 @@ return inode;
 }
 
 
-
+//add a block to inode
 int inode_add_block(struct ext2_inode_large* inode , blk_t blk , __u32 size) {
 	int				i = 0 ; 
 	unsigned long long		i_size;
@@ -949,7 +949,7 @@ return 1;
 } 
 
 
-
+//add the ext3  indirect Blocks to the inode
 blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *last, char *buf ){
 	blk_t 				b_blk,block_count, next;
 	blk_t				count=0;

@@ -27,7 +27,6 @@
 #endif
 
 
-//#include <ext2fs/ext2fs.h>
 #include "ext2fsP.h"
 #include "block.h"
 #include "journal.h"
@@ -56,7 +55,7 @@ struct block_context {
 
 //#ifdef BLOCK_FLAG_READ_ONLY
 
-#include <ext2fs/ext3_extents.h>
+//#include <ext2fs/ext3_extents.h>
 struct extent_path {
         char            *buf;
         int             entries;

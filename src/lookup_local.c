@@ -26,7 +26,7 @@
 #endif
 
 #include <ext2fs/ext2fs.h>
-#include <ext2fs/ext2_io.h>
+//#include <ext2fs/ext2_io.h>
 #include "ext2fsP.h"
 #include <ctype.h>
 #include <time.h> 
@@ -484,10 +484,7 @@ void list_dir2(ext2_ino_t ino, struct ext2_inode *inode)
 }
 
 
-
-
 //--------------------------------------------------
-// 
 // local sub function 
 // load dir-index in a dir_list 
  struct dir_list_head_t* get_dir3(struct ext2_inode* d_inode,ext2_ino_t path_ino, ext2_ino_t ino,

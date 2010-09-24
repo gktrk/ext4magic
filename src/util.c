@@ -26,7 +26,7 @@
 
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
-#include <ext2fs/ext2_io.h>
+//#include <ext2fs/ext2_io.h>
 #include <e2p/e2p.h>
 
 #include "util.h"
@@ -262,6 +262,89 @@ void print_coll_list(__u32 t_after, __u32 t_before, int flag){
 	}
 return;
 } 
+
+
+
+// search for a time before the last big delete job
+__u32 get_last_delete_time(ext2_filsys fs)
+{
+struct ext2_group_desc		*gdp;
+char 				*buf= NULL;
+int 				zero_flag, x , retval;
+__u32 				blocksize , inodesize , inode_max , inode_per_group, block_count;
+__u16 				inode_per_block , inode_block_group, group;
+blk_t 				block_nr;
+__u32 				i, c_time, d_time;
+__u32				last = 0;
+__u32				first;
+int				flag;
+
+struct 	ext2_inode_large *inode;
+
+blocksize = fs->blocksize;
+inodesize = fs->super->s_inode_size;
+inode_max = fs->super->s_inodes_count;
+inode_per_group = fs->super->s_inodes_per_group;
+buf = malloc(blocksize);
+
+inode_per_block = blocksize / inodesize;
+inode_block_group = inode_per_group / inode_per_block;
+
+for (flag=0;flag<2;flag++){
+	for (group = 0 ; group < fs->group_desc_count ; group++){
+		gdp = &fs->group_desc[group];
+		zero_flag = 0;
+	
+		// NEXT GROUP IF INODE NOT INIT
+		if (gdp->bg_flags & (EXT2_BG_INODE_UNINIT)) continue;
+	
+		// SET ZERO-FLAG IF FREE INODES == INODE/GROUP for fast ext3 
+		if (gdp->bg_free_inodes_count == inode_per_group) zero_flag = 1;
+	
+		for (block_nr = gdp->bg_inode_table , block_count = 0 ;
+				block_nr < (gdp->bg_inode_table + inode_block_group); block_nr++, block_count++) {
+	
+			// break if the first block only zero inode
+			if ((block_count ==1) && (zero_flag == (inode_per_block + 1))) break;
+		
+			if ( read_block ( fs , &block_nr , buf))
+				return 0;
+	
+			for (i = (group * inode_per_group)+(block_count * inode_per_block) + 1 ,x = 0;
+					x < inode_per_block ; i++ , x++){
+	
+				if (i >= inode_max) break;	
+				inode = (struct ext2_inode_large*) (buf + (x*inodesize));
+				c_time = ext2fs_le32_to_cpu(inode->i_ctime);
+				if (! c_time) {
+					if(zero_flag) zero_flag++ ;
+				continue;
+				}
+				d_time = ext2fs_le32_to_cpu(inode->i_dtime);
+				if (flag){
+					if ((d_time > (last-300)) && (d_time < first))
+						first = d_time;
+				}
+				else{
+					if (d_time > last){
+						last = d_time;
+					}
+				}		
+			}
+		}
+	}
+first = last;
+}
+
+	if(buf) {
+		free(buf);
+		buf = NULL;
+	}
+return first - 1 ;
+} 
+
+
+
 
 
 // add inodenumber in a collectlist

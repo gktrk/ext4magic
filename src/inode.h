@@ -66,8 +66,10 @@ int read_journal_inode( ext2_ino_t, struct ext2_inode*, __u32);// get the first 
 int read_time_match_inode( ext2_ino_t, struct ext2_inode*, __u32);// get the first Journal Inode by time_stamp	
 struct ring_buf* get_j_inode_list(struct ext2_super_block*, ext2_ino_t);//fill all inode found in the Journal in the inode-ringbuffer
 
-struct ext2_inode_large* new_inode();
-int inode_add_block(struct ext2_inode_large* , blk_t , __u32);
+//functions for the magic scanner
+struct ext2_inode_large* new_inode(); //create a new inode
+int inode_add_block(struct ext2_inode_large* , blk_t , __u32); //add a block to inode
+blk_t inode_add_meta_block(struct ext2_inode_large*, blk_t, blk_t*, char* ); //add the ext3  indirect Blocks to the inode
 
 
 #endif

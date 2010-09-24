@@ -33,13 +33,13 @@
 
 #define MAX_RANGE 16
 
-
+//#define DEBUG_MAGIC_SCAN
 
 extern ext2_filsys     current_fs ;
 ext2fs_block_bitmap 	  	d_bmap = NULL ; 
 
 
-__u32 get_block_len(char *buf){
+static __u32 get_block_len(char *buf){
 	int		len = current_fs->blocksize -1;
 
 	while ((len >= 0) && (!(*(buf + len)))) 
@@ -49,7 +49,7 @@ __u32 get_block_len(char *buf){
 
 
 
-struct found_data_t* free_file_data(struct found_data_t* old){
+static struct found_data_t* free_file_data(struct found_data_t* old){
 	if(old->inode) free(old->inode);
 	if(old->scan_result) free(old->scan_result);
 	if(old->name)  free(old->name);
@@ -60,7 +60,7 @@ struct found_data_t* free_file_data(struct found_data_t* old){
 
 
 
-struct found_data_t* new_file_data(blk_t blk,__u32 scan,char *magic_buf, char* buf, __u32 *f){
+static struct found_data_t* new_file_data(blk_t blk,__u32 scan,char *magic_buf, char* buf, __u32 *f){
 	struct found_data_t 		*new;
 	int				str_len;
 	__u32				name_len;
@@ -107,7 +107,7 @@ return new;
 
 
 
-struct found_data_t* recover_file_data(char *des_dir, struct found_data_t* this, __u32 *follow){
+static struct found_data_t* recover_file_data(char *des_dir, struct found_data_t* this, __u32 *follow){
 	recover_file(des_dir,"MAGIC_3",this->name,(struct ext2_inode*)this->inode, 0 , 1);
 	free_file_data(this);
 	*follow = 0;
@@ -117,8 +117,10 @@ struct found_data_t* recover_file_data(char *des_dir, struct found_data_t* this,
 
 
 
-struct found_data_t* forget_file_data(struct found_data_t* this, __u32 *p_follow){
+static struct found_data_t* forget_file_data(struct found_data_t* this, __u32 *p_follow){
+#ifdef  DEBUG_MAGIC_SCAN
 	printf("TRASH :  %s  : leng  %lu :  begin  %lu\n", this->name, this->inode->i_size , this->first);
+#endif
 	free_file_data(this);
 	*p_follow = 0;
 	return NULL;
@@ -127,7 +129,7 @@ struct found_data_t* forget_file_data(struct found_data_t* this, __u32 *p_follow
 
 
 
-__u32 add_file_data(struct found_data_t* this, blk_t blk, __u32 scan ,__u32 *f){
+static __u32 add_file_data(struct found_data_t* this, blk_t blk, __u32 scan ,__u32 *f){
 	__u32   retval = 0;
 	
         if (inode_add_block(this->inode , blk , current_fs->blocksize)){
@@ -140,7 +142,7 @@ return *f ;
 
 
 
-int file_data_correct_size(struct found_data_t* this, int size){
+static int file_data_correct_size(struct found_data_t* this, int size){
 	unsigned long long  	i_size;
 	int			flag=0;
 	
@@ -156,7 +158,7 @@ int file_data_correct_size(struct found_data_t* this, int size){
 	
 
 
-int check_file_data_end(struct found_data_t* this,char *buf){
+static int check_file_data_end(struct found_data_t* this,char *buf){
 	int 		size;
 	int 		ret = 0;
 
@@ -172,7 +174,7 @@ int check_file_data_end(struct found_data_t* this,char *buf){
 
 
 //?????
-int check_data_passage(char *a_buf, char *b_buf){
+static int check_data_passage(char *a_buf, char *b_buf){
 	int		 i, blocksize;
 	int		sum[4][2];
 	
@@ -181,63 +183,18 @@ int check_data_passage(char *a_buf, char *b_buf){
 }
 
 
-//FIXME obsolete: must switch to FLAG=1 of func() of the filetype
-int check_file_data_possible(struct found_data_t* this, __u32 scan ,char *buf){
+
+static int check_file_data_possible(struct found_data_t* this, __u32 scan ,char *buf){
 	int ret = 0;
 	int size ;
 	ret = this->func(buf, &size ,scan ,1 , this);
-/*	switch (this->scan & M_IS_FILE){
-//		case (M_TXT | M_APPLI) :
-		case M_TXT :
-			if (scan & M_TXT) ret = 1;
-		break;
-		case M_VIDEO :
-		case M_AUDIO :
-		case M_IMAGE :
-			if (!(scan & M_IS_META)) ret = 1;
-		break;
-		case M_APPLI :
-			if (!(scan & M_IS_META)) ret = 1;
-		break;
-	}
-
-	if (!(this->scan & M_IS_FILE))
-		ret = 1; */
 	return ret;
 }
 
 
 
 
-int add_ext3_file_meta_data(struct found_data_t* this, char *buf, blk_t blk){
-	blk_t   next_meta;
-	blk_t	last_data = 0;
-	next_meta = inode_add_meta_block(this->inode , blk, &last_data, buf );
-	this->last = last_data;
-	
-	if (next_meta > 10 && (ext2fs_test_block_bitmap ( d_bmap, next_meta) && (! ext2fs_test_block_bitmap( bmap, next_meta)))){
-		io_channel_read_blk ( current_fs->io,  next_meta, 1, buf );
-
-		if (check_meta3_block(buf, blk, get_block_len(buf))){
-			next_meta = inode_add_meta_block(this->inode , next_meta , &last_data, buf );
-			this->last = last_data;
-
-			if (next_meta > 10 && (ext2fs_test_block_bitmap ( d_bmap, next_meta) && (! ext2fs_test_block_bitmap( bmap, next_meta)))){
-				io_channel_read_blk ( current_fs->io,  next_meta, 1, buf );
-
-				if (check_meta3_block(buf, blk, get_block_len(buf))){
-					next_meta = inode_add_meta_block(this->inode , next_meta , &last_data, buf );
-					this->last = last_data;
-				}
-			}			
-		}
-	}
-return (next_meta) ? 0 : 1 ;
-}
-
-
-
-int check_indirect_meta3(char *block_buf){
+static int check_indirect_meta3(char *block_buf){
 	blk_t  	*pb_block;
 	blk_t	last;
 	int 	i = current_fs->blocksize/sizeof(blk_t);
@@ -262,7 +219,7 @@ int check_indirect_meta3(char *block_buf){
 
 
 
-int check_meta3_block(char *block_buf, blk_t blk, __u32 size){
+static int check_meta3_block(char *block_buf, blk_t blk, __u32 size){
 	blk_t 		block, *pb_block;
 	int		i,j ;
 
@@ -293,7 +250,7 @@ int check_meta3_block(char *block_buf, blk_t blk, __u32 size){
 
 
 
-int check_meta4_block(char *block_buf, blk_t blk, __u32 size){
+static int check_meta4_block(char *block_buf, blk_t blk, __u32 size){
 	__u16		*p_h16;
 	__u16		h16;
 
@@ -313,7 +270,7 @@ int check_meta4_block(char *block_buf, blk_t blk, __u32 size){
 
 
 
-int check_dir_block(char *block_buf, blk_t blk, __u32 size){
+static int check_dir_block(char *block_buf, blk_t blk, __u32 size){
 	struct ext2_dir_entry_2      *dir_entry;
 	ext2_ino_t	inode_nr;
 	__u16		len;
@@ -340,6 +297,60 @@ int check_dir_block(char *block_buf, blk_t blk, __u32 size){
 }
 
 
+
+static int check_acl_block(char *block_buf, blk_t blk, __u32 size){
+	__u32		*p32;
+	int 		i;
+	
+	p32 = (__u32*)block_buf;
+	if ((!(*p32)) || (ext2fs_le32_to_cpu(*p32) & (~ 0xEA030000)))
+		return 0;
+	p32 += 2;
+	if ((!(*p32)) || (ext2fs_le32_to_cpu(*p32) > 0xff))
+		return 0;
+	p32++;
+	if (! (*p32))
+		return 0;
+	p32++;
+	for (i = 0; i<4; i++){
+		if (*p32)
+			return 0;
+		p32++;
+	}
+	return (size > (current_fs->blocksize-32)) ? 1 : 0;
+}
+
+
+
+
+static int add_ext3_file_meta_data(struct found_data_t* this, char *buf, blk_t blk){
+	blk_t   next_meta;
+	blk_t	last_data = 0;
+	next_meta = inode_add_meta_block(this->inode , blk, &last_data, buf );
+	this->last = last_data;
+	
+	if (next_meta > 10 && (ext2fs_test_block_bitmap ( d_bmap, next_meta) && (! ext2fs_test_block_bitmap( bmap, next_meta)))){
+		io_channel_read_blk ( current_fs->io,  next_meta, 1, buf );
+
+		if (check_meta3_block(buf, blk, get_block_len(buf))){
+			next_meta = inode_add_meta_block(this->inode , next_meta , &last_data, buf );
+			this->last = last_data;
+
+			if (next_meta > 10 && (ext2fs_test_block_bitmap ( d_bmap, next_meta) && (! ext2fs_test_block_bitmap( bmap, next_meta)))){
+				io_channel_read_blk ( current_fs->io,  next_meta, 1, buf );
+
+				if (check_meta3_block(buf, blk, get_block_len(buf))){
+					next_meta = inode_add_meta_block(this->inode , next_meta , &last_data, buf );
+					this->last = last_data;
+				}
+			}			
+		}
+	}
+return (next_meta) ? 0 : 1 ;
+}
+
+
+
 // skip not of interest blocks : return 1 if skiped
 static int skip_block(blk_t *p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap ){
 	struct 	ext2fs_struct_loc_generic_bitmap 	*p_bmap;
@@ -359,7 +370,7 @@ return flag;
 
 
 //magic scanner 
-int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_buf, __u32 size, blk_t blk){
+static int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_buf, __u32 size, blk_t blk){
 	//int	count = size-1;
 	int	count = current_fs->blocksize -1 ;
 	int	*i , len;
@@ -372,10 +383,10 @@ int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_b
 	strncpy(text,magic_buffer(cookie_f,buf , size),99);
 	strncpy(magic_buf, magic_buffer(cookie , buf , size),99);
 	while (count >= 0 && (*(buf+count) == 0)) count-- ;
-
+#ifdef  DEBUG_MAGIC_SCAN
 	printf("Scan Result :  %s    %d\n", magic_buf , count+1) ;
 	printf("RESULT : %s \n",text);
-	
+#endif	
 
 	if (!strncmp(text,"data",4)){
 		if (count == -1) {
@@ -408,6 +419,10 @@ int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_b
 		if (check_dir_block(buf, blk, count+1)){
 				retval = M_DIR ;
 				goto out;
+		}
+		if (check_acl_block(buf, blk, count+1)){
+				retval = M_ACL ;
+				goto out ;
 		}
 	}
 
@@ -489,9 +504,10 @@ int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_b
 	
 
 out:
+#ifdef  DEBUG_MAGIC_SCAN
 	printf("BLOCK_SCAN : 0x%08x\n",retval & 0xffffe000);
 	blockhex(stdout,buf,0,(count < (64)) ? count  : 64 );
-
+#endif
 	retval |= (count+1);
 	
 	return retval;
@@ -500,7 +516,7 @@ out:
 
 
 
-struct found_data_t* soft_border(char *des_dir, char *buf, struct found_data_t* file_data, __u32* follow, blk_t blk){
+static struct found_data_t* soft_border(char *des_dir, char *buf, struct found_data_t* file_data, __u32* follow, blk_t blk){
 	if ( check_file_data_end(file_data, buf ))
 		file_data = recover_file_data(des_dir, file_data, follow);
 	else{ 
@@ -511,14 +527,16 @@ return file_data;
 }
 
 
-int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, char* buf){
+static int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, char* buf){
 	blk_t  			begin;
 	blk_t			end;
 	int 			count=1;
 	for (begin = *p_blk; begin < ds_bmap->real_end ; begin++){
-		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap))
+		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap)){
+#ifdef  DEBUG_MAGIC_SCAN
 			printf("jump to %d \n",begin);
-
+#endif
+		}
 		if (ext2fs_test_block_bitmap ( d_bmap, begin) && (! ext2fs_test_block_bitmap( bmap, begin)))
 			break;
 	}
@@ -526,7 +544,7 @@ int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, ch
 	if (begin >= ds_bmap->real_end)
 		return 0;
 
-	for (end = begin,count=1 ; count < MAX_RANGE ; ){
+	for (end = begin,count=1 ; ((count < MAX_RANGE) && (end < ds_bmap->real_end)); ){
 		if (ext2fs_test_block_bitmap(d_bmap, end+1) && (! ext2fs_test_block_bitmap( bmap, end+1))){
 			end++;
 			count++;
@@ -544,15 +562,19 @@ return count;
 
 
 
-int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, char* buf, blk_t* p_flag){
+static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, char* buf, blk_t* p_flag){
 	blk_t  			begin;
 	blk_t			end;
 	int 			count=0;
 	int			i;
-	for (begin = *p_blk; begin < ds_bmap->real_end ; begin++){
-		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap))
-			printf("jump to %d \n",begin);
+	errcode_t		x;
 
+	for (begin = *p_blk; begin < ds_bmap->real_end ; begin++){
+		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap)){
+#ifdef  DEBUG_MAGIC_SCAN
+			printf("jump to %d \n",begin);
+#endif
+		}
 		if (ext2fs_test_block_bitmap ( d_bmap, begin) && (! ext2fs_test_block_bitmap( bmap, begin)))
 			break;
 	}
@@ -573,27 +595,29 @@ int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bma
 		else { 
 			if (i){
 				if (io_channel_read_blk ( current_fs->io, begin , i,  buf )){
-					fprintf(stderr,"ERROR: while read block %10u + %d\n",begin,count);
+					fprintf(stderr,"ERROR: while read block %10u + %d\n",begin,i);
 					return 0;
 				}
+				buf += (current_fs->blocksize *i);
+				begin = 0;
+				i = 0;
 			}
 			end++;
-			buf += (current_fs->blocksize *i);
-			begin = 0;
-			i = 0;
 		}
 	}
 	*(p_blk+1) = end;
-	if (io_channel_read_blk ( current_fs->io, begin , i,  buf )){
-		fprintf(stderr,"ERROR: while read block %10u + %d\n",begin,count);
-		return 0;
+	if (i){
+		if (io_channel_read_blk ( current_fs->io, begin , i,  buf )){
+			fprintf(stderr,"ERROR: while read block %10u + %d  %ld\n",begin,i,count-1);
+			return 0;
+		}
 	}
 return count-1;
 }	
 
 
 
-blk_t block_backward(blk_t blk , int count){
+static blk_t block_backward(blk_t blk , int count){
 	int 	i=count;
 	while (i && blk){
 		if (ext2fs_test_block_bitmap(d_bmap, blk) && (! ext2fs_test_block_bitmap( bmap, blk)))
@@ -606,8 +630,8 @@ blk_t block_backward(blk_t blk , int count){
 
 
 
-//magic_block_scan_main
-int magic_block_scan(char* des_dir, __u32 t_after){
+//main of the magic_scan_engine for ext3
+int magic_block_scan3(char* des_dir, __u32 t_after){
 magic_t 					cookie = 0;
 magic_t						cookie_f = 0;
 struct 	ext2fs_struct_loc_generic_bitmap 	*ds_bmap;
@@ -623,6 +647,7 @@ int						blocksize, ds_retval,count,i,ret;
 __u32						scan,follow, size;
 
 
+printf("MAGIC-3 :Start ext3-magic-scan search. Please wait, this may take a long time\n");
 blocksize = current_fs->blocksize ;
 count = 0;
 blk[0] = 0;
@@ -652,15 +677,19 @@ while (ds_retval){
 	count = get_range(blk ,ds_bmap, buf);
 
 	while (count){
+#ifdef  DEBUG_MAGIC_SCAN
 		printf(" %d    %d    %d\n", blk[0],blk[1],count);
+#endif
 		for (i = 0; i< ((count>12) ? MAX_RANGE - 12 : count) ;i++){
 			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize * ((count >=9) ? 9 : count) ,blk[0]+i);
 			if(scan & (M_DATA | M_BLANK | M_IS_META)){
 				if (scan & (M_ACL | M_EXT4_META | M_DIR))
 					ext2fs_mark_generic_bitmap(bmap, blk[0]+i);
 				continue;
-			}			
+			}	
+#ifdef  DEBUG_MAGIC_SCAN		
 			printf("SCAN %d : %09x : %s\n",blk[0]+i,scan,magic_buf);
+#endif
 			if (((count -i) > 12) && (ext2fs_le32_to_cpu(*(__u32*)(buf +((i+12)*blocksize))) == blk[0] + i +1 + 12)){
 				follow = 0;
 				file_data = new_file_data(blk[0]+i,scan,magic_buf,buf+(i*blocksize),&follow);
@@ -682,8 +711,6 @@ while (ds_retval){
 			else{
 				// no matches
 				// In the first step we are taking nothing
-	
-//				printf(" %d not matches %d    == %d  \n\n\n",  blk[0]+i, ext2fs_le32_to_cpu(*(buf +((i+12)*blocksize))), blk[0] + i + 12+1);
 			}	
 		} 
 		blk[0] += (i)?i:1;
@@ -694,15 +721,30 @@ while (ds_retval){
 	fragment_flag = 0;
 	count = get_full_range(blk ,ds_bmap, buf,flag);
 	while (count){
+#ifdef  DEBUG_MAGIC_SCAN
 		printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d - %d\n",flag[0],flag[1],flag[2],flag[3],flag[4],flag[5],flag[6],flag[7],flag[8],flag[9],flag[10],flag[11],flag[12],flag[13],flag[14],flag[15],count);
-		
+#endif
 		for (i = 0; i< ((count>12) ? MAX_RANGE - 12 : count) ;i++){
 			follow = 0;
 			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i);
 			if(scan & (M_DATA | M_BLANK | M_IS_META)){
-				continue;
-			}	
+				if ((!fragment_flag) && (scan & M_EXT3_META) && (check_indirect_meta3(buf+(i*blocksize)))){
+#ifdef  DEBUG_MAGIC_SCAN
+					printf("try a fragment recover for metablock %ld\n",flag[i]);
+#endif
+					blk[1] = block_backward(flag[i] , 12);
+					if (blk[1]){
+						blk[0] = blk[1];
+						fragment_flag = flag[i];
+						goto load_new;
+					}
+				}
+				else
+					continue;
+			}
+#ifdef  DEBUG_MAGIC_SCAN	
 			printf("SCAN %d : %09x : %s\n",blk[0]+i,scan,magic_buf);
+#endif
 			if (((count -i) > 12) && (ext2fs_le32_to_cpu(*(__u32*)(buf +((i+12)*blocksize))) == flag[12+i]+1)){
 				file_data = new_file_data(flag[i],scan,magic_buf,buf+(i*blocksize),&follow);
 				for(j=i; j<(12+i);j++)
@@ -737,7 +779,9 @@ while (ds_retval){
 								j--;
 								file_data = soft_border(des_dir,buf+(j*blocksize), file_data, &follow, flag[j]); 
 								 if ((!fragment_flag) && (scan & M_EXT3_META) && (check_indirect_meta3(buf+((j+1)*blocksize)))){
+#ifdef  DEBUG_MAGIC_SCAN
 									printf("try a fragment recover for metablock %ld\n",flag[j]+1);
+#endif
 									blk[1] = block_backward(flag[j] , 12);
 									if (blk[1]){
 										blk[0] = blk[1];
@@ -756,14 +800,18 @@ while (ds_retval){
 								file_data = recover_file_data(des_dir, file_data, &follow);
 							}
 							else{ 
-								file_data = forget_file_data(file_data, &follow);	
+								file_data = forget_file_data(file_data, &follow);
+#ifdef  DEBUG_MAGIC_SCAN
 								printf("Don't recover this file, current block %d \n",blk);
+#endif
 							}
 							break;
 						}
 					}
 					if (follow){
+#ifdef  DEBUG_MAGIC_SCAN
 						printf("stop no file-end\n");
+#endif
 						file_data = soft_border(des_dir,buf+((j-1)*blocksize), file_data, &follow, flag[j-1]);
 						i = j - 11;
 					}

@@ -1,7 +1,13 @@
-.TH ext4magic 8 "Jul 2010" "version 0.1.3" "Administrations Tool"
+.TH ext4magic 8 "Sep 2010" "version 0.2.0" "Administrations Tool"
 .SH NAME
 ext4magic \- allows to recover deleted files on ext3/4 filesystems
 .SH SYNOPSIS
+.B ext4magic \-M 
+[\-j <journal_file>] [\-d <target_dir>] <filesystem>
+
+.B ext4magic \-m 
+[\-j <journal_file>] [\-d <target_dir>] <filesystem>
+
 .B ext4magic
 [\-S|\-J|\-H|\-V|\-T] [\-x] [\-j <journal_file>] [\-B n|\-I n|\-f <file_name>|\-i <input_list>] [\-t n|[[\-a n][\-b n]]] [\-d <target_dir>] [\-R|\-r|\-L|\-l] [\-Q] <filesystem>
 
@@ -29,6 +35,24 @@ Direct use of the Journal of a currently read-write open filesystem produce read
 
 
 .SH OPTIONS
+.B
+Magic Options: (new and experimental)
+These options are for a mulit-stage recover especially for file restore after delete the file system. These functions are currently only available for ext3.
+Umount the file system directly after an accidentally destroy and use these options with a copy of this file system. These functions are not adequately tested in this version and can include a lot of bugs.
+
+.TP
+.B
+\-M
+Try to recover all files. This option should be used if the entire Filessytem was deleted.
+.TP
+.B
+\-m
+Try to recover only all deleted files. Use this option with a partially deleted Filesystem.
+
+
+
+
+.PP  
 .B
 Information Options: 
 These options generate generic status information from the filesystem and the Journal.
@@ -485,6 +509,12 @@ Examples of simple Recover
  # ext4magic /dev/sda3 -r
 
 try to restore all files deleted last 24 hours. Write in directory "./RECOVERDIR/"
+
+
+.B
+ # ext4magic /dev/sda3 -M -d /home/recover
+
+try the new experimental multi-stage recover of all files after the filesystem is deleted with a "rm -rf *" . Write the files to "/home/recover". 
 
 
 .B

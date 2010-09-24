@@ -173,7 +173,15 @@ void imap_search(char* , __u32, __u32 ); // search inode by imap (step1 + step2)
 int check_find_dir(char*, ext2_ino_t, char*, char*); //check if the directory always recovert; then move
 
 
+
+//public function file_type.c
+int ident_file(struct found_data_t*, __u32*, char*, char*); // index of the files corresponding magic result strings
+void get_file_property(struct found_data_t*); //set the file properties and the extension
+
+
+
 //public functions magic_block_scan.c
-//void magic_block_scan(char* , __u32);
+int magic_block_scan3(char*, __u32);//main of the magic_scan_engine for ext3
+
 
 #endif

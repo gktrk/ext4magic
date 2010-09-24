@@ -61,7 +61,7 @@ errout:
 }
 
 
-
+// subfunction for check_find_dir() use in stage 2 of magical recover 
 int rename_hardlink_path(char *old, char *neu){
 	char *newname;
 	char *endname;
@@ -81,7 +81,6 @@ int rename_hardlink_path(char *old, char *neu){
 //#ifdef DEBUG
 			fprintf(stderr,"HL-DB change %s -> %s\n",old,neu);
 //#endif
-
 		}
 		head.pointer = head.pointer->next;
 	}
@@ -108,6 +107,7 @@ char* check_link_stack(ext2_ino_t inode_nr, __u32 generation){
 }
 
 
+
 static void del_link_stack(struct link_entry* entry){
 	if(entry->name)	
 		free(entry->name);
@@ -127,6 +127,7 @@ static void del_link_stack(struct link_entry* entry){
 }
 
 
+
 int  match_link_stack(ext2_ino_t inode_nr, __u32 generation){
 	int retval = 1;
 	if ((head.pointer->inode_nr == inode_nr) && (head.pointer->generation == generation)){
@@ -137,6 +138,7 @@ int  match_link_stack(ext2_ino_t inode_nr, __u32 generation){
 	}
 return retval;
 }
+
 
 
 void clear_link_stack(){

@@ -247,7 +247,7 @@ errout:
 
 //subfunction for main
 void print_modus_error(){
-	char message0[] = "Warning: only input of one modus allowed [ -R | -r | -L | -l | -H ]\n";
+	char message0[] = "Invalide parameter : only input of one modus allowed [ -M | -m | -R | -r | -L | -l | -H ]\n";
 	fprintf(stderr,"%s",message0);
 }
 
@@ -258,8 +258,11 @@ int main(int argc, char *argv[]){
 char* progname = argv[0];
 int             retval, exitval;
 char		defaultdir[] = "RECOVERDIR" ;
+time_t 		help_time;
 //FIXME : usage is not correct
-const char      *usage = "ext4magic [-S|-J|-H|-V|-T] [-x] [-j <journal_file>] [-B n|-I n|-f <file_name>|-i <input_list>] [-t n|[[-a n][-b n]]] [-d <target_dir>] [-R|-r|-L|-l] [-Q] <filesystem>";
+const char      *usage = "\next4magic -M [-j <journal_file>] [-d <target_dir>] <filesystem> \n\
+ext4magic -m [-j <journal_file>] [-d <target_dir>] <filesystem> \n\
+ext4magic [-S|-J|-H|-V|-T] [-x] [-j <journal_file>] [-B n|-I n|-f <file_name>|-i <input_list>] [-t n|[[-a n][-b n]]] [-d <target_dir>] [-R|-r|-L|-l] [-Q] <filesystem>";
 int             c;
 int             open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
 int             exit_status = 0 ;
@@ -293,21 +296,43 @@ if ( argc < 3 )
      return  EXIT_FAILURE;
    }
 
-   {
+
 // set default Time from "now -1 day" to "now"
-	time_t  help_time;
-	time( &help_time ); 
-	t_before = (__u32) help_time;
-	t_after = t_before - 86400 ;
-   }
+	
+time( &help_time ); 
+t_before = (__u32) help_time;
+t_after = t_before - 86400 ;
+ 
 
 // decode arguments
-while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) { 
+while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) { 
                 switch (c) {
 		case 'M':
 			//not active, still in development
+			if(mode & RECOVER_INODE){
+				print_modus_error();
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
+			}
+			mode |= RECOVER_INODE;
+			mode |= READ_JOURNAL;
+			recovermodus = RECOV_ALL ;
 			magicscan = 1;
 			break;
+
+		case 'm':
+			//not active, still in development
+			if(mode & RECOVER_INODE){
+				print_modus_error();
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
+			}
+			mode |= RECOVER_INODE;
+			mode |= READ_JOURNAL;
+			recovermodus = RECOV_DEL ;
+			magicscan = 1;
+			break;
+		
                 case 'S':
                         mode |= PRINT_SUPERBLOCK ;
                         break; 
@@ -315,7 +340,8 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 		case 'H':
 			if(mode & RECOVER_INODE){
 				print_modus_error();
-			break;
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
 			}
 			mode |= RECOVER_INODE;
 			mode |= PRINT_HISTOGRAM ;
@@ -324,7 +350,8 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 		case 'R':
 			if(mode & RECOVER_INODE){
 				print_modus_error();
-				break;
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
 			}
 			mode |= RECOVER_INODE;
 			mode |= READ_JOURNAL;
@@ -334,7 +361,8 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 		case 'r':
 			if(mode & RECOVER_INODE){
 				print_modus_error();
-				break;
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
 			}
 			mode |= RECOVER_INODE;
 			mode |= READ_JOURNAL;
@@ -344,7 +372,8 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 		case 'L':
 			if(mode & RECOVER_INODE){
 				print_modus_error();
-				break;
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
 			}
 			mode |= RECOVER_INODE;
 			mode |= READ_JOURNAL;
@@ -354,7 +383,8 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 		case 'l':
 			if(mode & RECOVER_INODE){
 				print_modus_error();
-				break;
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
 			}
 			mode |= RECOVER_INODE;
 			mode |= READ_JOURNAL;
@@ -572,8 +602,16 @@ while ((c = getopt (argc, argv, "TJRLlrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 // check any parameter an options
 // check time option
 if (magicscan){
-	printf("Warning: Activate magic scan,  may be some command line options ignored\n");
+	printf("Warning: Activate magic scan function, may be some command line options ignored\n");
+	mode &= MASK_MAGIC_SCAN;
+	inode_nr = EXT2_ROOT_INO;
+	t_before = (__u32) help_time;
+	if ((!(mode & INPUT_TIME)) || (t_after == t_before - 86400)){
+		t_after = get_last_delete_time(current_fs);
+		mode |= INPUT_TIME;
 	}
+}
+
 
 
 if (mode & INPUT_TIME){
@@ -888,7 +926,10 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 // I think imap is no longer needed from here, free the allocated memory 
 						ext2fs_free_inode_bitmap(imap);
 						imap = NULL;
-						magic_block_scan(des_dir, t_after);
+						if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)) 
+							magic_block_scan3(des_dir, t_after);
+						else
+							printf("The MAGIC Funktion is currently only for ext3 filesystems available\n");
 					}
 					clear_dir_list(dir);
 				}
@@ -953,9 +994,9 @@ exitval = EXIT_SUCCESS;
 
 errout: 
   if (current_fs)    {
-//FIXME in development	
-/*	if (d_bmap){
-		struct ext2fs_struct_loc_generic_bitmap *d_bmap;
+/*//FIXME in development	
+	if (bmap){
+		struct ext2fs_struct_loc_generic_bitmap *d_bmap = bmap ;
 		blockhex(stdout,(void*)d_bmap->bitmap,0,current_fs->super->s_blocks_count >> 3);
 	}*/
 	if (imap) ext2fs_free_inode_bitmap(imap);
@@ -970,6 +1011,8 @@ errout:
         }
   if (pathname) free(pathname);
   clear_link_stack();
+  if (! exitval)
+       printf("ext4magic : EXIT_SUCCESS\n");
   return exitval;
 }
 //-------------------------------------------------------------------------------------------------------------------------------
