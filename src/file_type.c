@@ -45,14 +45,14 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 //Please do not modify the following lines.
 //they are used for indices to the filestypes
 	char	typestr[] ="application/ audio/ image/ message/ model/ text/ video/ ";
-	char	imagestr[] ="gif jp2 jpeg png svg+xml tiff vnd.adobe.photoshop vnd.djvu x-coreldraw x-cpi x-ico x-ms-bmp x-niff x-portable-bitmap x-portable-greymap x-portable-pixmap x-psion-sketch x-quicktime x-unknown x-xcursor x-xpmi x-tga";
+	char	imagestr[] ="gif jp2 jpeg png svg+xml tiff vnd.adobe.photoshop vnd.djvu x-coreldraw x-cpi x-ico x-ms-bmp x-niff x-portable-bitmap x-portable-greymap x-portable-pixmap x-psion-sketch x-quicktime x-unknown x-xcursor x-xpmi x-tga ";
 	char	videostr[] ="3gpp h264 mp2p mp2t mp4 mp4v-es mpeg mpv quicktime x-flc x-fli x-flv x-jng x-mng x-msvideo x-sgi-movie x-unknown ";
 	char	audiostr[] ="basic midi mp4 mpeg x-adpcm x-aiff x-dec-basic x-flac x-hx-aac-adif x-hx-aac-adts x-mod x-mp4a-latm x-pn-realaudio x-unknown x-wav ";
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument.text vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip ";
-	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text";
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite ";
+	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text ";
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -134,7 +134,7 @@ return 1;
 
 
 //default
-int file_default(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_default(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int ret = 0;
 	switch (flag){
 		case 0 :
@@ -166,7 +166,7 @@ int file_default(char *buf, int *size, __u32 scan , int flag, struct found_data_
 
 
 //Textfiles 
-int file_txt(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	switch (flag){
 		case 0 :
 			return (buf[(*size)-1] == (char)0x0a);
@@ -180,7 +180,7 @@ int file_txt(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //Textfiles binary
-int file_bin_txt(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_bin_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	switch (flag){
 		case 0 :
 			return (*size < current_fs->blocksize);
@@ -193,7 +193,7 @@ int file_bin_txt(char *buf, int *size, __u32 scan , int flag, struct found_data_
 
 
 //gzip
-int file_gzip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_gzip(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int		ret = 0;
 
 	switch (flag){
@@ -212,10 +212,10 @@ int file_gzip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 
 
 //zip    ???????????
-int file_zip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_zip(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int		ret = 0;
 	int		j,i;
-	char		token[5];
+	unsigned char		token[5];
 	
 	sprintf(token,"%c%c%c%c",0x50,0x4b,0x05,0x06);
 
@@ -248,22 +248,30 @@ int file_zip(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //iso9660 CD-ROM
-int file_iso9660(char *buf, int *size, __u32 scan , int flag , struct found_data_t* f_data){
+int file_iso9660(unsigned char *buf, int *size, __u32 scan , int flag , struct found_data_t* f_data){
 	__u64		lsize;
 	__u32		*p_32;
 	__u16		*p_16;
 	int		ssize;
 	int		ret = 0;
-	char		cd_str[] = "CD001";
+	unsigned char		cd_str[] = "CD001";
 
 	switch (flag){
-		case 0 :if ((f_data->size)&&(f_data->size <= (__u64)f_data->inode->i_size | ((__u64)f_data->inode->i_size_high<<32))){
-				ssize = (f_data->size % current_fs->blocksize);
-				*size = (ssize)? ssize : current_fs->blocksize;
-				ret = 1;
+		case 0 :
+			if (f_data->size || f_data->h_size) {
+				if (f_data->h_size != f_data->inode->i_size_high)
+					ret = 0;
+				else{
+					if (f_data->inode->i_size < f_data->size)
+						ret = 0;
+					else{
+						ssize = (f_data->size % current_fs->blocksize);
+						*size = (ssize)? ssize : current_fs->blocksize;
+						ret = 1;
+					}
+				}
 			}
 			else {
-			//	*size = current_fs->blocksize;
 				ret =0;
 			}
 			break; 
@@ -275,7 +283,8 @@ int file_iso9660(char *buf, int *size, __u32 scan , int flag , struct found_data
 			p_16 = (__u16*)(buf + 0x8080);
 			if ((!strncmp((buf+0x8001),cd_str,5)) && (ext2fs_le32_to_cpu(*(p_32 +1)) == ext2fs_be32_to_cpu(*p_32))){
 				lsize = (__u64)(ext2fs_le32_to_cpu(*p_32)) * ext2fs_le16_to_cpu(*p_16);
-				f_data->size = lsize;
+				f_data->size = lsize & 0xFFFFFFFF;
+				f_data->h_size = lsize >> 32;
 				ret =1;
 			}
 			break;
@@ -285,13 +294,34 @@ int file_iso9660(char *buf, int *size, __u32 scan , int flag , struct found_data
 
 
 // 7-zip
-int file_7z(char *buf, int *size, __u32 scan , int flag , struct found_data_t* f_data){ 
+int file_7z(unsigned char *buf, int *size, __u32 scan , int flag , struct found_data_t* f_data){ 
 __u64		lsize,*p;
 __u32		ssize;
 int		ret = 0;
 	switch (flag){
 		case 0 : 
-			if ((f_data->size) && (f_data->size <= (__u64)f_data->inode->i_size | ((__u64)f_data->inode->i_size_high<<32))){
+			if (f_data->size || f_data->h_size) {
+				if (f_data->h_size != f_data->inode->i_size_high)
+					ret = 0;
+				else{
+					if (f_data->inode->i_size < f_data->size)
+						ret = 0;
+					else{
+						ssize = (f_data->size % current_fs->blocksize);
+						 if (*size < ssize) 
+							*size = ssize;
+						ret = 1;
+					}
+				}
+			}
+			else {
+				ret =3;
+				*size += 7;
+			}
+			break;
+
+
+/*			if ((f_data->size) && (f_data->size <= (__u64)f_data->inode->i_size | ((__u64)f_data->inode->i_size_high<<32))){
 				ssize = (f_data->size % current_fs->blocksize);
 				if (*size < ssize)
 					*size = ssize;
@@ -301,16 +331,17 @@ int		ret = 0;
 			//	*size +=7;
 				ret = 0;
 			}
-			break;
+			break;*/
 		case 1 :
 			return ( scan & (M_IS_META | M_IS_FILE | M_TXT | M_BLANK)) ? 0 :1 ;
 			break;
 		case 2 :
 			p = (__u64*)(buf+12);
-			lsize = ext2fs_le64_to_cpu(*p) + 32;
+			lsize = ext2fs_le64_to_cpu(*p) + (__u64)32;
 			p++;
-			lsize += (ext2fs_le64_to_cpu(*p));
-			f_data->size = lsize ;
+			lsize = lsize + (ext2fs_le64_to_cpu(*p));
+			f_data->size = lsize & 0xFFFFFFFF ;
+			f_data->h_size = lsize >> 32;
 			ret = 1;
 			break;
 	}
@@ -320,10 +351,10 @@ int		ret = 0;
 			
 
 //cpio
-int file_cpio(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_cpio(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	i,j;
 	int 	ret = 0;
-	char	token[]="TRAILER!!!";
+	unsigned char	token[]="TRAILER!!!";
 
 	switch (flag){
 		case 0 :
@@ -356,10 +387,10 @@ int file_cpio(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 
 
 //pdf
-int file_pdf(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_pdf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	i,j;
 	int 	ret = 0;
-	char	token[6];
+	unsigned char	token[6];
 	sprintf(token,"%c%c%c%c%c",0x25,0x45,0x4f,0x46,0x0a);
 
 	switch (flag){
@@ -391,9 +422,8 @@ int file_pdf(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //tar
-int file_tar(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	ret = 0;
-
 
 	switch (flag){
 		case 0 :
@@ -422,17 +452,17 @@ int file_tar(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //binary
-int file_binary(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_binary(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	ret = 0;
 
 	switch (flag){
 		case 0 :
-		if (*size && ((*size) < current_fs->blocksize - 7)&&(buf[(*size)-1] == (char)0x01)){
+		if (*size && ((*size) < current_fs->blocksize - 7)&&(buf[(*size)-1] == 0x01)){
 			*size +=7;
 			ret = 1;
 		}
 		else {
-			if ((*size < current_fs->blocksize) && ((*size) > current_fs->blocksize - 7) && (buf[(*size)-1] == (char)0x01)){
+			if ((*size < current_fs->blocksize) && ((*size) > current_fs->blocksize - 7) && (buf[(*size)-1] == 0x01)){
 				*size =  current_fs->blocksize;
 				ret = 2;
 			}
@@ -442,7 +472,7 @@ int file_binary(char *buf, int *size, __u32 scan , int flag, struct found_data_t
 					ret = 1;
 				}
 				else{
-					if ((buf[(*size)-1] != (char)0x01)&&(*size < current_fs->blocksize - 128)){
+					if ((buf[(*size)-1] != 0x01)&&(*size < current_fs->blocksize - 128)){
 						*size +=1;
 						ret = 2;
 					}
@@ -459,14 +489,14 @@ int file_binary(char *buf, int *size, __u32 scan , int flag, struct found_data_t
 
 	
 //object
-int file_object(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_object(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	__u32		len;
 	__u32		*p_help;
 	int		ret = 0;
 
 	switch (flag){
 		case 0 :
-			if ((buf[(*size)-1] == (char)0x0a)){
+			if ((buf[(*size)-1] == 0x0a)){
 				ret=1;
 			}
 			else{
@@ -487,15 +517,15 @@ int file_object(char *buf, int *size, __u32 scan , int flag, struct found_data_t
 
 
 //jpeg
-int file_jpeg(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_jpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	ret = 0;
 
 	switch (flag){
 		case 0 :
-			if ((*size>1) && (buf[(*size)-1] == (char)0xd9) && (buf[(*size)-2] == (char)0xff))
+			if ((*size>1) && (buf[(*size)-1] == (unsigned char)0xd9) && (buf[(*size)-2] == (unsigned char)0xff))
 					ret = 1;
 			else
-				if ((*size == 1) && (buf[(*size)-1] == (char)0xd9))
+				if ((*size == 1) && (buf[(*size)-1] == (unsigned char)0xd9))
 					ret = 1;
 			break;
 			
@@ -509,12 +539,12 @@ int file_jpeg(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 
 
 //gif
-int file_gif(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_gif(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	ret = 0;
 
 	switch (flag){
 		case 0 :
-			if ((*size) && (*size < current_fs->blocksize) && (buf[(*size)-1] == (char)0x3b))
+			if ((*size) && (*size < current_fs->blocksize) && (buf[(*size)-1] == 0x3b))
 					ret = 1;
 			break;
 		case 1 :
@@ -527,8 +557,8 @@ int file_gif(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //bmp
-int file_bmp(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	__u32	*p_32;
+int file_bmp(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	//__u32	*p_32;
 	int 	ret = 0;
 
 	switch (flag){
@@ -543,8 +573,9 @@ int file_bmp(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 			break;
 
 		case 2 :
-			p_32 = (__u32*)(buf+2);
-			f_data->size = (__u64)ext2fs_le32_to_cpu(*p_32);
+	//		p_32 = (__u32*)(buf+2);
+        //			f_data->size =  ext2fs_le32_to_cpu(*p_32);
+			f_data->size = ((__u32)*(buf+2)) | ((__u32)*(buf+3))<<8 | ((__u32)*(buf+4))<<16 | ((__u32)*(buf+5))<<24 ;
 			ret =1;
 	}
 	return ret;
@@ -552,7 +583,7 @@ int file_bmp(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //png
-int file_png(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_png(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	ret = 0;
 
 	switch (flag){
@@ -572,15 +603,15 @@ int file_png(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //mng
-int file_mng(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_mng(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	ret = 0;
 
 	switch (flag){
 		case 0 :
-			if ((*size>1) && (buf[(*size)-1] == (char)0xd5) && (buf[(*size)-2] == (char)0xf7))
+			if ((*size>1) && (buf[(*size)-1] == (unsigned char)0xd5) && (buf[(*size)-2] == (unsigned char)0xf7))
 				ret = 1;
 			else
-				if ((*size == 1) && (buf[(*size)-1] == (char)0xd5))
+				if ((*size == 1) && (buf[(*size)-1] == (unsigned char)0xd5))
 					ret = 1;
 			break;
 		case 1 :
@@ -592,10 +623,10 @@ int file_mng(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //tga
-int file_tga(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	i,j;
 	int 	ret = 0;
-	char	token[]="-XFILE.";
+	unsigned char	token[]="-XFILE.";
 
 	switch (flag){
 		case 0 :
@@ -619,10 +650,10 @@ int file_tga(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //mpeg
-int file_mpeg(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_mpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	i,j;
 	int 	ret = 0;
-	char	token[5];
+	unsigned char	token[5];
 	sprintf(token,"%c%c%c%c",0x00,0x00,0x01,0xb9);
 	switch (flag){
 		case 0 :
@@ -646,9 +677,8 @@ int file_mpeg(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 
 	
 //riff
-int file_riff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_riff(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	__u32		*p_32  ;
-	__u64		lsize ;
 	__u32		ssize ;
 	int 		ret = 0;
 
@@ -671,15 +701,15 @@ int file_riff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 			p_32++;
 			switch (buf[3]){
 				case 'F' :
-					lsize = (__u64) ext2fs_le32_to_cpu(*p_32) + 8 ;
+					ssize =  ext2fs_le32_to_cpu(*p_32) + 8 ;
 					break;
 				case 'X' :
-					lsize = (__u64) ext2fs_be32_to_cpu(*p_32) + 8 ;
+					ssize =  ext2fs_be32_to_cpu(*p_32) + 8 ;
 					break;
 				default :
-					lsize = 0;
+					ssize = 0;
 			}
-			f_data->size = lsize;
+			f_data->size = ssize;
 			ret=1;
 		break;
 	}
@@ -687,25 +717,24 @@ int file_riff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 }
 
 // tiff
-int file_tiff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_tiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	__u32		*p_32  ;
-	__u64		lsize = 0;
-	__u32		ssize ;
+	__u32		ssize = 0;
 	int 		ret = 0;
 
 	switch (flag){
 		case 0 :
 			if (f_data->size ){
-				lsize = (((unsigned long long)f_data->inode->i_size_high << 32)| f_data->inode->i_size);
-				if (lsize > f_data->size){  //FIXME
+				if (f_data->inode->i_size > f_data->size){  //FIXME
 					*size +=1;
 					ret =1;
 				}
 			}
-			else
-				if (f_data->inode->i_block[12])   //FIXME for ext4
+			else{
+				if (f_data->inode->i_block[12]){   //FIXME for ext4
 					ret = 2;
-				
+				}
+			}				
 			break;
 		case 1 : 
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
@@ -713,12 +742,12 @@ int file_tiff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 		case 2 :
 			p_32 = (__u32*)buf;
 			p_32++;
-			if ((*buf == (char) 0x49) && (*(buf+1) == (char) 0x49))
-				lsize = (__u64)ext2fs_le32_to_cpu(*p_32);
-			if ((*buf == (char) 0x4d) && (*(buf+1) == (char) 0x4d))
-				lsize = (__u64)ext2fs_be32_to_cpu(*p_32);
+			if ((*buf == 0x49) && (*(buf+1) == 0x49))
+				ssize = ext2fs_le32_to_cpu(*p_32);
+			if ((*buf == 0x4d) && (*(buf+1) == 0x4d))
+				ssize = ext2fs_be32_to_cpu(*p_32);
 			
-			f_data->size = lsize;
+			f_data->size = ssize;
 			ret = 1;
 			
 		break;
@@ -729,7 +758,7 @@ int file_tiff(char *buf, int *size, __u32 scan , int flag, struct found_data_t* 
 
 
 //mod
-int file_mod(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_mod(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 		ret = 0;
 
 	switch (flag){
@@ -748,12 +777,12 @@ int file_mod(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //CDF    FIXME ????????????????
-int file_CDF(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_CDF(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 		ret = 0;
 
 	switch (flag){
 		case 0 :
-			if (*size < (current_fs->blocksize -7) && ((*size ) && buf[(*size)-1] == (char)0xff )){
+			if (*size < (current_fs->blocksize -7) && ((*size ) && buf[(*size)-1] == (unsigned char)0xff )){
 			*size = ((*size) +8) ;
 			ret = 3;
 		}
@@ -768,16 +797,15 @@ int file_CDF(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f
 
 
 //SQLite   FIXME ????????????????
-int file_SQLite(char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+int file_SQLite(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 		ret = 0;
 	__u16		*p_16;
-	__u64		lsize;
-	int		ssize;
+	__u32		ssize;
 
 	switch (flag){
 		case 0 :
 			if (f_data->size ) {
-				ssize = (int) f_data->size;
+				ssize = f_data->size;
 				if (ssize < current_fs->blocksize){
 					*size += ssize -1;
 					*size &= (~(ssize-1));
@@ -795,8 +823,8 @@ int file_SQLite(char *buf, int *size, __u32 scan , int flag, struct found_data_t
 		
 		case 2:
 			p_16 = (__u16*)(buf+16);
-			lsize = (__u64)ext2fs_be16_to_cpu(*p_16);
-			f_data->size = lsize;
+			ssize = (__u32)ext2fs_be16_to_cpu(*p_16);
+			f_data->size = ssize;
 			ret = 1;
 		break;
 	}
@@ -1765,6 +1793,16 @@ void get_file_property(struct found_data_t* this){
 		case 0x080f     :               //SQLite
 	              this->func = file_SQLite ;
 	              strncat(this->name,".sql",7);
+		break;
+
+		case 0x0810     :               //OpenOffice.org 
+	              this->func = file_zip ;
+	              strncat(this->name,".sxw",7);
+		break;
+	
+		case 0x0811     :               //Microsoft
+	              this->func = file_CDF ;
+	//              strncat(this->name,".doc",7);
 		break;
 
 	//----------------------------------------------------------------

@@ -954,7 +954,7 @@ blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *la
 	blk_t 				b_blk,block_count, next;
 	blk_t				count=0;
 	int 				i;
-	unsigned long long		i_size = 0;
+	__u64				i_size = 0;
 	
 	i = 0;
 	block_count = 0;
@@ -966,13 +966,13 @@ blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *la
 
 		switch (i){
 			case EXT2_IND_BLOCK :
-				i_size = get_ind_block_len(buf, &block_count, last, &next);
+				get_ind_block_len(buf, &block_count, last, &next, &i_size);
 				break;
 			case EXT2_DIND_BLOCK :
-				i_size = get_dind_block_len(buf, &block_count, last,  &next);
+				get_dind_block_len(buf, &block_count, last,  &next, &i_size);
 				break;
 			case EXT2_TIND_BLOCK :
-				i_size = get_tind_block_len(buf, &block_count, last, &next);
+				get_tind_block_len(buf, &block_count, last, &next, &i_size);
 				break;
 			default:
 //				printf("faulty Block %u as indirekter_block %d \n", i,blk); 
@@ -981,7 +981,7 @@ blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *la
 		}
 
 		if (i_size){
-			i_size += (((unsigned long long)inode->i_size_high << 32)| inode->i_size);
+			i_size += (((__u64)inode->i_size_high << 32)| inode->i_size);
 			inode->i_size = i_size & 0xffffffff ;
 			inode->i_size_high = i_size >> 32 ;
 			inode->i_blocks += (block_count * (current_fs->blocksize / 512));

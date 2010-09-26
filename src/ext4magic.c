@@ -207,7 +207,7 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
         fprintf(stderr,"%s %d while reading block bitmap\n",device, retval);
                 goto errout;
         }
-//FIXME
+
 	if (magicscan){	
 //		switch on magic scan function 
 		if( ext2fs_copy_bitmap(current_fs->inode_map, &imap) || ext2fs_copy_bitmap(current_fs->block_map, &bmap)){

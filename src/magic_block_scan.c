@@ -39,7 +39,7 @@ extern ext2_filsys     current_fs ;
 ext2fs_block_bitmap 	  	d_bmap = NULL ; 
 
 
-static __u32 get_block_len(char *buf){
+static __u32 get_block_len(unsigned char *buf){
 	int		len = current_fs->blocksize -1;
 
 	while ((len >= 0) && (!(*(buf + len)))) 
@@ -60,12 +60,13 @@ static struct found_data_t* free_file_data(struct found_data_t* old){
 
 
 
-static struct found_data_t* new_file_data(blk_t blk,__u32 scan,char *magic_buf, char* buf, __u32 *f){
+static struct found_data_t* new_file_data(blk_t blk,__u32 scan,char *magic_buf, unsigned char* buf, __u32 *f){
 	struct found_data_t 		*new;
 	int				str_len;
 	__u32				name_len;
 	char				*c;
 	int				def_len = 20;
+	char				name_str[20];
 
 	new = malloc(sizeof(struct found_data_t));
 	if (!new) return NULL;
@@ -75,13 +76,16 @@ static struct found_data_t* new_file_data(blk_t blk,__u32 scan,char *magic_buf, 
 	new->leng  = 0;
 	new->scan  = scan;
 	new->size  = 0;
+	new->h_size = 0;
 	new->func = NULL;
 	if ( ident_file(new,&scan,magic_buf,buf)){
 	new->type = scan;
 	str_len = strlen(magic_buf) + 1;
 	c = strpbrk(magic_buf,";:, ");
-	if (c)
-		name_len = c - magic_buf + def_len; 
+	if (c){	
+		*c = 0;
+		name_len = c - magic_buf + def_len;
+	} 
 	else
 		name_len = str_len + def_len;
 	
@@ -94,8 +98,9 @@ static struct found_data_t* new_file_data(blk_t blk,__u32 scan,char *magic_buf, 
 	}
 	else{
 		strcpy(new->scan_result,magic_buf);
-		strncpy(new->name, magic_buf , name_len - 20);
-		sprintf(new->name + name_len - 20,"/%010u",blk);
+		strncpy(new->name, magic_buf , name_len - def_len+1);
+		sprintf(name_str,"/%010lu",blk);
+		strcat(new->name,name_str);
 		get_file_property(new);
 		new->func(buf,&name_len,scan,2,new);
 	}
@@ -120,6 +125,7 @@ static struct found_data_t* recover_file_data(char *des_dir, struct found_data_t
 static struct found_data_t* forget_file_data(struct found_data_t* this, __u32 *p_follow){
 #ifdef  DEBUG_MAGIC_SCAN
 	printf("TRASH :  %s  : leng  %lu :  begin  %lu\n", this->name, this->inode->i_size , this->first);
+//	dump_inode(stdout, "",0, (struct ext2_inode *)this->inode, 1);
 #endif
 	free_file_data(this);
 	*p_follow = 0;
@@ -158,7 +164,7 @@ static int file_data_correct_size(struct found_data_t* this, int size){
 	
 
 
-static int check_file_data_end(struct found_data_t* this,char *buf){
+static int check_file_data_end(struct found_data_t* this,unsigned char *buf){
 	int 		size;
 	int 		ret = 0;
 
@@ -174,7 +180,7 @@ static int check_file_data_end(struct found_data_t* this,char *buf){
 
 
 //?????
-static int check_data_passage(char *a_buf, char *b_buf){
+static int check_data_passage(char *a_buf, unsigned char *b_buf){
 	int		 i, blocksize;
 	int		sum[4][2];
 	
@@ -184,7 +190,7 @@ static int check_data_passage(char *a_buf, char *b_buf){
 
 
 
-static int check_file_data_possible(struct found_data_t* this, __u32 scan ,char *buf){
+static int check_file_data_possible(struct found_data_t* this, __u32 scan ,unsigned char *buf){
 	int ret = 0;
 	int size ;
 	ret = this->func(buf, &size ,scan ,1 , this);
@@ -194,7 +200,7 @@ static int check_file_data_possible(struct found_data_t* this, __u32 scan ,char 
 
 
 
-static int check_indirect_meta3(char *block_buf){
+static int check_indirect_meta3(unsigned char *block_buf){
 	blk_t  	*pb_block;
 	blk_t	last;
 	int 	i = current_fs->blocksize/sizeof(blk_t);
@@ -219,7 +225,7 @@ static int check_indirect_meta3(char *block_buf){
 
 
 
-static int check_meta3_block(char *block_buf, blk_t blk, __u32 size){
+static int check_meta3_block(unsigned char *block_buf, blk_t blk, __u32 size){
 	blk_t 		block, *pb_block;
 	int		i,j ;
 
@@ -250,11 +256,11 @@ static int check_meta3_block(char *block_buf, blk_t blk, __u32 size){
 
 
 
-static int check_meta4_block(char *block_buf, blk_t blk, __u32 size){
+static int check_meta4_block(unsigned char *block_buf, blk_t blk, __u32 size){
 	__u16		*p_h16;
 	__u16		h16;
 
-	if(!((block_buf[0] == (char)0x0a) && (block_buf[1] == (char)0xf3)))
+	if(!((block_buf[0] == 0x0a) && (block_buf[1] == (unsigned char)0xf3)))
 		return 0;
 	p_h16 = (__u16*)block_buf+2;
 	h16 = ext2fs_le16_to_cpu(*p_h16);
@@ -270,7 +276,7 @@ static int check_meta4_block(char *block_buf, blk_t blk, __u32 size){
 
 
 
-static int check_dir_block(char *block_buf, blk_t blk, __u32 size){
+static int check_dir_block(unsigned char *block_buf, blk_t blk, __u32 size){
 	struct ext2_dir_entry_2      *dir_entry;
 	ext2_ino_t	inode_nr;
 	__u16		len;
@@ -298,7 +304,7 @@ static int check_dir_block(char *block_buf, blk_t blk, __u32 size){
 
 
 
-static int check_acl_block(char *block_buf, blk_t blk, __u32 size){
+static int check_acl_block(unsigned char *block_buf, blk_t blk, __u32 size){
 	__u32		*p32;
 	int 		i;
 	
@@ -323,7 +329,7 @@ static int check_acl_block(char *block_buf, blk_t blk, __u32 size){
 
 
 
-static int add_ext3_file_meta_data(struct found_data_t* this, char *buf, blk_t blk){
+static int add_ext3_file_meta_data(struct found_data_t* this, unsigned char *buf, blk_t blk){
 	blk_t   next_meta;
 	blk_t	last_data = 0;
 	next_meta = inode_add_meta_block(this->inode , blk, &last_data, buf );
@@ -370,18 +376,18 @@ return flag;
 
 
 //magic scanner 
-static int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *magic_buf, __u32 size, blk_t blk){
+static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_f, char *magic_buf, __u32 size, blk_t blk){
 	//int	count = size-1;
 	int	count = current_fs->blocksize -1 ;
 	int	*i , len;
 	char	text[100] = "";
 	char 	*p_search;
 	__u32	retval = 0;
-	char	searchstr[] = "7-zip cpio Image filesystem CD-ROM MPEG 9660 Targa Kernel boot Linux x86 SQLite ";
-	char	token[10]; 
+	char	searchstr[] = "7-zip cpio Image filesystem CD-ROM MPEG 9660 Targa Kernel boot Linux x86 SQLite OpenOffice.org ";
+	char	token[20]; 
  	
-	strncpy(text,magic_buffer(cookie_f,buf , size),99);
-	strncpy(magic_buf, magic_buffer(cookie , buf , size),99);
+	strncpy(text,magic_buffer(cookie_f,buf , size),60);
+	strncpy(magic_buf, magic_buffer(cookie , buf , size),60);
 	while (count >= 0 && (*(buf+count) == 0)) count-- ;
 #ifdef  DEBUG_MAGIC_SCAN
 	printf("Scan Result :  %s    %d\n", magic_buf , count+1) ;
@@ -456,7 +462,7 @@ static int magic_check_block(char* buf,magic_t cookie , magic_t cookie_f, char *
 			}
 			token[len] = 0;
 			if (strstr(text,token)){
-				strncpy(magic_buf,text,99);
+				strncpy(magic_buf,text,90);
 				retval |= (M_APPLI | M_ARCHIV);
 				break;
 			}
@@ -516,7 +522,7 @@ out:
 
 
 
-static struct found_data_t* soft_border(char *des_dir, char *buf, struct found_data_t* file_data, __u32* follow, blk_t blk){
+static struct found_data_t* soft_border(char *des_dir, unsigned char *buf, struct found_data_t* file_data, __u32* follow, blk_t blk){
 	if ( check_file_data_end(file_data, buf ))
 		file_data = recover_file_data(des_dir, file_data, follow);
 	else{ 
@@ -527,7 +533,7 @@ return file_data;
 }
 
 
-static int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, char* buf){
+static int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, unsigned char* buf){
 	blk_t  			begin;
 	blk_t			end;
 	int 			count=1;
@@ -562,7 +568,7 @@ return count;
 
 
 
-static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, char* buf, blk_t* p_flag){
+static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_bmap, unsigned char* buf, blk_t* p_flag){
 	blk_t  			begin;
 	blk_t			end;
 	int 			count=0;
@@ -640,9 +646,9 @@ blk_t						blk[2] ;
 blk_t						j;
 blk_t						flag[MAX_RANGE];
 blk_t						fragment_flag;
-char 						*buf = NULL;
+unsigned char 					*buf = NULL;
 char						*magic_buf = NULL;
-char						*tmp_buf = NULL;
+unsigned char					*tmp_buf = NULL;
 int						blocksize, ds_retval,count,i,ret;
 __u32						scan,follow, size;
 
@@ -659,7 +665,7 @@ if ((! cookie) ||  magic_load(cookie, NULL) || (! cookie_f) || magic_load(cookie
 }
 buf = malloc(blocksize * MAX_RANGE);
 tmp_buf = malloc(blocksize);
-magic_buf = malloc(200);
+magic_buf = malloc(100);
 if ((! buf) || (! magic_buf) || (! tmp_buf)){
 	fprintf(stderr,"ERROR: can't allocate memory\n");
 	goto errout;

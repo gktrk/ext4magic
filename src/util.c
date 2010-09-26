@@ -333,7 +333,7 @@ for (flag=0;flag<2;flag++){
 			}
 		}
 	}
-first = last;
+if(!flag) first = last;
 }
 
 	if(buf) {
@@ -525,14 +525,15 @@ unsigned long parse_ulong(const char *str, const char *cmd,
 }
 
 
-unsigned long long get_nblock_len(char *buf, blk_t *blk){
+void get_nblock_len(char *buf, blk_t *blk, __u64 *p_len){
 	(*blk)++;
-	return current_fs->blocksize ;
+	*p_len += current_fs->blocksize ;
+return;
 }
 
 
-unsigned long long get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next){
-	unsigned long long 	len;
+void get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next, __u64 *p_len){
+//	unsigned long long 	len;
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
 	blk_t			block, *p_block;
@@ -541,7 +542,7 @@ unsigned long long get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *
 	priv_buf = malloc(current_fs->blocksize);
 	if (! priv_buf){
 		fprintf(stderr,"can not allocate memory\n");
-		return 0;
+		return ;
 	}
 	p_block = (blk_t*)buf;
 	p_block += i;
@@ -556,20 +557,21 @@ unsigned long long get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *
 	}
 	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
 		fprintf(stderr,"ERROR: while read block %10u\n",block);
-		return 0;
+		return ;
 	}
 	*next = (flag) ? 0 : block+1 ;
 	*last = block; 
-	len = get_nblock_len(priv_buf, blk) + (i * (current_fs->blocksize)) ;
+	get_nblock_len(priv_buf, blk, p_len);
+	*p_len += (i * (current_fs->blocksize)) ;
 	*blk += (i + 1) ;
 	free(priv_buf);
-return len;
+return ;
 }
 
 
 
-unsigned long long get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next){
-	unsigned long long 	len;
+void get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p_len){
+//	unsigned long long 	len;
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
 	blk_t			block, *p_block;
@@ -577,7 +579,7 @@ unsigned long long get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t 
 	priv_buf = malloc(current_fs->blocksize);
 	if (! priv_buf){
 		fprintf(stderr,"can not allocate memory\n");
-		return 0;
+		return;
 	}
 	p_block = (blk_t*)buf;
 	p_block += i;
@@ -591,20 +593,21 @@ unsigned long long get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t 
 	}
 	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
 		fprintf(stderr,"ERROR: while read ind-block %10u\n",block);
-		return 0;
+		return;
 	}
 	
-	len = get_ind_block_len(priv_buf, blk, last, next) + (i * current_fs->blocksize * (current_fs->blocksize >>2) ) ;
+	get_ind_block_len(priv_buf, blk, last, next, p_len);
+	*p_len += (i * current_fs->blocksize * (current_fs->blocksize >>2) ) ;
 	*next = ( i == ((current_fs->blocksize >> 2)- 1)) ? *last : 0 ;
 	*blk += ((i * ((current_fs->blocksize >>2) + 1)) + 1) ;
 	free(priv_buf);
-return len;
+return ;
 }
 
 
 
-unsigned long long get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next){
-	unsigned long long 	len;
+void get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p_len){
+//	unsigned long long 	len;
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
 	blk_t			block, *p_block;
@@ -612,7 +615,7 @@ unsigned long long get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t 
 	priv_buf = malloc(current_fs->blocksize);
 	if (! priv_buf){
 		fprintf(stderr,"can not allocate memory\n");
-		return 0;
+		return ;
 	}
 	p_block = (blk_t*)buf;
 	p_block += i;
@@ -626,13 +629,14 @@ unsigned long long get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t 
 	}
 	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
 		fprintf(stderr,"ERROR: while read dind-block %10u\n",block);
-		return 0;
+		return ;
 	}
 	
-	len = get_dind_block_len(priv_buf, blk, last, next) + (i * current_fs->blocksize * (current_fs->blocksize >>2) * (current_fs->blocksize >>2) ) ;
+	get_dind_block_len(priv_buf, blk, last, next,p_len);
+	*p_len += (i * current_fs->blocksize * (current_fs->blocksize >>2) * (current_fs->blocksize >>2) ) ;
 	*blk += ((i * ((current_fs->blocksize >>2) + 1) * (current_fs->blocksize >>2)) + 1) ;
 	*next = 0;
 	free(priv_buf);
-return len;
+return;
 }
 

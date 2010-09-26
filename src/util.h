@@ -123,8 +123,9 @@ struct found_data_t{
 blk_t				first;
 blk_t				last;
 blk_t				leng;
-unsigned long long		size;
-int (*func)(char*, int*, __u32, int, struct found_data_t*);
+__u32				size;
+__u32				h_size;
+int (*func)(unsigned char*, int*, __u32, int, struct found_data_t*);
 __u32				scan;
 __u32				type;
 char				*scan_result;
