@@ -1,17 +1,46 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-             !!!!  Important Warning  !!!!
-If you see this note in the README, then you've probably downloaded an 
-unstable version of the source code via CVS.
-There are many new features in development. These functions are not
-activated and still do not work correctly. You'll also get problems 
-if you try to compile this source code.
+Instructions to experimenting with new features, the magic functions.
+---------------------------------------------------------------------
 
-Please use instead the source code of release 0.1.4
+Use no file system specially created for this purpose.
+Why?
+ If you create a test file system, it is likely that all inode copies are included
+ in the Journal. The first stage can restore all files, and you'll never see the
+ magic functions in the third stage.
 
-Thank you for your interest! The next release will include a lot of
-new features. I work hard on it.
 
-robi@users.berlios.de
+Better is the following:
+ Use an existing ext3 filesystem. The last hours should no "find" or a backup tool
+ used global in this file system. That too would write to many inode copies.
+ umount this file system, and create a 1-to-1 copy of the file system.
+ Now mount the file system copy and delete all or many files. Then umount the file system copy.
+
+
+
+Now you can test ext4magic with the deleted copy.
+ You need free space for writing the recovered files.
+ Assuming, the copy is "/dev/sdb1" and you have enough free
+ space at "/home/test/"
+
+ # ext4magic /dev/sdb1 -d /home/test/RECOVER -M
+ if you have deleted all files.
+
+ or
+ # ext4magic /dev/sdb1 -d /home/test/RECOVER -m
+ if not all files were deleted.
+
+
+ It will automatically search for the time of the last deletion.
+ And with a little delay should start the recover. You can now only wait. Depending on the
+ number of deleted files can take a long time. Then you can compare the files with those
+ in the original file system.
+
+ The functions are developed from scratch and can not be stable and reliable.
+ A few responses: working or not working, the last words before a crash, or what file types
+ are ok and which not, can help to improve the features and to develop the tool further.
+
+ robi@users.berlios.de
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 --------------------------------------------------------------------

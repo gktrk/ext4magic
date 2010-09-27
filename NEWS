@@ -1,3 +1,15 @@
+ext4magic 0.2.0 pv0	First test version of ext3 magic-scan-functions. This is a novel multi-stage recovery.
+			There are several recover methods used in succession. All functions use journal entries.
+			Furthermore, the library libmagic and coded file properties are implemented.
+			This automatic functions are specifically designed to recover deleted files immediate 
+			after a recursiv delete command.
+ 
+			For this purpose two new options are available.
+			"-M"  if the entire file system is deleted
+			"-m"  if only parts of the file system is deleted
+
+
+
 ext4magic 0.1.4		Support for user-modifiable file attributes.
 			ext4magic can now restore the ext2/3/4 File attributes.
 			It is disabled by default. To activate, you must add the option --enable-file-attr

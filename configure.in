@@ -15,9 +15,11 @@ AC_CHECK_HEADER([uuid/uuid.h],[],[fail=1])
 test $fail = 1 &&
 AC_MSG_ERROR([You must install the develop packages "ext2fs , blkid , e2p , uuid" to build ext4magic])
 
-if pkg-config --exists 'ext2fs < 1.41.9' ; then
+
+fail=0
+AC_SEARCH_LIBS([ext2fs_test_inode_bitmap_range], [ext2fs], [], [fail=1])
+test $fail = 1 &&
 AC_MSG_ERROR([You must have ext2fs version >= 1.41.9 to build ext4magic])
-fi
 
 fail=0
 AC_SEARCH_LIBS([magic_buffer], [magic], [], [fail=1])

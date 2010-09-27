@@ -113,7 +113,7 @@ return new;
 
 
 static struct found_data_t* recover_file_data(char *des_dir, struct found_data_t* this, __u32 *follow){
-	recover_file(des_dir,"MAGIC_3",this->name,(struct ext2_inode*)this->inode, 0 , 1);
+	recover_file(des_dir,"MAGIC-3",this->name,(struct ext2_inode*)this->inode, 0 , 1);
 	free_file_data(this);
 	*follow = 0;
 	return NULL;
