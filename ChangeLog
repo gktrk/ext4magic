@@ -1,6 +1,6 @@
 0.2.0-pv0	BUG: #017447 ; #017453
-		enable the first version of the magic-funktions for ext3
-		new Options "-M" and "-n"
+		enable the first version of the magic-functions for ext3
+		new Options "-M" and "-m"
 		check header und library in configure
 
 
