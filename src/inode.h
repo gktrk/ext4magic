@@ -69,7 +69,7 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block*, ext2_ino_t);//fill a
 //functions for the magic scanner
 struct ext2_inode_large* new_inode(); //create a new inode
 int inode_add_block(struct ext2_inode_large* , blk_t , __u32); //add a block to inode
-blk_t inode_add_meta_block(struct ext2_inode_large*, blk_t, blk_t*, char* ); //add the ext3  indirect Blocks to the inode
+int inode_add_meta_block(struct ext2_inode_large*, blk_t, blk_t*, blk_t*,unsigned char* ); //add the ext3  indirect Blocks to the inode
 
 
 #endif

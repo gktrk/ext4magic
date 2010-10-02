@@ -532,8 +532,7 @@ return;
 }
 
 
-void get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next, __u64 *p_len){
-//	unsigned long long 	len;
+int get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next, __u64 *p_len){
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
 	blk_t			block, *p_block;
@@ -542,7 +541,7 @@ void get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next, __u64 *p
 	priv_buf = malloc(current_fs->blocksize);
 	if (! priv_buf){
 		fprintf(stderr,"can not allocate memory\n");
-		return ;
+		return 0;
 	}
 	p_block = (blk_t*)buf;
 	p_block += i;
@@ -555,9 +554,10 @@ void get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next, __u64 *p
 		}
 		else break;
 	}
-	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
-		fprintf(stderr,"ERROR: while read block %10u\n",block);
-		return ;
+	if ((block >= current_fs->super->s_blocks_count) ||
+		      (ext2fs_test_block_bitmap(bmap,block)) || (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf ))){
+//		fprintf(stderr,"ERROR: while read block %10u\n",block);
+		return 0;
 	}
 	*next = (flag) ? 0 : block+1 ;
 	*last = block; 
@@ -565,13 +565,13 @@ void get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next, __u64 *p
 	*p_len += (i * (current_fs->blocksize)) ;
 	*blk += (i + 1) ;
 	free(priv_buf);
-return ;
+return 1;
 }
 
 
 
-void get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p_len){
-//	unsigned long long 	len;
+int get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p_len){
+	int			ret = 0;
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
 	blk_t			block, *p_block;
@@ -579,7 +579,7 @@ void get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *
 	priv_buf = malloc(current_fs->blocksize);
 	if (! priv_buf){
 		fprintf(stderr,"can not allocate memory\n");
-		return;
+		return 0;
 	}
 	p_block = (blk_t*)buf;
 	p_block += i;
@@ -591,23 +591,26 @@ void get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *
 		}
 		else break;
 	}
-	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
-		fprintf(stderr,"ERROR: while read ind-block %10u\n",block);
-		return;
+	if ((block >= current_fs->super->s_blocks_count) ||
+		         (ext2fs_test_block_bitmap(bmap,block)) || (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf ))){
+//		fprintf(stderr,"ERROR: while read ind-block %10u\n",block);
+		return 0;
 	}
 	
-	get_ind_block_len(priv_buf, blk, last, next, p_len);
-	*p_len += (i * current_fs->blocksize * (current_fs->blocksize >>2) ) ;
-	*next = ( i == ((current_fs->blocksize >> 2)- 1)) ? *last : 0 ;
-	*blk += ((i * ((current_fs->blocksize >>2) + 1)) + 1) ;
+	ret = get_ind_block_len(priv_buf, blk, last, next, p_len);
+	if (ret){
+		*p_len += (i * current_fs->blocksize * (current_fs->blocksize >>2) ) ;
+		*next = ( i == ((current_fs->blocksize >> 2)- 1)) ? *last : 0 ;
+		*blk += ((i * ((current_fs->blocksize >>2) + 1)) + 1) ;
+	}
 	free(priv_buf);
-return ;
+return ret ;
 }
 
 
 
-void get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p_len){
-//	unsigned long long 	len;
+int get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p_len){
+	int 			ret = 0;
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
 	blk_t			block, *p_block;
@@ -615,7 +618,7 @@ void get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *
 	priv_buf = malloc(current_fs->blocksize);
 	if (! priv_buf){
 		fprintf(stderr,"can not allocate memory\n");
-		return ;
+		return 0 ;
 	}
 	p_block = (blk_t*)buf;
 	p_block += i;
@@ -627,16 +630,19 @@ void get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *
 		}
 		else break;
 	}
-	if (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf )){
-		fprintf(stderr,"ERROR: while read dind-block %10u\n",block);
-		return ;
+	if ((block >= current_fs->super->s_blocks_count) ||
+		            (ext2fs_test_block_bitmap(bmap,block)) ||(io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf ))){
+//		fprintf(stderr,"ERROR: while read dind-block %10u\n",block);
+		return 0;
 	}
 	
-	get_dind_block_len(priv_buf, blk, last, next,p_len);
-	*p_len += (i * current_fs->blocksize * (current_fs->blocksize >>2) * (current_fs->blocksize >>2) ) ;
-	*blk += ((i * ((current_fs->blocksize >>2) + 1) * (current_fs->blocksize >>2)) + 1) ;
-	*next = 0;
+	ret = get_dind_block_len(priv_buf, blk, last, next,p_len);
+	if (ret){
+		*p_len += (i * current_fs->blocksize * (current_fs->blocksize >>2) * (current_fs->blocksize >>2) ) ;
+		*blk += ((i * ((current_fs->blocksize >>2) + 1) * (current_fs->blocksize >>2)) + 1) ;
+		*next = 0;
+	}
 	free(priv_buf);
-return;
+return ret;
 }
 

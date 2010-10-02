@@ -950,15 +950,16 @@ return 1;
 
 
 //add the ext3  indirect Blocks to the inode
-blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *last, char *buf ){
-	blk_t 				b_blk,block_count, next;
+int inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *last, blk_t  *next, unsigned char *buf ){
+	blk_t 				b_blk,block_count;
 	blk_t				count=0;
 	int 				i;
 	__u64				i_size = 0;
+	int 				ret = 0;
 	
 	i = 0;
 	block_count = 0;
-	next = 0;
+
 	if (! (inode->i_flags & EXT4_EXTENTS_FL)){
 		
 		while ((i < EXT2_N_BLOCKS) && inode->i_block[i] )
@@ -966,13 +967,13 @@ blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *la
 
 		switch (i){
 			case EXT2_IND_BLOCK :
-				get_ind_block_len(buf, &block_count, last, &next, &i_size);
+				ret = get_ind_block_len(buf, &block_count, last, next, &i_size);
 				break;
 			case EXT2_DIND_BLOCK :
-				get_dind_block_len(buf, &block_count, last,  &next, &i_size);
+				ret = get_dind_block_len(buf, &block_count, last,  next, &i_size);
 				break;
 			case EXT2_TIND_BLOCK :
-				get_tind_block_len(buf, &block_count, last, &next, &i_size);
+				ret = get_tind_block_len(buf, &block_count, last, next, &i_size);
 				break;
 			default:
 //				printf("faulty Block %u as indirekter_block %d \n", i,blk); 
@@ -980,7 +981,7 @@ blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *la
 				break;
 		}
 
-		if (i_size){
+		if (ret   &&  i_size){
 			i_size += (((__u64)inode->i_size_high << 32)| inode->i_size);
 			inode->i_size = i_size & 0xffffffff ;
 			inode->i_size_high = i_size >> 32 ;
@@ -988,14 +989,14 @@ blk_t inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *la
 			inode->i_block[ i ] = blk;
 		}
 		else 
-			next = 0;
+			*next = 0;
 					
-		return next;
+		return ret;
 	}
 	else{
 //		printf("ERROR: ext3 indirect block %u ; but is a ext4_inode\n", blk);
 	//FIXME ext4
 	}
 
- return 1;
+ return 0;
 }

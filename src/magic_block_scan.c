@@ -200,6 +200,38 @@ static int check_file_data_possible(struct found_data_t* this, __u32 scan ,unsig
 
 
 
+static int check_meta3_block(unsigned char *block_buf, blk_t blk, __u32 size){
+	blk_t 		block, *pb_block;
+	int		i,j ;
+
+	size = (size + 3) & 0xFFFFFC ;
+	if (! size ) return 0;
+
+	for (i = size-4 ; i>=0 ; i -= 4){ 
+		pb_block = (blk_t*)(block_buf+i);
+		block = ext2fs_le32_to_cpu(*pb_block);
+		if( block && (block < current_fs->super->s_blocks_count) &&
+		 (ext2fs_test_block_bitmap( d_bmap, block)) && (!ext2fs_test_block_bitmap(bmap,block))){
+			if (i) {  //work not by sparse file
+				for (j = i - 4 ; j >= 0 ;j -= 4){
+					if (block == ext2fs_le32_to_cpu(*((blk_t*)(block_buf+j))))
+						return 0;
+				}
+			}
+			else {
+				if (block == blk+1)
+					return 1;
+			}
+				
+		}
+		else
+			return 0;
+	}
+}
+
+
+
+
 static int check_indirect_meta3(unsigned char *block_buf){
 	blk_t  	*pb_block;
 	blk_t	last;
@@ -224,34 +256,46 @@ static int check_indirect_meta3(unsigned char *block_buf){
 }
 
 
-
-static int check_meta3_block(unsigned char *block_buf, blk_t blk, __u32 size){
-	blk_t 		block, *pb_block;
-	int		i,j ;
-
-	size = (size + 3) & 0xFFFFFC ;
-	if (! size ) return 0;
-
-	for (i = size-4 ; i>=0 ; i -= 4){ 
-		pb_block = (blk_t*)(block_buf+i);
-		block = ext2fs_le32_to_cpu(*pb_block);
-		if( block && (block < current_fs->super->s_blocks_count) &&
-		 (ext2fs_test_block_bitmap( d_bmap, block)) && (!ext2fs_test_block_bitmap(bmap,block))){
-			if (i) {
-				for (j = i - 4 ; j >= 0 ;j -= 4){
-					if (block == ext2fs_le32_to_cpu(*((blk_t*)(block_buf+j))))
-						return 0;
-				}
-			}
-			else {
-				if (block == blk+1)
-					return 1;
-			}
-				
-		}
-		else
-			return 0;
+static int check_dindirect_meta3(unsigned char * block_buf){
+	__u32			*p_blk;
+	__u32			block;
+	unsigned char  		*buf = NULL;
+	int 			ret = 0;
+	
+	buf  = malloc(current_fs->blocksize);
+	if (buf) {
+		p_blk = (__u32*) block_buf;
+		block = ext2fs_le32_to_cpu(*p_blk);
+		io_channel_read_blk ( current_fs->io, block, 1, buf );
+		if (check_meta3_block(buf, block, get_block_len(buf))){
+			ret = check_indirect_meta3(buf);
+		}		
+	free (buf);
 	}
+
+return ret;
+}
+
+
+
+static int check_tindirect_meta3(unsigned char * block_buf){
+	__u32			*p_blk;
+	__u32			block;
+	unsigned char  		*buf = NULL;
+	int 			ret = 0;
+	
+	buf  = malloc(current_fs->blocksize);
+	if (buf) {
+		p_blk = (__u32*) block_buf;
+		block = ext2fs_le32_to_cpu(*p_blk);
+		io_channel_read_blk ( current_fs->io, block, 1, buf );
+		if (check_meta3_block(buf, block, get_block_len(buf))){
+			ret = check_dindirect_meta3(buf);
+		}		
+	free (buf);
+	}
+
+return ret;
 }
 
 
@@ -330,29 +374,42 @@ static int check_acl_block(unsigned char *block_buf, blk_t blk, __u32 size){
 
 
 static int add_ext3_file_meta_data(struct found_data_t* this, unsigned char *buf, blk_t blk){
-	blk_t   next_meta;
+	blk_t   next_meta = 0;
+	blk_t	meta = 0;
 	blk_t	last_data = 0;
-	next_meta = inode_add_meta_block(this->inode , blk, &last_data, buf );
-	this->last = last_data;
+	int 	ret = 0;
 	
-	if (next_meta > 10 && (ext2fs_test_block_bitmap ( d_bmap, next_meta) && (! ext2fs_test_block_bitmap( bmap, next_meta)))){
-		io_channel_read_blk ( current_fs->io,  next_meta, 1, buf );
 
-		if (check_meta3_block(buf, blk, get_block_len(buf))){
-			next_meta = inode_add_meta_block(this->inode , next_meta , &last_data, buf );
+	if (check_indirect_meta3(buf)){
+		ret = inode_add_meta_block(this->inode , blk, &last_data, &next_meta, buf );
+		this->last = last_data;
+	}
+	
+	if (ret && (next_meta > 10 && (ext2fs_test_block_bitmap ( d_bmap, next_meta) && (! ext2fs_test_block_bitmap( bmap, next_meta))))){
+		meta = next_meta;
+		next_meta = 0;
+		io_channel_read_blk ( current_fs->io, meta, 1, buf );
+
+		if (check_meta3_block(buf, meta, get_block_len(buf)) &&  check_dindirect_meta3(buf)){
+			ret = inode_add_meta_block(this->inode , meta, &last_data, &next_meta, buf );
 			this->last = last_data;
 
-			if (next_meta > 10 && (ext2fs_test_block_bitmap ( d_bmap, next_meta) && (! ext2fs_test_block_bitmap( bmap, next_meta)))){
-				io_channel_read_blk ( current_fs->io,  next_meta, 1, buf );
+			if (ret && (next_meta > 10 && (ext2fs_test_block_bitmap ( d_bmap, next_meta) && (! ext2fs_test_block_bitmap( bmap, next_meta))))){
+				meta = next_meta;
+				next_meta = 0;
+				io_channel_read_blk ( current_fs->io, meta, 1, buf );
 
-				if (check_meta3_block(buf, blk, get_block_len(buf))){
-					next_meta = inode_add_meta_block(this->inode , next_meta , &last_data, buf );
+				if (check_meta3_block(buf, meta, get_block_len(buf)) && check_tindirect_meta3(buf)){
+					ret = inode_add_meta_block(this->inode , meta, &last_data, &next_meta, buf );
 					this->last = last_data;
 				}
-			}			
+				
+			}
+					
 		}
+	
 	}
-return (next_meta) ? 0 : 1 ;
+return ret ;
 }
 
 
@@ -365,7 +422,7 @@ static int skip_block(blk_t *p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_
 
 	o_blk = (*p_blk) >> 3;
 	p_bmap = (struct ext2fs_struct_loc_generic_bitmap *) bmap;
-	while (((! *(ds_bmap->bitmap + o_blk)) || (*(ds_bmap->bitmap + o_blk) == 0xff)) && (o_blk < (ds_bmap->real_end >> 3))){  
+	while (((! *(ds_bmap->bitmap + o_blk)) || (*(ds_bmap->bitmap + o_blk) == 0xff)) && (o_blk < (ds_bmap->end >> 3))){  
 		o_blk ++;
 		flag = 1;
 	}
@@ -468,6 +525,8 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 			}
 			p_search++;
 		}
+		if (! (retval & M_APPLI))
+			retval |= M_DATA ;
 		goto out;
 	}
 
@@ -537,20 +596,23 @@ static int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_b
 	blk_t  			begin;
 	blk_t			end;
 	int 			count=1;
-	for (begin = *p_blk; begin < ds_bmap->real_end ; begin++){
+	for (begin = *p_blk; begin <= ds_bmap->end ; begin++){
 		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap)){
 #ifdef  DEBUG_MAGIC_SCAN
 			printf("jump to %d \n",begin);
 #endif
 		}
+		*p_blk = begin;
+		if (begin > ds_bmap->end)
+			return 0;
 		if (ext2fs_test_block_bitmap ( d_bmap, begin) && (! ext2fs_test_block_bitmap( bmap, begin)))
 			break;
 	}
-	*p_blk = begin;
-	if (begin >= ds_bmap->real_end)
+	
+	if (begin > ds_bmap->end)
 		return 0;
 
-	for (end = begin,count=1 ; ((count < MAX_RANGE) && (end < ds_bmap->real_end)); ){
+	for (end = begin,count=1 ; ((count < MAX_RANGE) && (end < ds_bmap->end-1)); ){
 		if (ext2fs_test_block_bitmap(d_bmap, end+1) && (! ext2fs_test_block_bitmap( bmap, end+1))){
 			end++;
 			count++;
@@ -575,21 +637,21 @@ static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap 
 	int			i;
 	errcode_t		x;
 
-	for (begin = *p_blk; begin < ds_bmap->real_end ; begin++){
+	for (begin = *p_blk; begin <= ds_bmap->end ; begin++){
 		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap)){
 #ifdef  DEBUG_MAGIC_SCAN
 			printf("jump to %d \n",begin);
 #endif
 		}
+		*p_blk = begin;
+		if (begin > ds_bmap->end)
+			return 0;
 		if (ext2fs_test_block_bitmap ( d_bmap, begin) && (! ext2fs_test_block_bitmap( bmap, begin)))
 			break;
 	}
-	*p_blk = begin;
-	if (begin >= ds_bmap->real_end)
-		return 0;
 	
 	i = 0;
-	for (end = begin,count=1 ; ((count <= MAX_RANGE) && (end < ds_bmap->real_end)); ){
+	for (end = begin,count=1 ; ((count <= MAX_RANGE) && (end < ds_bmap->end)); ){
 		if (ext2fs_test_block_bitmap(d_bmap, end) && (! ext2fs_test_block_bitmap( bmap, end))){
 			count++;
 			if (!begin)
@@ -679,7 +741,9 @@ while (ds_retval){
 
 	if (d_bmap && ds_retval ){
 		ds_bmap = (struct ext2fs_struct_loc_generic_bitmap *) d_bmap;
-		 
+	
+	count = 0;
+	blk[0] = 0;	 
 	count = get_range(blk ,ds_bmap, buf);
 
 	while (count){
@@ -738,7 +802,7 @@ while (ds_retval){
 #ifdef  DEBUG_MAGIC_SCAN
 					printf("try a fragment recover for metablock %ld\n",flag[i]);
 #endif
-					blk[1] = block_backward(flag[i] , 12);
+					blk[1] = block_backward(flag[i] , 13);
 					if (blk[1]){
 						blk[0] = blk[1];
 						fragment_flag = flag[i];

@@ -972,7 +972,7 @@ int next_block_bitmap(ext2fs_block_bitmap d_bmap){
 	}
 
 i = 0;
-len = fs_bitmap->real_end >> 3;
+len = (fs_bitmap->end +1) >> 3;
 while ((i < len) && (!(*(df_bitmap->bitmap +i))))
 		 i++;
 return  ( i == len) ? 2 : 1 ;
