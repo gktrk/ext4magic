@@ -235,7 +235,7 @@ static int check_meta3_block(unsigned char *block_buf, blk_t blk, __u32 size){
 static int check_indirect_meta3(unsigned char *block_buf){
 	blk_t  	*pb_block;
 	blk_t	last;
-	int 	i = current_fs->blocksize/sizeof(blk_t);
+	int 	i = current_fs->blocksize/sizeof(blk_t) -1;
 	int	count=0;
 	int	next =0;
 	
