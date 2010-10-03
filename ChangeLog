@@ -1,3 +1,8 @@
+
+		BUG: #017547; #017556; #017557; #017559; #017562
+		BUG: #017561 change Install HOWTO
+
+
 0.2.0-pv0	BUG: #017447 ; #017453
 		enable the first version of the magic-functions for ext3
 		new Options "-M" and "-m"

@@ -601,7 +601,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 //--------------------------------------------------------------------------------------------
 // check any parameter an options
 // check time option
-if (magicscan){
+if (mode && magicscan){
 	printf("Warning: Activate magic scan function, may be some command line options ignored\n");
 	mode &= MASK_MAGIC_SCAN;
 	inode_nr = EXT2_ROOT_INO;
