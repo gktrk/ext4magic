@@ -2,20 +2,64 @@ Install ext4magic
 ===================
 
 
-Install HOWTO  short version 
+Install HOWTO 
 ---------------------- 
 
 You have to compile it. It install a binary program /usr/local/sbin/ext4magic and a manpage
-It works only on Linux (with a few limitations also Big-Endian-CPUs)
+It works only on Linux (with a few small limitations also Big-Endian-CPUs)
 Other UNIX operating systems will not compile.
+You need the packages :
+ 
+ gcc
+ make
 
 
-
+The file-command an the library libmagic
+----------------------------------------
 In versions ext4magic > 0.1.4  you need the package of the  Linux command "file".
-If you get the following error:
-"error: The library libmagic.so not found, install the package "file" to build ext4magic"
-and "file" is installed, generate a symlink to the existing version on your computer.
+You need a version > 5.03 (see also BUG:#017561) for stabil magic-functions in ext4magic.
+If found, install also the devel package, or you must create a symlink of the library. (see follow)
 
+
+Users who know exactly what they are doing, can also version file-5.04 install from source.
+download ftp://ftp.astron.com/pub/file/
+You can uninstall the older version of "file" if it has no dependencies to other packages. (eg. perl,apache,...)
+Or you can install a second version to /usr/local, 
+If the old version deleted, the new must necessarily configured to /usr and not to /usr/local .
+
+The following illustrates the installation of a second version
+
+ # tar -xzf file-5.04.tar.gz
+ # cd file-5.04
+ # ./configure
+ # ./make
+ # su -
+ # ./make install
+ # ldconfig
+
+The following command should now show both, the version in "/usr/lib/" and in "/usr/local/lib/"
+ # ldconfig -p | grep libmagic
+        libmagic.so.1 (libc6) => /usr/local/lib/libmagic.so.1
+        libmagic.so.1 (libc6) => /usr/lib/libmagic.so.1
+        libmagic.so (libc6) => /usr/local/lib/libmagic.so
+
+In this case, the symlink "/usr/lib/libmagic.so" should not exist. (see follow)
+
+
+Which of the two libmagic versions the finished ext4magic use, you can check with:
+# ldd /usr/local/sbin/ext4magic | grep libmagic
+        libmagic.so.1 => /usr/local/lib/libmagic.so.1 (0xb7741000)
+
+
+
+If you get the following error:
+
+"error: The library libmagic.so not found, install the package "file" to build ext4magic"
+
+and "file" is installed, probably the devel package it is not installed. Not for all distributions
+it is available. You can work around that by generate a symlink to the existing version of this library.
+
+see the following log:
 # cd /usr/lib
 # ln -s libmagic.so.1 libmagic.so
 # ls -l /usr/lib/libmagic*
@@ -26,7 +70,8 @@ lrwxrwxrwx 1 root root     17 Aug 28 16:09 /usr/lib/libmagic.so.1 -> libmagic.so
 
 
 
-
+Devel packages and librarys
+----------------------------
 First check your current version of libext2fs with the following command
 # /sbin/fsck.ext3 -V
 
@@ -44,8 +89,11 @@ libblkid-devel                  libblkid-dev        libblkid-devel
 
 
 then 
+# tar -xzf ext4magic-0.1.4.tar.gz
+# cd ext4magic-0.1.4
 # ./configure
 # make
+# su -
 # make install
 
 
@@ -64,9 +112,12 @@ save the directory path of lib/ in a variable for future use in configure comman
 # EXT2LIB="$(pwd)/lib"
 
 After this, change into the code directory of ext4magic
+ # tar -xzf ext4magic-0.1.4.tar.gz
+ # cd ext4magic-0.1.4
  # ./configure CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread"
  # make
  # make install
+
 
 ext4magic is so linked to the newer library. You can see different version of libext2fs by:
  # ext4magic -V x
@@ -91,6 +142,7 @@ Prozessoren, getestet wurden derzeit
 
 OpenSuse x86 32/64Bit  
 Ubuntu Sparc64   
+Fedora (VM)
 
 
 Zum Installieren von ext4magic aus dem Quellcode werden folgende Pakete auf dem Rechner benötigt
@@ -100,13 +152,53 @@ nicht schon vorhanden, vorher installiert werden.
 gcc
 make
 
+
+
 In ext4magic > 0.1.4 wird zusätzlich noch das Paket des Linux Befehls "file" benötigt.
-Bei einigen Distributionen erhalten sie trotz installierten Paketes "file" bei configure
-folgende Fehlermedlung:
+Es wird dabei für den stabilen Betrieb der Magic-funktionen eine Version > 5.03 benötigt.(siehe auch BUG:#017561)
+Sollte für diese Version auch ein Devel Paket für diese Distribution auffindbar sein, dann diese auch
+installieren. Nicht in allen Distributionen wird ein solches Devel Paket für "file" gepflegt.
+Das daraus entstehende Problem kann auch durch einen einfachen Symlink umgangen werden. (Siehe weiter unten)
+
+
+Anwender, welche genau wissen was sie tun, können auch die Version "file-5.04" aus dem Quellcode installieren.
+Download ftp://ftp.astron.com/pub/file/
+
+Es kann die alte "file" Version vom Rechner deinstalliert werden, wenn keine weiteren Abhängikeiten zu
+anderen Paketen (zB apache, perl,...) bestehen, oder auch eine zweite Version nach /usr/local
+installiert werden. Wird die alte Version gelöscht, muss die neue zwingend für /usr und nicht für /usr/local
+konfiguriert werden. 
+
+Die Installation einer zweiten Version hier im Überblick.
+
+ # tar -xzf file-5.04.tar.gz
+ # cd file-5.04
+ # ./configure
+ # ./make
+ # su -
+ # ./make install
+ # ldconfig
+
+Das folgenden Kommando sollte jetzt beide Versionen von libmagic zeigen, unterhalb "/usr/lib/" und unterhalb "/usr/local/lib/"
+ # ldconfig -p | grep libmagic
+        libmagic.so.1 (libc6) => /usr/local/lib/libmagic.so.1
+        libmagic.so.1 (libc6) => /usr/lib/libmagic.so.1
+        libmagic.so (libc6) => /usr/local/lib/libmagic.so
+
+In diesem Fall sollte dann der Symlink "/usr/lib/libmagic.so" nicht existieren (siehe weiter unten).
+
+
+Welche der beiden libmagic Versionen das fertig ext4magic nutzt, kann wie folgt überprüft werden:
+# ldd /usr/local/sbin/ext4magic | grep libmagic
+        libmagic.so.1 => /usr/local/lib/libmagic.so.1 (0xb7741000)
+
+
+Erzeugt configure trotz installiertem "file" Paket folgende Fehlermeldung:
+
 "error: The library libmagic.so not found, install the package "file" to build ext4magic"
 
-in diesem Fall wechseln sie in das Verzeichnis /usr/lib und erzeugen dort einen Symlink libmagic.so 
-auf die dort vorhandene Version dieser Library. Folgender Konsollog zeigt das Vorgehen.
+dann als root in das Verzeichnis /usr/lib wechseln und einen Symlink libmagic.so 
+auf die dort vorhandene Version dieser Library erzeugen. Folgender Konsollog zeigt das Vorgehen.
 
 # ls -l /usr/lib/libmagic*
 lrwxrwxrwx 1 root root     17 Aug 28 16:09 /usr/lib/libmagic.so.1 -> libmagic.so.1.0.0
@@ -121,10 +213,11 @@ lrwxrwxrwx 1 root root     17 Aug 28 16:09 /usr/lib/libmagic.so.1 -> libmagic.so
 
 
 
+Devel Pakete und Libraries
+----------------------------
 
 Was weiter benötigt wird, ist abhängig von der Version einer auf ihrem System verwendeten Library.
 Auf dieser Library basieren die Befehle zum Erstellen und Verwalten der ext2/3/4 Filesysteme  
-
 
 
 Installation bei einer aktuellen Version von libext2fs
@@ -164,7 +257,7 @@ Unterverzeichnis ext4magic/src/ und kann aber auch schon von dort aus gestartet 
 
  # make install
 
-Würde das Programm nach /usr/local/sbin/ installieren. Dazu werden Root-Rechte benötigt.
+Als root ausgeführt, wird das Programm nach /usr/local/sbin/ installieren.
 Deinstallieren dann entsprechend mit "make uninstall"
 
 
@@ -181,8 +274,9 @@ davon betroffen sind.
 Mit folgender Vorgehensweise kann dieses Problem umgangen werden.
 
 
-Laden sie von http://e2fsprogs.sourceforge.net/ eine Version von e2fsprogs größer oder gleich Version 1.41.9 herunter.
-Entpacken sie das Archiv und welchseln in das Verzeichnis und kompilieren sie das Programm, ohne es zu installieren.
+Von http://e2fsprogs.sourceforge.net/ eine Version von e2fsprogs größer oder gleich Version 1.41.9 herunterladen.
+Das Archiv entpacken und in das Verzeichnis wechseln.
+Dort das Programm und kompilieren, jedoch ohne es zu installieren.
 
  # tar -xzf e2fsprogs-1.41.9.tar.gz
  # cd e2fsprogs-1.41.9
@@ -191,14 +285,14 @@ Entpacken sie das Archiv und welchseln in das Verzeichnis und kompilieren sie da
 
 Die letzten beiden Befehle werden einige Zeit benötigen und eine Reihe von Ausgaben auf dem Bildschirm machen.
 Erfolgreich ist der Vorgang, wenn in den letzen Zeilen nichts von  "ERROR" steht.
-Speichern sie jetzt das Verzeichnis in dem sie sich momentan jetzt noch befinden mit folgendem Befehl 
-in einer Variable ab
+Das aktuelle Verzeichnis in dem sie sich momentan noch befinden mit folgendem Befehl 
+in einer Variable abspeichern.
 
  # EXT2LIB="$(pwd)/lib"
 
 
-Danach wechseln sie in das Verzeichnis von ext4magic , welches beim Entpacken des Archives von
-ext4magic angelegt wird. Nutzen sie die selbe Shell in der die EXT2LIB Variable angelegt wurde.
+Danach in das Verzeichnis von ext4magic wechseln, welches beim Entpacken des Archives von
+ext4magic angelegt wird. Jetzt die gleiche Shell benutzen in der die EXT2LIB Variable angelegt wurde.
 
  wie folgt compilieren
 
@@ -209,8 +303,8 @@ ext4magic angelegt wird. Nutzen sie die selbe Shell in der die EXT2LIB Variable 
 
 
  
-Die Verwendung der unterschiedlichen Versionen von libext2fs sehen sie zB. im Vergleich 
-der Ausgabe folgender Befehle:
+Die Verwendung der unterschiedlichen Versionen von libext2fs kann im Vergleich der 
+Ausgabe folgender Befehle erkannt werden:
  
 
   # ext4magic -V x
@@ -226,20 +320,23 @@ der Ausgabe folgender Befehle:
 
 Sollten sie ext4magic installiert haben und dennoch nicht als root aufrufen können, liegt es wahrscheinlich an der PATH Variable.
 In vielen Distributionen ist /usr/local/sbin default entweder gar nicht in der PATH-Variable, oder nur wenn sie bei der Anmeldung
-als root wirklich eine Loginshell durchlaufen haben. Sollte obwohl sie als root ausgeführt ext4magic nicht gefunden werden,
-wechseln mit dem Befehl
+als root wirklich eine Loginshell durchlaufen haben. Sollte obwohl sie als root ausgeführt ext4magic
+nicht gefunden werden, wechseln mit dem Befehl
 
  # su - 
 
-noch einmal zu root. Dabei wird eine Loginshell durchlaufen und die PATH-Variable auch auf diese lokalen Systemverwalter Programme gesetzt.
-Sollte es auch jetzt nicht funktionieren, überprüfen sie ihre PATH Variable des Users root. Hier sollte "/usr/local/sbin" mit
-aufgeführt sein.
+noch einmal zu root. 
+Dabei wird eine Loginshell durchlaufen und die PATH-Variable auch auf diese lokalen Systemverwalter Programme gesetzt.
+Sollte es auch jetzt nicht funktionieren, überprüfen sie ihre PATH Variable des Users root. 
+Hier sollte "/usr/local/sbin" mit aufgeführt sein.
 
-Das selbe was eben bei der PATH-Variable gesagt wurde, könnte sich ähnlich auch bei der  MANPATH Variable darstellen. Sollten sie die
-Manpage von ext4magic, obwohl sie das Programm installiert haben, nicht aufrufen können. Überprüfen sie die MANPATH Variable.
+Das selbe was eben bei der PATH-Variable gesagt wurde, könnte sich ähnlich auch bei der  
+MANPATH Variable darstellen. Sollten sie die Manpage von ext4magic, obwohl sie das Programm installiert haben, 
+nicht aufrufen können. Überprüfen sie die MANPATH Variable.
 
-Sollten sie ext4magic nicht installieren, können sie dennoch die Manpage auch ohne Installation anschauen. Aus dem Verzeichnis
-in dem sie configure und make ausführen,  starten sie einen der folgenden Befehl um die Manpage zu lesen:
+Sollten sie ext4magic nicht installieren, können sie dennoch die Manpage auch ohne Installation anschauen. 
+Aus dem Verzeichnis in dem sie configure und make ausführen,  starten sie einen der folgenden Befehl 
+um die Manpage zu lesen:
 
 
   # nroff -man src/ext4magic.8 | more  
