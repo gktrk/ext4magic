@@ -50,7 +50,7 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 	char	audiostr[] ="basic midi mp4 mpeg x-adpcm x-aiff x-dec-basic x-flac x-hx-aac-adif x-hx-aac-adts x-mod x-mp4a-latm x-pn-realaudio x-unknown x-wav ";
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
-	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument.text vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip ";
+	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text ";
 	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft";
 //-----------------------------------------------------------------------------------
@@ -169,7 +169,12 @@ int file_default(unsigned char *buf, int *size, __u32 scan , int flag, struct fo
 int file_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	switch (flag){
 		case 0 :
-			return (buf[(*size)-1] == (char)0x0a);
+			if (*size < current_fs->blocksize)
+				return (buf[(*size)-1] == (char)0x0a);
+			else {
+				if (buf[(*size)-1] == (char)0x0a)
+					return 2;
+			}
 			break;
 		case 1 :
 			return (scan & M_TXT);
@@ -200,7 +205,7 @@ int file_gzip(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 		case 0 :
 			if(*size < (current_fs->blocksize -4)){
 				ret = 2 ;
-				*size += 3;
+				*size += 4;
 			}
 			break;
 		case 1 :
@@ -279,13 +284,15 @@ int file_iso9660(unsigned char *buf, int *size, __u32 scan , int flag , struct f
 			return 1;
 			break;
 		case 2 :
-			p_32 = (__u32*)(buf + 0x8050);
-			p_16 = (__u16*)(buf + 0x8080);
-			if ((!strncmp((buf+0x8001),cd_str,5)) && (ext2fs_le32_to_cpu(*(p_32 +1)) == ext2fs_be32_to_cpu(*p_32))){
-				lsize = (__u64)(ext2fs_le32_to_cpu(*p_32)) * ext2fs_le16_to_cpu(*p_16);
-				f_data->size = lsize & 0xFFFFFFFF;
-				f_data->h_size = lsize >> 32;
-				ret =1;
+			if (current_fs->blocksize > 2048){
+				p_32 = (__u32*)(buf + 0x8050);
+				p_16 = (__u16*)(buf + 0x8080);
+				if ((!strncmp((buf+0x8001),cd_str,5)) && (ext2fs_le32_to_cpu(*(p_32 +1)) == ext2fs_be32_to_cpu(*p_32))){
+					lsize = (__u64)(ext2fs_le32_to_cpu(*p_32)) * ext2fs_le16_to_cpu(*p_16);
+					f_data->size = lsize & 0xFFFFFFFF;
+					f_data->h_size = lsize >> 32;
+					ret =1;
+				}
 			}
 			break;
 	}
@@ -590,9 +597,13 @@ int file_png(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 		case 0 :
 			if ((*size > 8) && (strstr(buf + (*size) -8,"END")))	
 					ret=1;
-			else
-				if (*size < current_fs->blocksize)
-					ret=2;
+			else{
+				if ((*size >= 5) && (strtok(buf,"D" )))
+					ret=1;
+				else
+					if (*size < 5)
+						ret = 2; 
+			}	
 			break;
 		case 1 : 
 			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
@@ -836,7 +847,6 @@ int file_SQLite(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 //Although the scanner is controlled here, but you can not directly configure whether a file is found or not.
 //This function has a strong influence on the accuracy of the result.
 void get_file_property(struct found_data_t* this){
-//this->func = file_t
 	switch (this->type){
 	//Application
 		case 0x0101     :               //dicom
@@ -929,9 +939,24 @@ void get_file_property(struct found_data_t* this){
 	//              strncat(this->name,".vnd.ms-tnef",7);
 		break;
 	
-		case 0x0113     :               //vnd.oasis.opendocument.text
-	//              this->func = file_vnd.oasis.opendocument.text ;
-	//              strncat(this->name,".vnd.oasis.opendocument.text",7);
+		case 0x0113     :               //vnd.oasis.opendocument.
+	             this->func = file_zip ;
+			if (strstr(this->scan_result,"text")){
+		        	strncat(this->name,".ott",7);
+				break;
+			}
+			if (strstr(this->scan_result,"presentation")){
+		        	strncat(this->name,".otp",7);
+				break;
+			}
+			if (strstr(this->scan_result,"spreadsheet")){
+		        	strncat(this->name,".ots",7);
+				break;
+			}
+			if (strstr(this->scan_result,"graphics")){
+		        	strncat(this->name,".otg",7);
+				break;
+			}
 		break;
 	
 		case 0x0114     :               //vnd.rn-realmedia

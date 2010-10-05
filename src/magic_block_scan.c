@@ -440,7 +440,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	char	text[100] = "";
 	char 	*p_search;
 	__u32	retval = 0;
-	char	searchstr[] = "7-zip cpio Image filesystem CD-ROM MPEG 9660 Targa Kernel boot Linux x86 SQLite OpenOffice.org ";
+	char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org ";
 	char	token[20]; 
  	
 	strncpy(text,magic_buffer(cookie_f,buf , size),60);
@@ -457,6 +457,11 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 			goto out;
 		}	
 	}
+	if (strstr(magic_buf,"application/vnd.oasis.opendocument")){
+		retval |= (M_APPLI | M_BINARY);
+		goto out;
+	}
+
 
 	if((strstr(magic_buf,"text/")) || (strstr(magic_buf,"application/") && (strstr(text,"text")))){
 		retval |= M_TXT ;
