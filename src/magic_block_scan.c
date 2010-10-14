@@ -422,7 +422,8 @@ static int skip_block(blk_t *p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_
 
 	o_blk = (*p_blk) >> 3;
 	p_bmap = (struct ext2fs_struct_loc_generic_bitmap *) bmap;
-	while (((! *(ds_bmap->bitmap + o_blk)) || (*(ds_bmap->bitmap + o_blk) == 0xff)) && (o_blk < (ds_bmap->end >> 3))){  
+	while (((! *(ds_bmap->bitmap + o_blk)) || (*(p_bmap->bitmap + o_blk) == (unsigned char)0xff) || 
+		(*(ds_bmap->bitmap + o_blk) == *(p_bmap->bitmap + o_blk))) && (o_blk < (ds_bmap->end >> 3))){  
 		o_blk ++;
 		flag = 1;
 	}
@@ -471,7 +472,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 			retval |= M_BINARY ;
 	}
 	
-	if (!(retval & M_TXT) && (strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"data",4)))){
+	if (!(retval & M_TXT) && (strstr(magic_buf,"application/octet-stream")) && ((!(strncmp(text,"data",4))) || (!(strncmp(text,"text",4))))){
 		retval |= M_DATA;
 	}
 
@@ -575,7 +576,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 
 out:
 #ifdef  DEBUG_MAGIC_SCAN
-	printf("BLOCK_SCAN : 0x%08x\n",retval & 0xffffe000);
+	printf("BLOCK_SCAN : Block = %010u  ;  0x%08x\n",blk, retval & 0xffffe000);
 	blockhex(stdout,buf,0,(count < (64)) ? count  : 64 );
 #endif
 	retval |= (count+1);
@@ -888,7 +889,7 @@ while (ds_retval){
 						printf("stop no file-end\n");
 #endif
 						file_data = soft_border(des_dir,buf+((j-1)*blocksize), file_data, &follow, flag[j-1]);
-						i = j - 11;
+						i = j - 12;
 					}
 					else
 						i = j;

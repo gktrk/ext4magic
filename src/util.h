@@ -111,7 +111,7 @@ struct ext2fs_struct_loc_generic_bitmap {
         __u32           start, end;
         __u32           real_end;
         char    *       description;
-        char    *       bitmap;
+        unsigned char   *bitmap;
         errcode_t       base_error_code;
         __u32           reserved[7];
 };

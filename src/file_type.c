@@ -843,6 +843,41 @@ int file_SQLite(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 }
 
 
+//ogg  
+int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+	unsigned char token[7]= {0x80, 't', 'h', 'e', 'o', 'r', 'a'};
+
+	//FIXME for ext4. must follow the bitstream by the page header (variable page size, 4-8 kB, maximum 65307)
+	
+	switch (flag){
+		case 0 :
+			if (*size < (current_fs->blocksize -7)){
+				*size += 2;
+				ret =1;
+			}
+			else{
+				if (*size < (current_fs->blocksize -2)){
+				*size += 2;
+				ret =2;
+				}
+			}	
+			break;
+		case 1 : 
+			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+		break;
+		
+		case 2 :
+			if(!(memcmp(&buf[28], token, 7))){
+				f_data->name[strlen(f_data->name)-1] == 'm' ;
+			return 0;
+			}
+	}
+	return ret;
+}
+
+
+
 //change this only carefully
 //Although the scanner is controlled here, but you can not directly configure whether a file is found or not.
 //This function has a strong influence on the accuracy of the result.
@@ -870,7 +905,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0105     :               //ogg
-	//              this->func = file_ogg ;
+	              this->func = file_ogg ;
 		strncat(this->name,".ogg",7);
 		break;
 	
