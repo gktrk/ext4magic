@@ -600,7 +600,7 @@ int get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p
 	ret = get_ind_block_len(priv_buf, blk, last, next, p_len);
 	if (ret){
 		*p_len += (i * current_fs->blocksize * (current_fs->blocksize >>2) ) ;
-		*next = ( i == ((current_fs->blocksize >> 2)- 1)) ? *last : 0 ;
+		*next = ( i == ((current_fs->blocksize >> 2)- 1)) ? *next : 0 ;
 		*blk += ((i * ((current_fs->blocksize >>2) + 1)) + 1) ;
 	}
 	free(priv_buf);
