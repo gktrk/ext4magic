@@ -191,7 +191,7 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
         retval = ext2fs_open(device, open_flags, superblock, blocksize,
                              unix_io_manager, &current_fs);
         if (retval) {
-                fprintf(stderr,"%s %d while opening filesystem \n", device, retval);
+                fprintf(stderr,"%s Error %d while opening filesystem \n", device, retval);
                 current_fs = NULL;
                 return;
         }
@@ -199,12 +199,12 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
 
         retval = ext2fs_read_inode_bitmap(current_fs);
         if (retval) {
-                fprintf(stderr,"%s %d while reading inode bitmap\n", device, retval);
+                fprintf(stderr,"%s Error %d while reading inode bitmap\n", device, retval);
                 goto errout;
         }
         retval = ext2fs_read_block_bitmap(current_fs);
         if (retval) {
-        fprintf(stderr,"%s %d while reading block bitmap\n",device, retval);
+        fprintf(stderr,"%s Error %d while reading block bitmap\n",device, retval);
                 goto errout;
         }
 
@@ -226,7 +226,7 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
         if (data_io) {
                 retval = ext2fs_set_data_io(current_fs, data_io);
                 if (retval) {
-                        fprintf(stderr,"%s %d while setting data source\n", device, retval);
+                        fprintf(stderr,"%s Error %d while setting data source\n", device, retval);
                         goto errout;
                 }
         }
@@ -240,7 +240,7 @@ errout:
 #endif
         retval = ext2fs_close(current_fs);
         if (retval)
-                fprintf(stderr, "%s %d while trying to close filesystem\n", device, retval);
+                fprintf(stderr, "%s Error %d while trying to close filesystem\n", device, retval);
         current_fs = NULL;
 }
 
@@ -594,6 +594,8 @@ while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 	if (getuid()) mode = 0;
         if (optind < argc)
                 open_filesystem(argv[optind], open_flags,superblock, blocksize, magicscan, data_filename);
+
+	if (! current_fs) mode = 0;
 #ifdef DEBUG
 	printf("Operation-mode = %d\n", mode);
 #endif
