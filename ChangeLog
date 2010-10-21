@@ -1,4 +1,23 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+0.2.0-pv2	new: support and modification for some filetype 
+                change :adjusting settings for version file-5.04
+		change :stabilization of the magic scan functions
+		BUG: segfault if filesystem can not open.
+		BUG: #017625; #017618
 		BUG: #017547; #017556; #017557; #017559; #017562
 		BUG: #017561 change Install HOWTO
 

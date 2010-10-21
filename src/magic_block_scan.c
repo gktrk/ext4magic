@@ -193,6 +193,7 @@ static int check_data_passage(char *a_buf, unsigned char *b_buf){
 static int check_file_data_possible(struct found_data_t* this, __u32 scan ,unsigned char *buf){
 	int ret = 0;
 	int size ;
+	size = (scan & M_SIZE );
 	ret = this->func(buf, &size ,scan ,1 , this);
 	return ret;
 }
@@ -254,6 +255,7 @@ static int check_indirect_meta3(unsigned char *block_buf){
 	}
 	return (next >= (count>>1)) ? 1 : 0;
 }
+
 
 
 static int check_dindirect_meta3(unsigned char * block_buf){
@@ -441,16 +443,15 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	char	text[100] = "";
 	char 	*p_search;
 	__u32	retval = 0;
-	char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org ";
 	char	token[20]; 
  	
 	strncpy(text,magic_buffer(cookie_f,buf , size),60);
 	strncpy(magic_buf, magic_buffer(cookie , buf , size),60);
 	while (count >= 0 && (*(buf+count) == 0)) count-- ;
-#ifdef  DEBUG_MAGIC_SCAN
+/*#ifdef  DEBUG_MAGIC_SCAN
 	printf("Scan Result :  %s    %d\n", magic_buf , count+1) ;
 	printf("RESULT : %s \n",text);
-#endif	
+#endif	*/
 
 	if (!strncmp(text,"data",4)){
 		if (count == -1) {
@@ -459,7 +460,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 		}	
 	}
 	if (strstr(magic_buf,"application/vnd.oasis.opendocument")){
-		retval |= (M_APPLI | M_BINARY);
+		retval |= (M_APPLI | M_BINARY | M_CLASS_1);
 		goto out;
 	}
 
@@ -471,10 +472,25 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	if (strstr(magic_buf,"charset=binary")){
 			retval |= M_BINARY ;
 	}
-	
-	if (!(retval & M_TXT) && (strstr(magic_buf,"application/octet-stream")) && ((!(strncmp(text,"data",4))) || (!(strncmp(text,"text",4))))){
-		retval |= M_DATA;
+	//FIXME test: catch of properties from file-5.04 
+        if ((retval & M_TXT) && 
+		((retval & M_BINARY) || (strstr(magic_buf,"charset=unknown-8bit") && (count > 8)) ||
+		 (strstr(text,"very long lines, with no")))){
+		
+//		 retval -= M_TXT;
+		 retval	|= M_DATA;
 	}
+	else{
+		if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"data",4)))){
+			retval |= M_DATA;
+		}
+	}
+
+/*	
+//FIXME only for test
+if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))))
+	printf("application/octet-stream + text in BlockNR; %ul\n",blk);
+*/
 
 	if ((retval & M_DATA) || (*(buf+7) < EXT2_FT_MAX) || (count < 32) || (ext2fs_le32_to_cpu(*(blk_t*)buf) == blk +1)) {
 		if (check_meta3_block(buf, blk, count+1)){
@@ -499,22 +515,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 		goto out;
 
 	if (retval & M_TXT){
-		if (strstr(magic_buf,"ascii")){
-			retval |= M_ASCII ;
-		}
-
-		if(strstr(magic_buf,"iso")){
-			retval |= M_ASCII ;
-		}	
-
-		if(strstr(magic_buf,"utf")){
-			retval |= M_UTF ;
-		}	
-		goto out;
-	}
-
-
-	if (strstr(magic_buf,"application/octet-stream")){
+		char	searchstr[] = "html PGP rtf texmacs vnd.graphviz x-awk x-gawk x-info x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd ";
 		p_search = searchstr;
 		while (*p_search){
 			len=0;
@@ -525,60 +526,110 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 			}
 			token[len] = 0;
 			if (strstr(text,token)){
-				strncpy(magic_buf,text,90);
-				retval |= (M_APPLI | M_ARCHIV);
+				strncpy(magic_buf,text,60);
+				retval |= M_CLASS_1;
+				break;
+			}
+			p_search++;
+		}
+		if (! (retval & M_CLASS_1))
+			retval |= M_CLASS_2 ;
+		goto out;
+	}
+
+	if (strstr(magic_buf,"application/octet-stream")){
+		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org ";
+		p_search = searchstr;
+		while (*p_search){
+			len=0;
+			while((*p_search) != 0x20){
+				token[len] = *p_search;
+				p_search++;
+				len++;
+			}
+			token[len] = 0;
+			if (strstr(text,token)){
+				strncpy(magic_buf,text,60);
+				retval |= ( M_APPLI | M_ARCHIV | M_CLASS_1 );
 				break;
 			}
 			p_search++;
 		}
 		if (! (retval & M_APPLI))
 			retval |= M_DATA ;
+// This is the place for globale extensions if binary filetypes not included in the magic file
 		goto out;
 	}
-
-	if (strstr(magic_buf,"application/")){
-		retval |= M_APPLI;
-		if (strstr(magic_buf,"x-tar"))
-			retval |= M_TAR ;
-		goto out;
+	else {
+		if (strstr(magic_buf,"application/")){
+			if (strstr(magic_buf,"x-tar"))
+				retval |= ( M_APPLI | M_TAR | M_CLASS_1) ;
+			else{
+				if(strstr(magic_buf,"x-elc") || strstr(magic_buf,"keyring") || strstr(magic_buf,"x-arc"))
+					retval = M_DATA;
+				else {
+					if (strstr(magic_buf,"encrypted") || strstr(magic_buf,"x-tex-tfm"))
+						retval |= ( M_APPLI | M_CLASS_2 );
+					else
+						retval |= ( M_APPLI | M_CLASS_1 );
+				}
+			}	
+			goto out;
+		}
+		else {
+		
+			if (strstr(magic_buf,"image/")){
+				retval |= ( M_IMAGE | M_CLASS_1 );
+				goto out;
+			}
+			else {
+				if (strstr(magic_buf,"audio/")){
+					if (strstr(magic_buf,"x-mp4a-latm") || strstr(magic_buf,"x-hx-aac-adts"))
+						retval = M_DATA;
+					else {	
+						if(strstr(magic_buf,"mpeg"))
+							retval |= ( M_AUDIO | M_CLASS_2 );
+						else
+							retval |= ( M_AUDIO | M_CLASS_1 );
+					}
+					goto out;
+				}
+				else{
+					if (strstr(magic_buf,"video/")){
+						retval |= ( M_VIDEO | M_CLASS_1 );
+						goto out;
+					}
+					else {
+						if (strstr(magic_buf,"message/")){
+							retval |= ( M_MESSAGE | M_CLASS_2);
+							goto out;
+						}
+						else{
+						
+							if (strstr(magic_buf,"model/")){
+								retval |= ( M_MODEL | M_CLASS_2);
+								goto out;
+							}
+							else{
+								if (strstr(magic_buf,"CDF V2 Document")){
+									retval |= (M_APPLI | M_ARCHIV | M_CLASS_1 );
+									goto out;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
-	
-	if (strstr(magic_buf,"image/")){
-		retval |= M_IMAGE;
-		goto out;
-	}
-	
-	if (strstr(magic_buf,"audio/")){
-		retval |= M_AUDIO;
-		goto out;
-	}
-
-	if (strstr(magic_buf,"video/")){
-		retval |= M_VIDEO;
-		goto out;
-	}
-	
-	if (strstr(magic_buf,"message/")){
-		retval |= M_MESSAGE;
-		goto out;
-	}
-	
-	if (strstr(magic_buf,"model/")){
-		retval |= M_MODEL;
-		goto out;
-	}
-
-	if (strstr(magic_buf,"CDF V2 Document")){
-		retval |= (M_APPLI | M_ARCHIV);
-		goto out;
-	}
-	
 
 out:
+/*
 #ifdef  DEBUG_MAGIC_SCAN
 	printf("BLOCK_SCAN : Block = %010u  ;  0x%08x\n",blk, retval & 0xffffe000);
 	blockhex(stdout,buf,0,(count < (64)) ? count  : 64 );
 #endif
+*/
 	retval |= (count+1);
 	
 	return retval;
@@ -592,7 +643,6 @@ static struct found_data_t* soft_border(char *des_dir, unsigned char *buf, struc
 		file_data = recover_file_data(des_dir, file_data, follow);
 	else{ 
 		file_data = forget_file_data(file_data, follow);	
-//		printf("Don't recover this file, current block %d \n",blk);
 	}
 return file_data;
 }
@@ -605,7 +655,7 @@ static int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_b
 	for (begin = *p_blk; begin <= ds_bmap->end ; begin++){
 		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap)){
 #ifdef  DEBUG_MAGIC_SCAN
-			printf("jump to %d \n",begin);
+			printf("jump to %ul \n",begin);
 #endif
 		}
 		*p_blk = begin;
@@ -749,7 +799,7 @@ while (ds_retval){
 		ds_bmap = (struct ext2fs_struct_loc_generic_bitmap *) d_bmap;
 	
 	count = 0;
-	blk[0] = 0;	 
+	blk[0] = 0;	
 	count = get_range(blk ,ds_bmap, buf);
 
 	while (count){
@@ -758,7 +808,7 @@ while (ds_retval){
 #endif
 		for (i = 0; i< ((count>12) ? MAX_RANGE - 12 : count) ;i++){
 			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize * ((count >=9) ? 9 : count) ,blk[0]+i);
-			if(scan & (M_DATA | M_BLANK | M_IS_META)){
+			if(scan & (M_DATA | M_BLANK | M_IS_META | M_TXT)){
 				if (scan & (M_ACL | M_EXT4_META | M_DIR))
 					ext2fs_mark_generic_bitmap(bmap, blk[0]+i);
 				continue;
@@ -805,13 +855,14 @@ while (ds_retval){
 			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i);
 			if(scan & (M_DATA | M_BLANK | M_IS_META)){
 				if ((!fragment_flag) && (scan & M_EXT3_META) && (check_indirect_meta3(buf+(i*blocksize)))){
-#ifdef  DEBUG_MAGIC_SCAN
-					printf("try a fragment recover for metablock %ld\n",flag[i]);
-#endif
+
 					blk[1] = block_backward(flag[i] , 13);
-					if (blk[1]){
+					if (blk[1] && (blk[1] < (flag[i]-12))){
 						blk[0] = blk[1];
 						fragment_flag = flag[i];
+#ifdef  DEBUG_MAGIC_SCAN
+						printf("Try a fragment recover for metablock: %lu at blk: %lu\n",flag[i],blk[1] );
+#endif
 						goto load_new;
 					}
 				}
@@ -819,7 +870,7 @@ while (ds_retval){
 					continue;
 			}
 #ifdef  DEBUG_MAGIC_SCAN	
-			printf("SCAN %d : %09x : %s\n",blk[0]+i,scan,magic_buf);
+			printf("SCAN %d : %09x : %s\n",flag[i],scan,magic_buf);
 #endif
 			if (((count -i) > 12) && (ext2fs_le32_to_cpu(*(__u32*)(buf +((i+12)*blocksize))) == flag[12+i]+1)){
 				file_data = new_file_data(flag[i],scan,magic_buf,buf+(i*blocksize),&follow);
@@ -855,13 +906,13 @@ while (ds_retval){
 								j--;
 								file_data = soft_border(des_dir,buf+(j*blocksize), file_data, &follow, flag[j]); 
 								 if ((!fragment_flag) && (scan & M_EXT3_META) && (check_indirect_meta3(buf+((j+1)*blocksize)))){
-#ifdef  DEBUG_MAGIC_SCAN
-									printf("try a fragment recover for metablock %ld\n",flag[j]+1);
-#endif
 									blk[1] = block_backward(flag[j] , 12);
-									if (blk[1]){
+									if (blk[1] && (blk[1] < flag[j]-12)){
 										blk[0] = blk[1];
 										fragment_flag = flag[j+1];
+#ifdef  DEBUG_MAGIC_SCAN
+										printf("Try fragment recover for metablock: %lu at  blk: %lu\n",flag[j]+1, blk[0]);
+#endif
 										goto load_new;
 									}
 								}

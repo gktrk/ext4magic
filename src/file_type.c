@@ -46,11 +46,11 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 //they are used for indices to the filestypes
 	char	typestr[] ="application/ audio/ image/ message/ model/ text/ video/ ";
 	char	imagestr[] ="gif jp2 jpeg png svg+xml tiff vnd.adobe.photoshop vnd.djvu x-coreldraw x-cpi x-ico x-ms-bmp x-niff x-portable-bitmap x-portable-greymap x-portable-pixmap x-psion-sketch x-quicktime x-unknown x-xcursor x-xpmi x-tga ";
-	char	videostr[] ="3gpp h264 mp2p mp2t mp4 mp4v-es mpeg mpv quicktime x-flc x-fli x-flv x-jng x-mng x-msvideo x-sgi-movie x-unknown ";
+	char	videostr[] ="3gpp h264 mp2p mp2t mp4 mp4v-es mpeg mpv quicktime x-flc x-fli x-flv x-jng x-mng x-msvideo x-sgi-movie x-unknown x-ms-asf ";
 	char	audiostr[] ="basic midi mp4 mpeg x-adpcm x-aiff x-dec-basic x-flac x-hx-aac-adif x-hx-aac-adts x-mod x-mp4a-latm x-pn-realaudio x-unknown x-wav ";
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
-	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip ";
+	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text ";
 	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft";
 //-----------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ int file_default(unsigned char *buf, int *size, __u32 scan , int flag, struct fo
 
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -169,10 +169,11 @@ int file_default(unsigned char *buf, int *size, __u32 scan , int flag, struct fo
 int file_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	switch (flag){
 		case 0 :
-			if (*size < current_fs->blocksize)
-				return (buf[(*size)-1] == (char)0x0a);
+			if (*size < current_fs->blocksize){
+				if (buf[(*size)-1] == (unsigned char)0x0a) return 1;
+			}
 			else {
-				if (buf[(*size)-1] == (char)0x0a)
+				if (buf[(*size)-1] == (unsigned char)0x0a)
 					return 2;
 			}
 			break;
@@ -180,6 +181,7 @@ int file_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			return (scan & M_TXT);
 			break;
 	}
+	return 0;
 }
 
 
@@ -188,12 +190,19 @@ int file_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 int file_bin_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	switch (flag){
 		case 0 :
-			return (*size < current_fs->blocksize);
+			if (*size < current_fs->blocksize){
+				return 1;
+			}
+			else {
+				if (buf[(*size)-1] == (unsigned char)0x0a)
+					return 2;
+			}
 			break;
 		case 1 :
 			return (scan & M_TXT);
 			break;
 	}
+	return 0;
 }
 
 
@@ -209,14 +218,14 @@ int file_gzip(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 			}
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT | M_BLANK)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
 			break;
 	}
 	return ret;
 }
 
 
-//zip    ???????????
+//zip
 int file_zip(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int		ret = 0;
 	int		j,i;
@@ -245,11 +254,34 @@ int file_zip(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				ret = 2;
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT | M_BLANK)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
 			break;
 	}
 	return ret;
 }
+
+
+//ttf
+int file_ttf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int		ret = 0;
+
+	switch (flag){
+		case 0 :
+			if((*size) < (current_fs->blocksize - 16)){
+				*size = ((*size ) + 3) & ~3 ;
+				ret =1;
+			}
+			else {
+				*size = ((*size ) + 3) & ~3 ;
+				ret =2;
+			}
+			break;
+		case 1 :return (scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}
+			
 
 
 //iso9660 CD-ROM
@@ -327,20 +359,8 @@ int		ret = 0;
 			}
 			break;
 
-
-/*			if ((f_data->size) && (f_data->size <= (__u64)f_data->inode->i_size | ((__u64)f_data->inode->i_size_high<<32))){
-				ssize = (f_data->size % current_fs->blocksize);
-				if (*size < ssize)
-					*size = ssize;
-				ret = 1;
-			}
-			else{
-			//	*size +=7;
-				ret = 0;
-			}
-			break;*/
 		case 1 :
-			return ( scan & (M_IS_META | M_IS_FILE | M_TXT | M_BLANK)) ? 0 :1 ;
+			return ( scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
 			break;
 		case 2 :
 			p = (__u64*)(buf+12);
@@ -354,8 +374,36 @@ int		ret = 0;
 	}
 	return ret;
 }
-			
-			
+
+
+//rar
+int file_rar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	i,j;
+	int 	ret = 0;
+	unsigned char token[7]={0xc4, 0x3d, 0x7b, 0x00, 0x40, 0x07, 0x00 };
+
+	switch (flag){
+		case 0 :
+			j = 5;
+			i = (*size) -1;
+			while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
+				i--;
+				j--;
+			}
+			if ((i == -1) || (j == -1)){
+				*size = (*size) + 1;
+				ret = 1;
+			}
+			break;
+		case 1 :	
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}	 
+
+
+
 
 //cpio
 int file_cpio(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
@@ -365,27 +413,19 @@ int file_cpio(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 
 	switch (flag){
 		case 0 :
-	/*		if (*size>10) {
-				if (strstr(buf+(*size)-10,token)){
-					*size = ((*size) + 0x01FF) & 0xfe00 ;
-					ret=1;
-				}
+			j = strlen(token) -1;
+			i = (*size) -1;
+			while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
+				i--;
+				j--;
 			}
-			else{*/
-				j = strlen(token) -1;
-				i = (*size) -1;
-				while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
-					i--;
-					j--;
-				}
-				if ((i == -1) || (j == -1)){
-					*size = ((*size) + 0x01FF) & 0xfe00 ;
-					ret=1;
-				}
-			//}	
+			if ((i == -1) || (j == -1)){
+				*size = ((*size) + 0x01FF) & 0xfe00 ;
+				ret=1;
+			}	
 			break;
 		case 1 :	
-			return (scan & (M_IS_META | M_IS_FILE)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -420,7 +460,7 @@ int file_pdf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			}
 			break;
 		case 1 :
-			return (scan & (M_IS_META)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 		}
 	return ret;
@@ -451,7 +491,7 @@ int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			if (scan & M_TAR)
 				ret = 1;
 			 else 
-				ret = (scan & (M_IS_META | (M_IS_FILE & (~ M_TXT)))) ? 0 :1 ;
+				ret = (scan & M_IS_META | M_CLASS_1 ) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -488,7 +528,7 @@ int file_binary(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 		}
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -516,7 +556,7 @@ int file_object(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 			}
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -537,7 +577,7 @@ int file_jpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 			break;
 			
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -555,7 +595,7 @@ int file_gif(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 					ret = 1;
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -576,7 +616,7 @@ int file_bmp(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			}
 			break;
 		case 1 :
-			return (scan & M_IS_META) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
 			break;
 
 		case 2 :
@@ -606,7 +646,7 @@ int file_png(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			}	
 			break;
 		case 1 : 
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -626,7 +666,7 @@ int file_mng(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 					ret = 1;
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -653,11 +693,144 @@ int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				}	
 			break;
 		case 1 :	
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT )) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
 }	
+
+
+//midi
+int file_midi(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	ret = 0;
+
+	switch (flag){
+		case 0 :
+			if ((*size>1) && (buf[(*size)-1] == (unsigned char)0x2f) && (buf[(*size)-2] == (unsigned char)0xff)){
+					*size +=1;
+					ret = 1;
+			}
+			else
+				if ((*size == 1) && (buf[(*size)-1] == (unsigned char)0x2f)){
+					*size +=1 ;
+					ret = 1;
+			}
+			break;
+		case 1 :return (scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}
+
+
+//swf
+int file_swf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+	__u32		*p_32;
+	__u32		ssize;
+
+	switch (flag){
+		case 0 :
+			if (f_data->size ) {
+				ssize = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size >= (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			else{
+				if ((*size) < (current_fs->blocksize - 2)){
+					ret=1;
+				}
+			}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK )) ? 0 :1 ;
+			break;
+		
+		case 2:
+			if (buf[0] == 'F'){
+				p_32 = (__u32*)(buf+4);
+				ssize = ext2fs_le32_to_cpu(*p_32);
+				f_data->size = ssize;
+				ret = 1;
+			}
+		break;
+	}
+	return ret;
+}
+
+			
+
+//aiff
+int file_aiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+	__u32		*p_32;
+	__u32		ssize;
+
+	switch (flag){
+		case 0 :
+			if (f_data->size ) {
+				ssize = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size >= (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK )) ? 0 :1 ;
+			break;
+		
+		case 2:
+			if (buf[8] == 'A'){
+				p_32 = (__u32*)(buf+4);
+				ssize = ext2fs_be32_to_cpu(*p_32) +8;
+				f_data->size = ssize;
+				ret = 1;
+			}
+		break;
+	}
+	return ret;
+}
+
+
+//asf
+int file_asf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+	__u32		*p_32;
+	__u32		ssize;
+
+	switch (flag){
+		case 0 :
+			if (f_data->size ) {
+				ssize = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size >= (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			else{
+				if ((*size) < (current_fs->blocksize - 16)){
+					ret = 2;
+				}
+			}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK )) ? 0 :1 ;
+			break;
+		
+		case 2:
+			if (buf[3] == 0x75){
+				p_32 = (__u32*)(buf+70);
+				ssize = ext2fs_le32_to_cpu(*p_32);
+				f_data->size = ssize;
+				ret = 1;
+			}
+		break;
+	}
+	return ret;
+}
 
 
 //mpeg
@@ -679,7 +852,7 @@ int file_mpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 				}	
 			break;
 		case 1 :	
-			return (scan & (M_IS_META | M_TXT )) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -705,7 +878,7 @@ int file_riff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 			}
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
 			break;
 		case 2 :
 			p_32 = (__u32*)buf;
@@ -727,6 +900,32 @@ int file_riff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 	return ret;
 }
 
+
+//psd
+int file_psd(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+
+	switch (flag){
+		case 0 :
+			if (*size < (current_fs->blocksize - 16)){
+				if ((!buf[(*size)-2]) && (!buf[(*size)-4]))
+					(*size)++;
+				ret = 1;
+			}
+			else {
+				if (*size < (current_fs->blocksize - 2))
+					ret = 3;
+			}
+			break;
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}
+
+
+
 // tiff
 int file_tiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	__u32		*p_32  ;
@@ -737,18 +936,19 @@ int file_tiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 		case 0 :
 			if (f_data->size ){
 				if (f_data->inode->i_size > f_data->size){  //FIXME
-					*size +=1;
+					*size += 8;
 					ret =1;
 				}
 			}
 			else{
 				if (f_data->inode->i_block[12]){   //FIXME for ext4
+					*size += 8;
 					ret = 2;
 				}
 			}				
 			break;
 		case 1 : 
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 		case 2 :
 			p_32 = (__u32*)buf;
@@ -780,7 +980,7 @@ int file_mod(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			}
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -799,7 +999,7 @@ int file_CDF(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 		}
 			break;
 		case 1:
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -807,7 +1007,7 @@ int file_CDF(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 
 
 
-//SQLite   FIXME ????????????????
+//SQLite   FIXME
 int file_SQLite(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 		ret = 0;
 	__u16		*p_16;
@@ -829,7 +1029,7 @@ int file_SQLite(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 			}
 			break;
 		case 1:
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 		
 		case 2:
@@ -864,7 +1064,7 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			}	
 			break;
 		case 1 : 
-			return (scan & (M_IS_META | M_IS_FILE | M_TXT)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 		break;
 		
 		case 2 :
@@ -977,19 +1177,19 @@ void get_file_property(struct found_data_t* this){
 		case 0x0113     :               //vnd.oasis.opendocument.
 	             this->func = file_zip ;
 			if (strstr(this->scan_result,"text")){
-		        	strncat(this->name,".ott",7);
+		        	strncat(this->name,".odt",7);
 				break;
 			}
 			if (strstr(this->scan_result,"presentation")){
-		        	strncat(this->name,".otp",7);
+		        	strncat(this->name,".odp",7);
 				break;
 			}
 			if (strstr(this->scan_result,"spreadsheet")){
-		        	strncat(this->name,".ots",7);
+		        	strncat(this->name,".ods",7);
 				break;
 			}
 			if (strstr(this->scan_result,"graphics")){
-		        	strncat(this->name,".otg",7);
+		        	strncat(this->name,".odg",7);
 				break;
 			}
 		break;
@@ -1019,7 +1219,7 @@ void get_file_property(struct found_data_t* this){
 			strncat(this->name,".a",7);
 		break;
 	
-		case 0x0119     :               //x-arc
+		case 0x0119     :               //x-arc   deaktiv
 	//              this->func = file_x-arc ;
 	//              strncat(this->name,".x-arc",7);
 		break;
@@ -1109,7 +1309,7 @@ void get_file_property(struct found_data_t* this){
 	//              strncat(this->name,".x-gnumeric",7);
 		break;
 	
-		case 0x012b     :               //x-gnupg-keyring
+		case 0x012b     :               //x-gnupg-keyring   deaktiv
 	//              this->func = file_x-gnupg-keyring ;
 	//              strncat(this->name,".x-gnupg-keyring",7);
 		break;
@@ -1219,7 +1419,7 @@ void get_file_property(struct found_data_t* this){
 		strncat(this->name,".o",7);
 		break;
 	
-		case 0x0141     :               //x-pgp-keyring
+		case 0x0141     :               //x-pgp-keyring    deaktiv
 	//              this->func = file_x-pgp-keyring ;
 	//              strncat(this->name,".x-pgp-keyring",7);
 		break;
@@ -1235,7 +1435,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0144     :               //x-rar
-	//              this->func = file_x-rar ;
+	              this->func = file_rar ;
 		strncat(this->name,".rar",7);
 		break;
 	
@@ -1260,7 +1460,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0149     :               //x-shockwave-flash
-	//              this->func = file_x-shockwave-flash ;
+	              this->func = file_swf ;
 		strncat(this->name,".swf",7);
 		break;
 	
@@ -1318,7 +1518,11 @@ void get_file_property(struct found_data_t* this){
 		this->func = file_zip ;
 		strncat(this->name,".zip",7);
 		break;
-	
+
+		case 0x0155     :               //x-font-ttf
+	             this->func = file_ttf ;
+	             strncat(this->name,".ttf",7);
+		break;
 	
 	//----------------------------------------------------------------
 	//Audio
@@ -1328,7 +1532,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0202     :               //midi
-	//              this->func = file_midi ;
+	             this->func = file_midi ;
 		strncat(this->name,".mid",7);
 		break;
 	
@@ -1348,8 +1552,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0206     :               //x-aiff
-	//              this->func = file_x-aiff ;
-		strncat(this->name,".aif",7);
+	              this->func = file_aiff ;
+		strncat(this->name,".aiff",7);
 		break;
 	
 		case 0x0207     :               //x-dec-basic
@@ -1362,12 +1566,12 @@ void get_file_property(struct found_data_t* this){
 	//              strncat(this->name,".x-flac",7);
 		break;
 	
-		case 0x0209     :               //x-hx-aac-adif
+		case 0x0209     :               //x-hx-aac-adif        
 	//              this->func = file_x-hx-aac-adif ;
 		strncat(this->name,".aac",7);
 		break;
 	
-		case 0x020a     :               //x-hx-aac-adts
+		case 0x020a     :               //x-hx-aac-adts        deaktiv
 	//              this->func = file_x-hx-aac-adts ;
 		strncat(this->name,".aac",7);
 		break;
@@ -1377,7 +1581,7 @@ void get_file_property(struct found_data_t* this){
 	              strncat(this->name,".mod",7);
 		break;
 	
-		case 0x020c     :               //x-mp4a-latm
+		case 0x020c     :               //x-mp4a-latm        deaktiv 
 	//              this->func = file_x-mp4a-latm ;
 	//              strncat(this->name,".x-mp4a-latm",7);
 		break;
@@ -1431,7 +1635,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0307     :               //vnd.adobe.photoshop
-	//              this->func = file_vnd.adobe.photoshop ;
+	              this->func = file_psd;
 	              strncat(this->name,".psd",7);
 		break;
 	
@@ -1579,7 +1783,7 @@ void get_file_property(struct found_data_t* this){
 		strncat(this->name,".diff",7);
 		break;
 	
-		case 0x0609     :               //x-fortran  (often c files)
+		case 0x0609     :               //x-fortran  
 		this->func = file_txt ;
 	              strncat(this->name,".f",7);
 		break;
@@ -1594,7 +1798,7 @@ void get_file_property(struct found_data_t* this){
 		strncat(this->name,".info",7);
 		break;
 	
-		case 0x060c     :               //x-lisp   (often c files)
+		case 0x060c     :               //x-lisp  
 	             this->func = file_txt ;
 	              strncat(this->name,".l",7);
 		break;
@@ -1774,6 +1978,11 @@ void get_file_property(struct found_data_t* this){
 		case 0x0711     :               //x-unknown
 	//              this->func = file_x-unknown ;
 	//              strncat(this->name,".x-unknown",7);
+		break;
+
+		case 0x0712     :               //x-ms-asf
+	              this->func = file_asf ;
+	              strncat(this->name,".asf",7);
 		break;
 	
 	

@@ -32,16 +32,19 @@ The following illustrates the installation of a second version
  # tar -xzf file-5.04.tar.gz
  # cd file-5.04
  # ./configure
- # ./make
+ # make
  # su -
- # ./make install
+ # cd ????/file-5.04
+ # make install
  # ldconfig
 
+( If use a 64-bit system, the library path can also be /usr/lib64 and /usr/local/lib64 )
 The following command should now show both, the version in "/usr/lib/" and in "/usr/local/lib/"
  # ldconfig -p | grep libmagic
         libmagic.so.1 (libc6) => /usr/local/lib/libmagic.so.1
         libmagic.so.1 (libc6) => /usr/lib/libmagic.so.1
         libmagic.so (libc6) => /usr/local/lib/libmagic.so
+
 
 In this case, the symlink "/usr/lib/libmagic.so" should not exist. (see follow)
 
@@ -52,12 +55,13 @@ Which of the two libmagic versions the finished ext4magic use, you can check wit
 
 
 
-If you get the following error:
+
+If you get the following error if configure ext4magic:
 
 "error: The library libmagic.so not found, install the package "file" to build ext4magic"
 
 and "file" is installed, probably the devel package it is not installed. Not for all distributions
-it is available. You can work around that by generate a symlink to the existing version of this library.
+it is available. You can work around that by generate a symlink to the existing version of this library. (on a 64-bit system, the library path can also be /usr/lib64 )
 
 see the following log:
 # cd /usr/lib
@@ -174,11 +178,13 @@ Die Installation einer zweiten Version hier im Überblick.
  # tar -xzf file-5.04.tar.gz
  # cd file-5.04
  # ./configure
- # ./make
+ # make
  # su -
- # ./make install
+ # cd ????/file-5.04
+ # make install
  # ldconfig
 
+( Auf einem 64-bit System könnten die Library Verzeichnisse auch /usr/lib64 und /usr/local/lib64 sein)
 Das folgenden Kommando sollte jetzt beide Versionen von libmagic zeigen, unterhalb "/usr/lib/" und unterhalb "/usr/local/lib/"
  # ldconfig -p | grep libmagic
         libmagic.so.1 (libc6) => /usr/local/lib/libmagic.so.1
@@ -193,12 +199,15 @@ Welche der beiden libmagic Versionen das fertig ext4magic nutzt, kann wie folgt 
         libmagic.so.1 => /usr/local/lib/libmagic.so.1 (0xb7741000)
 
 
-Erzeugt configure trotz installiertem "file" Paket folgende Fehlermeldung:
+
+
+Erzeugt configure bei ext4magic trotz installiertem "file" Paket folgende Fehlermeldung:
 
 "error: The library libmagic.so not found, install the package "file" to build ext4magic"
 
 dann als root in das Verzeichnis /usr/lib wechseln und einen Symlink libmagic.so 
 auf die dort vorhandene Version dieser Library erzeugen. Folgender Konsollog zeigt das Vorgehen.
+(auf einem 64-bit System könnte dieses Verzeichnis auch /usr/lib64 sein)
 
 # ls -l /usr/lib/libmagic*
 lrwxrwxrwx 1 root root     17 Aug 28 16:09 /usr/lib/libmagic.so.1 -> libmagic.so.1.0.0
