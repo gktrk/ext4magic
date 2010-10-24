@@ -436,8 +436,7 @@ return flag;
 
 
 //magic scanner 
-static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_f, char *magic_buf, __u32 size, blk_t blk){
-	//int	count = size-1;
+static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_f, char *magic_buf, __u32 size, blk_t blk, int deep){
 	int	count = current_fs->blocksize -1 ;
 	int	*i , len;
 	char	text[100] = "";
@@ -447,7 +446,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
  	
 	strncpy(text,magic_buffer(cookie_f,buf , size),60);
 	strncpy(magic_buf, magic_buffer(cookie , buf , size),60);
-	while (count >= 0 && (*(buf+count) == 0)) count-- ;
+	while ((count >= 0) && (*(buf+count) == 0)) count-- ;
 /*#ifdef  DEBUG_MAGIC_SCAN
 	printf("Scan Result :  %s    %d\n", magic_buf , count+1) ;
 	printf("RESULT : %s \n",text);
@@ -467,6 +466,8 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 
 	if((strstr(magic_buf,"text/")) || (strstr(magic_buf,"application/") && (strstr(text,"text")))){
 		retval |= M_TXT ;
+		if (deep && count && (count < current_fs->blocksize))
+			strncpy(magic_buf, magic_buffer(cookie , buf , count),60);
 	}
 
 	if (strstr(magic_buf,"charset=binary")){
@@ -477,7 +478,6 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 		((retval & M_BINARY) || (strstr(magic_buf,"charset=unknown-8bit") && (count > 8)) ||
 		 (strstr(text,"very long lines, with no")))){
 		
-//		 retval -= M_TXT;
 		 retval	|= M_DATA;
 	}
 	else{
@@ -514,8 +514,8 @@ if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))
 	if (retval & M_DATA)
 		goto out;
 
-	if (retval & M_TXT){
-		char	searchstr[] = "html PGP rtf texmacs vnd.graphviz x-awk x-gawk x-info x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd ";
+	if (deep && (retval & M_TXT)){
+		char	searchstr[] = "html PGP rtf texmacs vnd.graphviz x-awk x-gawk x-info x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd xml ";
 		p_search = searchstr;
 		while (*p_search){
 			len=0;
@@ -525,8 +525,8 @@ if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))
 				len++;
 			}
 			token[len] = 0;
-			if (strstr(text,token)){
-				strncpy(magic_buf,text,60);
+			if (strstr(magic_buf,token)){
+				//strncpy(magic_buf,text,60);
 				retval |= M_CLASS_1;
 				break;
 			}
@@ -557,7 +557,6 @@ if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))
 		}
 		if (! (retval & M_APPLI))
 			retval |= M_DATA ;
-// This is the place for globale extensions if binary filetypes not included in the magic file
 		goto out;
 	}
 	else {
@@ -624,12 +623,12 @@ if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))
 	}
 
 out:
-/*
+
 #ifdef  DEBUG_MAGIC_SCAN
 	printf("BLOCK_SCAN : Block = %010u  ;  0x%08x\n",blk, retval & 0xffffe000);
 	blockhex(stdout,buf,0,(count < (64)) ? count  : 64 );
 #endif
-*/
+
 	retval |= (count+1);
 	
 	return retval;
@@ -655,7 +654,7 @@ static int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_b
 	for (begin = *p_blk; begin <= ds_bmap->end ; begin++){
 		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap)){
 #ifdef  DEBUG_MAGIC_SCAN
-			printf("jump to %ul \n",begin);
+			printf("jump to %lu \n",begin);
 #endif
 		}
 		*p_blk = begin;
@@ -696,7 +695,7 @@ static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap 
 	for (begin = *p_blk; begin <= ds_bmap->end ; begin++){
 		if((!(begin & 0x7)) && skip_block(&begin, ds_bmap)){
 #ifdef  DEBUG_MAGIC_SCAN
-			printf("jump to %d \n",begin);
+			printf("jump to %lu \n",begin);
 #endif
 		}
 		*p_blk = begin;
@@ -719,7 +718,7 @@ static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap 
 		else { 
 			if (i){
 				if (io_channel_read_blk ( current_fs->io, begin , i,  buf )){
-					fprintf(stderr,"ERROR: while read block %10u + %d\n",begin,i);
+					fprintf(stderr,"ERROR: while read block %10lu + %d\n",begin,i);
 					return 0;
 				}
 				buf += (current_fs->blocksize *i);
@@ -732,7 +731,7 @@ static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap 
 	*(p_blk+1) = end;
 	if (i){
 		if (io_channel_read_blk ( current_fs->io, begin , i,  buf )){
-			fprintf(stderr,"ERROR: while read block %10u + %d  %ld\n",begin,i,count-1);
+			fprintf(stderr,"ERROR: while read block %10lu + %d  %lu\n",begin,i,count-1);
 			return 0;
 		}
 	}
@@ -804,24 +803,24 @@ while (ds_retval){
 
 	while (count){
 #ifdef  DEBUG_MAGIC_SCAN
-		printf(" %d    %d    %d\n", blk[0],blk[1],count);
+		printf(" %lu    %lu    %d\n", blk[0],blk[1],count);
 #endif
 		for (i = 0; i< ((count>12) ? MAX_RANGE - 12 : count) ;i++){
-			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize * ((count >=9) ? 9 : count) ,blk[0]+i);
+			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize * ((count >=9) ? 9 : count) ,blk[0]+i , 0);
 			if(scan & (M_DATA | M_BLANK | M_IS_META | M_TXT)){
 				if (scan & (M_ACL | M_EXT4_META | M_DIR))
 					ext2fs_mark_generic_bitmap(bmap, blk[0]+i);
 				continue;
 			}	
 #ifdef  DEBUG_MAGIC_SCAN		
-			printf("SCAN %d : %09x : %s\n",blk[0]+i,scan,magic_buf);
+			printf("SCAN %lu : %09x : %s\n",blk[0]+i,scan,magic_buf);
 #endif
 			if (((count -i) > 12) && (ext2fs_le32_to_cpu(*(__u32*)(buf +((i+12)*blocksize))) == blk[0] + i +1 + 12)){
 				follow = 0;
 				file_data = new_file_data(blk[0]+i,scan,magic_buf,buf+(i*blocksize),&follow);
 				for(j=blk[0]+i; j<(blk[0]+i+12);j++)
 					 add_file_data(file_data, j, scan ,&follow);
-				scan = magic_check_block(buf+((i+12)*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i+12);	
+				scan = magic_check_block(buf+((i+12)*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i+12, 0);	
 				if (scan & M_EXT3_META){
 					if (add_ext3_file_meta_data(file_data, buf+((i+12)*blocksize), j)){
 						io_channel_read_blk (current_fs->io, file_data->last,  1, tmp_buf);
@@ -848,11 +847,11 @@ while (ds_retval){
 	count = get_full_range(blk ,ds_bmap, buf,flag);
 	while (count){
 #ifdef  DEBUG_MAGIC_SCAN
-		printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d - %d\n",flag[0],flag[1],flag[2],flag[3],flag[4],flag[5],flag[6],flag[7],flag[8],flag[9],flag[10],flag[11],flag[12],flag[13],flag[14],flag[15],count);
+		printf("%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu - %d\n",flag[0],flag[1],flag[2],flag[3],flag[4],flag[5],flag[6],flag[7],flag[8],flag[9],flag[10],flag[11],flag[12],flag[13],flag[14],flag[15],count);
 #endif
 		for (i = 0; i< ((count>12) ? MAX_RANGE - 12 : count) ;i++){
 			follow = 0;
-			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i);
+			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize ,flag[i], 1);
 			if(scan & (M_DATA | M_BLANK | M_IS_META)){
 				if ((!fragment_flag) && (scan & M_EXT3_META) && (check_indirect_meta3(buf+(i*blocksize)))){
 
@@ -870,13 +869,13 @@ while (ds_retval){
 					continue;
 			}
 #ifdef  DEBUG_MAGIC_SCAN	
-			printf("SCAN %d : %09x : %s\n",flag[i],scan,magic_buf);
+			printf("SCAN %lu : %09x : %s\n",flag[i],scan,magic_buf);
 #endif
 			if (((count -i) > 12) && (ext2fs_le32_to_cpu(*(__u32*)(buf +((i+12)*blocksize))) == flag[12+i]+1)){
 				file_data = new_file_data(flag[i],scan,magic_buf,buf+(i*blocksize),&follow);
 				for(j=i; j<(12+i);j++)
 					add_file_data(file_data, flag[j], scan ,&follow);
-				scan = magic_check_block(buf+((i+12)*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i+12);	
+				scan = magic_check_block(buf+((i+12)*blocksize), cookie, cookie_f , magic_buf , blocksize ,flag[i+12],0);	
 				if (scan & M_EXT3_META){
 					if (add_ext3_file_meta_data(file_data, buf+((i+12)*blocksize), flag[j])){
 						io_channel_read_blk (current_fs->io, file_data->last,  1, tmp_buf);
@@ -898,7 +897,7 @@ while (ds_retval){
 							add_file_data(file_data, flag[i], scan ,&follow);
 						}
 						else{
-							scan = magic_check_block(buf+(j*blocksize), cookie, cookie_f , magic_buf , blocksize ,flag[j]);
+							scan = magic_check_block(buf+(j*blocksize), cookie, cookie_f , magic_buf , blocksize ,flag[j] , 0);
 							if ( check_file_data_possible(file_data, scan ,buf+(j*blocksize))){
 								add_file_data(file_data, flag[j], scan ,&follow);
 							}
@@ -911,7 +910,7 @@ while (ds_retval){
 										blk[0] = blk[1];
 										fragment_flag = flag[j+1];
 #ifdef  DEBUG_MAGIC_SCAN
-										printf("Try fragment recover for metablock: %lu at  blk: %lu\n",flag[j]+1, blk[0]);
+										printf("Try fragment recover for metablock: %lu at  blk: %lu\n",flag[j+1], blk[0]);
 #endif
 										goto load_new;
 									}
@@ -929,7 +928,7 @@ while (ds_retval){
 							else{ 
 								file_data = forget_file_data(file_data, &follow);
 #ifdef  DEBUG_MAGIC_SCAN
-								printf("Don't recover this file, current block %d \n",blk);
+								printf("Don't recover this file, current block %lu \n",flag[i]);
 #endif
 							}
 							break;
