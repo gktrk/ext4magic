@@ -467,6 +467,28 @@ int file_pdf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 }
 
 
+//ps   switch only to pdf or txt
+int file_ps(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	unsigned char *c;
+	int 	ret = 1;
+	unsigned char	token[9] = "PS-Adobe";
+
+	switch (flag){
+		case 0 :
+			break;
+		case 1 :
+			break;
+		case 2 :
+			c = buf+2 ;
+			if (! strncmp(c,token,7))
+				f_data->func = file_pdf ;
+			else 
+				f_data->func = file_txt ;
+			break;
+		}
+	return ret;
+}
+
 
 //tar
 int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
@@ -671,6 +693,79 @@ int file_mng(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	}
 	return ret;
 }
+
+//ico
+int file_ico(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+
+struct ico_directory
+{
+  __u8       width;
+  __u8       heigth;
+  __u8       color_count;
+  __u8       reserved;
+  __u16      color_planes;
+  __u16      bits_per_pixel;
+  __u32      bitmap_size;
+  __u32      bitmap_offset;
+} *ico_dir;
+
+	__u16	*p_count;
+	int	counter;
+	int 	ret = 0;
+	__u32	offset = 22 ;
+
+	switch (flag){
+		case 0 :
+			if (f_data->size ) {
+				counter = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size >= (f_data->size - counter)){
+					*size = counter;
+					ret =1;
+				}
+			}
+			else{
+				if ((*size) < (current_fs->blocksize - 128)){
+					ret=1;
+				}
+				else
+					if ((*size) < (current_fs->blocksize - 16)){
+					ret=2;
+				}
+			}
+			break;
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
+			break;
+		case 2 :
+			p_count = (__u16*) (buf + 4) ;
+			counter = (int) (ext2fs_le16_to_cpu(*p_count));
+			if (counter > 256)
+				break; 
+			ico_dir = (struct ico_directory*)(buf + 6) ;
+			while (counter && offset){
+				if (ico_dir->reserved == 0){
+					if (ext2fs_le32_to_cpu(ico_dir->bitmap_offset) >= offset){
+						offset = ext2fs_le32_to_cpu(ico_dir->bitmap_offset) + ext2fs_le32_to_cpu(ico_dir->bitmap_size);
+					}else 
+						offset = 0;
+				}
+				else
+					offset = 0;		
+				counter-- ;
+				ico_dir++ ;
+			}
+			if ((offset > 22) && (! counter)){
+				f_data->size = offset;
+				ret = 1;
+			}
+			break;
+	}
+	return ret;
+}
+
+
+
+
 
 
 //tga
@@ -1135,7 +1230,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x010b     :               //postscript
-	//              this->func = file_postscript ;
+	              this->func = file_ps ;
 		strncat(this->name,".ps",7);
 		break;
 	
@@ -1655,7 +1750,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x030b     :               //x-ico
-	//              this->func = file_x-ico ;
+	              this->func = file_ico ;
 		strncat(this->name,".ico",7);
 		break;
 	
