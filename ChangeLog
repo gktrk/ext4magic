@@ -1,19 +1,6 @@
+	
 
-
-
-
-
-
-
-
-
-
-
-
-
-		
-
-0.2.0-pv2	new: support and modification for some filetype 
+0.2.0-pv2	new: support and modification for a lot of filetype 
                 change :adjusting settings for version file-5.04
 		change :stabilization of the magic scan functions
 		BUG: segfault if filesystem can not open.

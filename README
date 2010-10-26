@@ -39,6 +39,27 @@ Now you can test ext4magic with the deleted copy.
  A few responses: working or not working, the last words before a crash, or what file types
  are ok and which not, can help to improve the features and to develop the tool further.
 
+
+
+ 
+ A few words about the current development status 0.2.0-pv2
+ -----------------------------------------------------------
+ Extensive testing has confirmed that magic-functions are now stable with libmagic of file-5.04.
+ Good support exists for: all text file types, a lot of image formats, Open Office documents, PDF, 
+ TAR, CPIO, BZ2, ZIP, GZIP, 7Z. Some audio and video formats and a lot more is often restored correctly.
+
+ Major problems still exist with some multimedia formats and some documents. 
+ For example: MP3, OGG and MS Office files. The recovery of CD/DVD images and other file system containers
+ is also problematic.
+
+ The Magic functions do not work particularly fast, but we find some files that other tools can not recover.
+ In real file systems are unfortunately often ext4magic also find many very old files.
+ The idea, to prevent this by using the metadata from the journal, is definitely good, but 
+ in a real file system it works only limited. In test file systems it works very well, but in a real
+ file system journal we find not always enough of these metadata to prevent the recover of very old files.
+
+ 
+
  robi@users.berlios.de
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

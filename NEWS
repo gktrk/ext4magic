@@ -1,3 +1,8 @@
+ext4magic 0.2.0 pv2	The magic functions have been adjusted for libmagic (file-5.04)
+			Many bugs have been fixed and added support for many file types
+
+
+
 ext4magic 0.2.0 pv0	First test version of ext3 magic-scan-functions. This is a novel multi-stage recovery.
 			There are several recover methods used in succession. All functions use journal entries.
 			Furthermore, the library libmagic and coded file properties are implemented.
