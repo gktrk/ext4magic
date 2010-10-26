@@ -538,7 +538,7 @@ if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))
 	}
 
 	if (strstr(magic_buf,"application/octet-stream")){
-		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org ";
+		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 ";
 		p_search = searchstr;
 		while (*p_search){
 			len=0;
@@ -578,7 +578,11 @@ if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))
 		else {
 		
 			if (strstr(magic_buf,"image/")){
-				retval |= ( M_IMAGE | M_CLASS_1 );
+				if (strstr(magic_buf,"x-portable-") && (! isspace( *(buf+2)))){
+					retval = M_DATA;
+				}
+				else 
+					retval |= ( M_IMAGE | M_CLASS_1 );
 				goto out;
 			}
 			else {

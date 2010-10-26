@@ -52,7 +52,7 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 	char	modelstr[] ="vrml x3d ";
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text ";
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft";
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 ";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -627,15 +627,19 @@ int file_gif(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 
 //bmp
 int file_bmp(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	//__u32	*p_32;
+	__u32	ssize;
 	int 	ret = 0;
 
 	switch (flag){
 		case 0 : 
-			if (f_data->inode->i_size >= f_data->size){
-				*size = f_data->size % current_fs->blocksize;
-				ret =1;
+			if (f_data->size ) {
+				ssize = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size > (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
 			}
+			
 			break;
 		case 1 :
 			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
@@ -657,11 +661,15 @@ int file_png(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 
 	switch (flag){
 		case 0 :
-			if ((*size > 8) && (strstr(buf + (*size) -8,"END")))	
+			if (*size > 8){
+				 if (strstr(buf + (*size) -8,"END"))	
 					ret=1;
+			}
 			else{
-				if ((*size >= 5) && (strtok(buf,"D" )))
+				if (*size >= 5){
+				 	if (strtok(buf,"D" ))
 					ret=1;
+				}
 				else
 					if (*size < 5)
 						ret = 2; 
@@ -718,7 +726,7 @@ struct ico_directory
 		case 0 :
 			if (f_data->size ) {
 				counter = f_data->size % current_fs->blocksize;
-				if (f_data->inode->i_size >= (f_data->size - counter)){
+				if (f_data->inode->i_size > (f_data->size - counter)){
 					*size = counter;
 					ret =1;
 				}
@@ -771,11 +779,18 @@ struct ico_directory
 //tga
 int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	i,j;
+	__u16	*p ;
+	__u32	ssize = 0;
+	__u32	psize = 0;
 	int 	ret = 0;
 	unsigned char	token[]="-XFILE.";
 
 	switch (flag){
-		case 0 :
+		case 0 :	
+				if ((f_data->size) && (f_data->inode->i_size < f_data->size))
+					return 0;
+				
+
 				j = strlen(token) -1;
 				i = (*size) -1;
 				while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
@@ -785,11 +800,35 @@ int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				if ((i == -1) || (j == -1)){
 					*size = (*size) + 1 ;
 					ret=1;
+				}
+				else{
+					ssize = f_data->size % current_fs->blocksize;
+					if (f_data->inode->i_size > (f_data->size - ssize)){
+						*size = ssize;
+						ret =1;
+					}
 				}	
 			break;
 		case 1 :	
 			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
+		case 2 :
+			if (*(buf+2) < 4){
+				p = (__u16*) (buf + 12);
+				ssize = ext2fs_le16_to_cpu(*p);
+				p++;
+				ssize *= ext2fs_le16_to_cpu(*p);
+				ssize *= ((*(buf+16) +1 ) / 8);
+				if (*(buf+1) == 1) {
+					p = (__u16*) (buf + 5);
+					psize = ext2fs_le16_to_cpu(*p) * ((*(buf+7) +1) / 8);
+					p--;
+					psize  += ext2fs_le16_to_cpu(*p);
+				}
+				ssize += (psize + 18);
+				f_data->size = ssize;
+				ret = 1;
+			}
 	}
 	return ret;
 }	
@@ -828,7 +867,7 @@ int file_swf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 		case 0 :
 			if (f_data->size ) {
 				ssize = f_data->size % current_fs->blocksize;
-				if (f_data->inode->i_size >= (f_data->size - ssize)){
+				if (f_data->inode->i_size > (f_data->size - ssize)){
 					*size = ssize;
 					ret =1;
 				}
@@ -867,7 +906,7 @@ int file_aiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 		case 0 :
 			if (f_data->size ) {
 				ssize = f_data->size % current_fs->blocksize;
-				if (f_data->inode->i_size >= (f_data->size - ssize)){
+				if (f_data->inode->i_size > (f_data->size - ssize)){
 					*size = ssize;
 					ret =1;
 				}
@@ -900,7 +939,7 @@ int file_asf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 		case 0 :
 			if (f_data->size ) {
 				ssize = f_data->size % current_fs->blocksize;
-				if (f_data->inode->i_size >= (f_data->size - ssize)){
+				if (f_data->inode->i_size > (f_data->size - ssize)){
 					*size = ssize;
 					ret =1;
 				}
@@ -1020,6 +1059,99 @@ int file_psd(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 }
 
 
+//pnm
+int file_pnm(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int		x,y,d;
+	unsigned char	*c, *txt;
+	__u32		ssize = 0;
+	int 		ret = 0;
+
+switch (flag){
+case 0 :
+	if (f_data->size ) {
+		ssize = f_data->size % current_fs->blocksize;
+		if (f_data->inode->i_size > (f_data->size - ssize)){
+			*size = ssize;
+			ret =1;
+		}
+	}
+	else{
+		if ((*size) < (current_fs->blocksize - 16)){
+			ret = 2;
+		}
+	}
+	break;
+case 1:
+	return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
+	break;
+
+case 2:
+	c = buf;
+	if (*c =='P'){
+		c++;
+		txt = c + 1;
+		while (isspace(*txt)) txt++;
+		if (*txt == '#'){
+			while (!isspace(*txt)) txt++;
+			while (isspace(*txt)) txt++;
+		}
+		x=atoi(txt);
+		while (isdigit(*txt)) txt++;
+	        txt++;
+		y=atoi(txt);
+		while (isdigit(*txt)) txt++;
+	        txt++;
+		if (x && y){
+			switch (*c){
+				case 49 :
+				case 50 :
+				case 51 :
+					 f_data->func = file_bin_txt;
+					 break;
+				case 52 :
+					ssize = ((x*y)+7) / 8 ;
+					ssize += ((__u32)txt - (__u32)buf);
+					break;
+				case 53 :
+					d = atoi(txt);
+					while (isdigit(*txt)) txt++;
+	        			txt++;
+					if (d && d< 256)
+						ssize = 1;
+					else
+						if(d)
+							ssize = 2;
+					if (ssize){
+						ssize *= (x*y);
+						ssize += ((__u32)txt - (__u32)buf);
+					}
+					break;
+				case 54 :
+					d = atoi(txt);
+					while (isdigit(*txt)) txt++;
+	        			txt++;
+					if (d && d< 256)
+						ssize = 3;
+					else
+						if(d)
+							ssize = 6;
+					if (ssize){
+						ssize *= (x*y);
+						ssize += ((__u32)txt - (__u32)buf);
+					}
+					break;
+			}
+			if (ssize){
+				f_data->size = ssize;
+				ret = 1;
+			}	
+		}
+	}
+	break;
+}
+	return ret;
+}
+
 
 // tiff
 int file_tiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
@@ -1099,6 +1231,26 @@ int file_CDF(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	}
 	return ret;
 }
+
+
+//vmware    FIXME ????????????????
+int file_vmware(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+
+	switch (flag){
+		case 0 :
+			if (f_data->inode->i_block[12]){   //FIXME for ext4
+					*size = current_fs->blocksize;
+					ret = 1;
+			}
+			break;
+		case 1:
+			return (f_data->inode->i_size < (12 * current_fs->blocksize)) ;
+			break;
+	}
+	return ret;
+}
+
 
 
 
@@ -1705,13 +1857,13 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0302     :               //jp2
-	//              this->func = file_jp2 ;
+	              this->func = file_jpeg ;
 		strncat(this->name,".jp2",7);
 		break;
 	
 		case 0x0303     :               //jpeg
 	              this->func = file_jpeg ;
-		strncat(this->name,".jpeg",7);
+		strncat(this->name,".jpg",7);
 		break;
 	
 		case 0x0304     :               //png
@@ -1765,17 +1917,17 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x030e     :               //x-portable-bitmap
-	//              this->func = file_x-portable-bitmap ;
+	              this->func = file_pnm ;
 		strncat(this->name,".pbm",7);
 		break;
 	
 		case 0x030f     :               //x-portable-greymap
-	//              this->func = file_x-portable-greymap ;
+	              this->func = file_pnm ;
 		strncat(this->name,".pgm",7);
 		break;
 	
 		case 0x0310     :               //x-portable-pixmap
-	//              this->func = file_x-portable-pixmap ;
+	              this->func = file_pnm ;
 		strncat(this->name,".ppm",7);
 		break;
 	
@@ -2168,6 +2320,17 @@ void get_file_property(struct found_data_t* this){
 	              this->func = file_CDF ;
 	//              strncat(this->name,".doc",7);
 		break;
+		
+		case 0x0812     :               //VMWare3
+	              this->func = file_vmware ;
+	              strncat(this->name,".vmdk",7);
+		break;
+		
+		case 0x0813     :               //VMware4
+	              this->func = file_vmware ;
+	              strncat(this->name,".vmdk",7);
+		break;
+
 
 	//----------------------------------------------------------------
 		default:
