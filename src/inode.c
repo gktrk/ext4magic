@@ -794,12 +794,12 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 	  }
 
 // check for the real filesystem inode
-// if not delete, we add also this inode 
+// if not delete or newer than the last journal copy, we add also this inode 
 		
 		if ( ext2fs_read_inode_full(current_fs, inode_nr, (struct ext2_inode*)inode_buf, pos.size))
 			goto errout;
 		inode_pointer = (struct ext2_inode*) inode_buf ;
-		if((! inode_pointer->i_dtime) && inode_pointer->i_ctime){
+		if(((! inode_pointer->i_dtime) && inode_pointer->i_ctime) || (inode_pointer->i_ctime > ctime)){
 			item = r_item_add(buf);
 			if ( ! item){
 				fprintf(stderr,"Error: can not allocate memory for inode\n");
