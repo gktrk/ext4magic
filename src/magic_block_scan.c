@@ -443,10 +443,17 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	char 	*p_search;
 	__u32	retval = 0;
 	char	token[20]; 
- 	
+
+	while ((count >= 0) && (*(buf+count) == 0)) count-- ;
+	if (ext2fs_le32_to_cpu(*(blk_t*)buf) == blk +1){
+		if (check_meta3_block(buf, blk, count+1)){
+				retval = M_EXT3_META ;	
+				goto out;
+		}
+	}
+
 	strncpy(text,magic_buffer(cookie_f,buf , size),60);
 	strncpy(magic_buf, magic_buffer(cookie , buf , size),60);
-	while ((count >= 0) && (*(buf+count) == 0)) count-- ;
 /*#ifdef  DEBUG_MAGIC_SCAN
 	printf("Scan Result :  %s    %d\n", magic_buf , count+1) ;
 	printf("RESULT : %s \n",text);
@@ -467,7 +474,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	if((strstr(magic_buf,"text/")) || (strstr(magic_buf,"application/") && (strstr(text,"text")))){
 		retval |= M_TXT ;
 		if (deep && count && (count < current_fs->blocksize))
-			strncpy(magic_buf, magic_buffer(cookie , buf , count),60);
+			strncpy(magic_buf, magic_buffer(cookie , buf , count+1),60);
 	}
 
 	if (strstr(magic_buf,"charset=binary")){
@@ -492,11 +499,7 @@ if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))
 	printf("application/octet-stream + text in BlockNR; %ul\n",blk);
 */
 
-	if ((retval & M_DATA) || (*(buf+7) < EXT2_FT_MAX) || (count < 32) || (ext2fs_le32_to_cpu(*(blk_t*)buf) == blk +1)) {
-		if (check_meta3_block(buf, blk, count+1)){
-				retval = M_EXT3_META ;	
-				goto out;
-		}
+	if ((retval & M_DATA) || (*(buf+7) < EXT2_FT_MAX) || (count < 32) ) {
 		if (check_meta4_block(buf, blk, count+1)){
 				retval = M_EXT4_META ;	
 				goto out;
@@ -779,7 +782,7 @@ blocksize = current_fs->blocksize ;
 count = 0;
 blk[0] = 0;
 cookie = magic_open(MAGIC_MIME | MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF );
-cookie_f = magic_open(MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF );
+cookie_f = magic_open(MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF | MAGIC_RAW );
 if ((! cookie) ||  magic_load(cookie, NULL) || (! cookie_f) || magic_load(cookie_f, NULL)){
 	fprintf(stderr,"ERROR: can't find libmagic\n");
 	goto errout;
@@ -810,7 +813,7 @@ while (ds_retval){
 		printf(" %lu    %lu    %d\n", blk[0],blk[1],count);
 #endif
 		for (i = 0; i< ((count>12) ? MAX_RANGE - 12 : count) ;i++){
-			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize * ((count >=9) ? 9 : count) ,blk[0]+i , 0);
+			scan = magic_check_block(buf+(i*blocksize), cookie, cookie_f , magic_buf , blocksize * (((count-i) >=9) ? 9 : 1) ,blk[0]+i , 0);
 			if(scan & (M_DATA | M_BLANK | M_IS_META | M_TXT)){
 				if (scan & (M_ACL | M_EXT4_META | M_DIR))
 					ext2fs_mark_generic_bitmap(bmap, blk[0]+i);
@@ -825,7 +828,7 @@ while (ds_retval){
 				for(j=blk[0]+i; j<(blk[0]+i+12);j++)
 					 add_file_data(file_data, j, scan ,&follow);
 				scan = magic_check_block(buf+((i+12)*blocksize), cookie, cookie_f , magic_buf , blocksize ,blk[0]+i+12, 0);	
-				if (scan & M_EXT3_META){
+				if ((scan & M_EXT3_META) && (check_indirect_meta3( buf+((i+12)*blocksize)))){
 					if (add_ext3_file_meta_data(file_data, buf+((i+12)*blocksize), j)){
 						io_channel_read_blk (current_fs->io, file_data->last,  1, tmp_buf);
 						file_data = soft_border(des_dir, tmp_buf, file_data, &follow, j);
