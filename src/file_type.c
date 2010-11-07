@@ -212,13 +212,16 @@ int file_gzip(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 
 	switch (flag){
 		case 0 :
-			if(*size < (current_fs->blocksize -4)){
-				ret = 2 ;
-				*size += 4;
+			if(*size < (current_fs->blocksize -8)) 
+				ret = 1 ;
+			else {
+				if(*size < (current_fs->blocksize -4))
+					ret = 2 ;
 			}
+			*size += 4;
 			break;
 		case 1 :
-			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK | M_TXT)) ? 0 :1 ;
 			break;
 	}
 	return ret;
@@ -802,10 +805,12 @@ int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 					ret=1;
 				}
 				else{
-					ssize = f_data->size % current_fs->blocksize;
-					if (f_data->inode->i_size > (f_data->size - ssize)){
-						*size = ssize;
-						ret =1;
+					if (f_data->size){
+						ssize = f_data->size % current_fs->blocksize;
+						if (f_data->inode->i_size > (f_data->size - ssize)){
+							*size = ssize;
+							ret =1;
+						}
 					}
 				}	
 			break;
@@ -825,7 +830,8 @@ int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 					p--;
 					psize  += ext2fs_le16_to_cpu(*p);
 				}
-				ssize += (psize + 18);
+				if (ssize)
+					ssize += (psize + 18);
 				f_data->size = ssize;
 				ret = 1;
 			}
@@ -1110,7 +1116,7 @@ case 2:
 					 break;
 				case 52 :
 					ssize = ((x*y)+7) / 8 ;
-					ssize += ((__u32)txt - (__u32)buf);
+					ssize += (__u32)(txt -buf);
 					break;
 				case 53 :
 					d = atoi(txt);
@@ -1123,7 +1129,7 @@ case 2:
 							ssize = 2;
 					if (ssize){
 						ssize *= (x*y);
-						ssize += ((__u32)txt - (__u32)buf);
+						ssize += (__u32)(txt - buf);
 					}
 					break;
 				case 54 :
@@ -1137,7 +1143,7 @@ case 2:
 							ssize = 6;
 					if (ssize){
 						ssize *= (x*y);
-						ssize += ((__u32)txt - (__u32)buf);
+						ssize += (__u32)(txt - buf);
 					}
 					break;
 			}
