@@ -32,6 +32,10 @@
 #define DUMP_EXTENT_TABLE       0x04
 
 
+//buffersize für magic_block_scan3
+#define MAX_RANGE 16
+
+
 //help struct for list inode data blocks
 struct list_blocks_struct {
         FILE            *f;

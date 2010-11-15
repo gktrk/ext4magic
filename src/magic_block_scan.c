@@ -31,7 +31,6 @@
 
 #include "magic.h"
 
-#define MAX_RANGE 16
 
 //#define DEBUG_MAGIC_SCAN
 
@@ -151,6 +150,7 @@ return *f ;
 static int file_data_correct_size(struct found_data_t* this, int size){
 	unsigned long long  	i_size;
 	int			flag=0;
+	int			i,ref;
 	
 	if (size <= current_fs->blocksize){
 		flag = 1;
@@ -158,20 +158,34 @@ static int file_data_correct_size(struct found_data_t* this, int size){
 		i_size -= (current_fs->blocksize - size);
 		this->inode->i_size = i_size & 0xffffffff ;
 		this->inode->i_size_high = i_size >> 32 ;
+		if (i_size <= (12 * current_fs->blocksize)){
+ 			if(this->inode->i_block[EXT2_IND_BLOCK]){
+				this->inode->i_block[EXT2_IND_BLOCK] = 0;
+				this->inode->i_block[EXT2_DIND_BLOCK] = 0;
+				this->inode->i_block[EXT2_TIND_BLOCK] = 0;
+			}
+			for (i = current_fs->blocksize,ref=1; i<i_size; i+=current_fs->blocksize,ref++);
+			while (ref < EXT2_IND_BLOCK){
+				this->inode->i_block[ref] = 0;
+				ref++;
+			}
+					
+			
+		}
 	}
   return flag;
 }
 	
 
 
-static int check_file_data_end(struct found_data_t* this,unsigned char *buf){
+static int check_file_data_end(struct found_data_t* this,unsigned char *buf, __u32 mask){
 	int 		size;
 	int 		ret = 0;
 
 	size = get_block_len(buf);
 	ret = this->func(buf, &size ,this->scan ,0 , this);
 
-	if (ret) 			
+	if (ret & mask) 			
            ret = file_data_correct_size(this,size);
 	return ret;
 }
@@ -644,9 +658,11 @@ out:
 
 
 
-static struct found_data_t* soft_border(char *des_dir, unsigned char *buf, struct found_data_t* file_data, __u32* follow, blk_t blk){
-	if ( check_file_data_end(file_data, buf ))
+static struct found_data_t* soft_border(char *des_dir, unsigned char *buf, struct found_data_t* file_data, __u32* follow, blk_t blk ,blk_t* last_rec, __u32 mask){
+	if ( check_file_data_end(file_data, buf ,mask )){
 		file_data = recover_file_data(des_dir, file_data, follow);
+		*last_rec = blk;
+	}
 	else{ 
 		file_data = forget_file_data(file_data, follow);	
 	}
@@ -683,10 +699,16 @@ static int get_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap *ds_b
 		
 	}
 	*(p_blk+1) = end;
-	if (io_channel_read_blk ( current_fs->io, begin , count,  buf )){
+	//add the previous block to the end of the buffer
+	if (io_channel_read_blk ( current_fs->io,(*p_blk)-1,1,buf - current_fs->blocksize) ||
+		(io_channel_read_blk ( current_fs->io, begin , count,  buf ))){
+		
 		fprintf(stderr,"ERROR: while read block %10u + %d\n",begin,count);
 		return 0;
 	}
+	if (count && count < MAX_RANGE){
+		memset(buf+(count * current_fs->blocksize), 255, current_fs->blocksize);
+	}	
 return count;
 }	
 
@@ -713,6 +735,12 @@ static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap 
 	}
 	
 	i = 0;
+	//add the previous block to the end of the buffer
+	if(io_channel_read_blk ( current_fs->io,begin-1,1,buf - current_fs->blocksize)){
+		fprintf(stderr,"ERROR: while read block %10lu + %d  %lu\n",begin,i,count-1);
+		return 0;
+	}
+
 	for (end = begin,count=1 ; ((count <= MAX_RANGE) && (end < ds_bmap->end)); ){
 		if (ext2fs_test_block_bitmap(d_bmap, end) && (! ext2fs_test_block_bitmap( bmap, end))){
 			count++;
@@ -742,6 +770,7 @@ static int get_full_range(blk_t* p_blk ,struct ext2fs_struct_loc_generic_bitmap 
 			return 0;
 		}
 	}
+	
 return count-1;
 }	
 
@@ -770,7 +799,9 @@ blk_t						blk[2] ;
 blk_t						j;
 blk_t						flag[MAX_RANGE];
 blk_t						fragment_flag;
-unsigned char 					*buf = NULL;
+blk_t						last_rec;
+unsigned char					*v_buf = NULL;
+unsigned char 					*buf ;
 char						*magic_buf = NULL;
 unsigned char					*tmp_buf = NULL;
 int						blocksize, ds_retval,count,i,ret;
@@ -787,10 +818,11 @@ if ((! cookie) ||  magic_load(cookie, NULL) || (! cookie_f) || magic_load(cookie
 	fprintf(stderr,"ERROR: can't find libmagic\n");
 	goto errout;
 }
-buf = malloc(blocksize * MAX_RANGE);
+v_buf = malloc(blocksize * (MAX_RANGE+1));
+buf = v_buf + blocksize ; 
 tmp_buf = malloc(blocksize);
 magic_buf = malloc(100);
-if ((! buf) || (! magic_buf) || (! tmp_buf)){
+if ((! v_buf) || (! magic_buf) || (! tmp_buf)){
 	fprintf(stderr,"ERROR: can't allocate memory\n");
 	goto errout;
 }
@@ -831,7 +863,8 @@ while (ds_retval){
 				if ((scan & M_EXT3_META) && (check_indirect_meta3( buf+((i+12)*blocksize)))){
 					if (add_ext3_file_meta_data(file_data, buf+((i+12)*blocksize), j)){
 						io_channel_read_blk (current_fs->io, file_data->last,  1, tmp_buf);
-						file_data = soft_border(des_dir, tmp_buf, file_data, &follow, j);
+						file_data = soft_border(des_dir, tmp_buf, file_data, &follow, 0 ,&last_rec, 0x7);
+						i++ ;
 						break;
 					}
 					else
@@ -850,6 +883,7 @@ while (ds_retval){
 	}
 	count = 0;
 	blk[0] = 0;
+	last_rec = 0;
 	fragment_flag = 0;
 	count = get_full_range(blk ,ds_bmap, buf,flag);
 	while (count){
@@ -863,7 +897,7 @@ while (ds_retval){
 				if ((!fragment_flag) && (scan & M_EXT3_META) && (check_indirect_meta3(buf+(i*blocksize)))){
 
 					blk[1] = block_backward(flag[i] , 13);
-					if (blk[1] && (blk[1] < (flag[i]-12))){
+					if (blk[1] && (blk[1] < last_rec) && (blk[1] < (flag[i]-12))){
 						blk[0] = blk[1];
 						fragment_flag = flag[i];
 #ifdef  DEBUG_MAGIC_SCAN
@@ -886,7 +920,8 @@ while (ds_retval){
 				if (scan & M_EXT3_META){
 					if (add_ext3_file_meta_data(file_data, buf+((i+12)*blocksize), flag[j])){
 						io_channel_read_blk (current_fs->io, file_data->last,  1, tmp_buf);
-						file_data = soft_border(des_dir, tmp_buf, file_data, &follow, j);
+						file_data = soft_border(des_dir, tmp_buf, file_data, &follow, flag[i], &last_rec, 0x7);
+						i++;
 						break;
 					}
 					else
@@ -910,10 +945,10 @@ while (ds_retval){
 							}
 							else{	
 								j--;
-								file_data = soft_border(des_dir,buf+(j*blocksize), file_data, &follow, flag[j]); 
+								file_data = soft_border(des_dir,buf+(j*blocksize), file_data, &follow, flag[j], &last_rec,0x7); 
 								 if ((!fragment_flag) && (scan & M_EXT3_META) && (check_indirect_meta3(buf+((j+1)*blocksize)))){
 									blk[1] = block_backward(flag[j] , 12);
-									if (blk[1] && (blk[1] < flag[j]-12)){
+									if (blk[1] && (blk[1] < last_rec) && (blk[1] < flag[j]-12)){
 										blk[0] = blk[1];
 										fragment_flag = flag[j+1];
 #ifdef  DEBUG_MAGIC_SCAN
@@ -928,9 +963,10 @@ while (ds_retval){
 						}
 						size = (scan & M_SIZE ); //get_block_len(buf+(i*blocksize));
 						ret = file_data->func(buf+(j*blocksize), &size ,scan ,0 , file_data);
-						if (ret ==1){
+						if (ret == 1){
 							 if (file_data_correct_size(file_data,size)){
 								file_data = recover_file_data(des_dir, file_data, &follow);
+								last_rec = flag[i];
 							}
 							else{ 
 								file_data = forget_file_data(file_data, &follow);
@@ -945,7 +981,7 @@ while (ds_retval){
 #ifdef  DEBUG_MAGIC_SCAN
 						printf("stop no file-end\n");
 #endif
-						file_data = soft_border(des_dir,buf+((j-1)*blocksize), file_data, &follow, flag[j-1]);
+						file_data = soft_border(des_dir,buf+((j-1)*blocksize), file_data, &follow, flag[i], &last_rec, 0x3);
 						i = j - 12;
 					}
 					else
@@ -969,7 +1005,7 @@ load_new :
 errout:
 clear_block_bitmap_list(d_bmap);
 if (file_data) free_file_data(file_data);
-if (buf) free(buf);
+if (v_buf) free(v_buf);
 if (tmp_buf) free(tmp_buf);
 if (magic_buf) free(magic_buf);
 if (cookie) magic_close(cookie); 

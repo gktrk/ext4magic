@@ -34,7 +34,7 @@
 #define ext4magic_be64_to_cpu(x) ext2fs_swab64((x))
 #endif
 
-//#define DEBUG_MAGIC_SCAN
+//#define DEBUG_MAGIC_MP3_STREAM
 
 
 extern ext2_filsys     current_fs ;
@@ -144,15 +144,13 @@ int file_default(unsigned char *buf, int *size, __u32 scan , int flag, struct fo
 			}
 			else{
 				if (*size < (current_fs->blocksize -4))
-					ret = 3;
-				else 
-					break;
+					ret = 4;
+
 				if (*size < (current_fs->blocksize -64))
-						ret = 2;
-				else
-					break;
+					ret = 2;
+
 				if (*size < (current_fs->blocksize -256))
-					ret=1;
+					ret = 1;
 			}
 
 			break;
@@ -165,16 +163,24 @@ int file_default(unsigned char *buf, int *size, __u32 scan , int flag, struct fo
 
 
 
+//none   #do not recover this
+int file_none(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	return 0;
+}
+
+
+
 //Textfiles 
 int file_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	switch (flag){
 		case 0 :
 			if (*size < current_fs->blocksize){
-				if (buf[(*size)-1] == (unsigned char)0x0a) return 1;
+				if (buf[(*size)-1] == (unsigned char)0x0a) 
+					return 1;
 			}
 			else {
 				if (buf[(*size)-1] == (unsigned char)0x0a)
-					return 2;
+					return (f_data->inode->i_size == (current_fs->blocksize *12)) ? 4 : 2;
 			}
 			break;
 		case 1 :
@@ -195,7 +201,7 @@ int file_bin_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct fo
 			}
 			else {
 				if (buf[(*size)-1] == (unsigned char)0x0a)
-					return 2;
+					return (f_data->inode->i_size == (current_fs->blocksize *12)) ? 4 : 2;
 			}
 			break;
 		case 1 :
@@ -276,7 +282,7 @@ int file_ttf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			}
 			else {
 				*size = ((*size ) + 3) & ~3 ;
-				ret =2;
+				ret = 4;
 			}
 			break;
 		case 1 :return (scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
@@ -357,7 +363,7 @@ int		ret = 0;
 				}
 			}
 			else {
-				ret =3;
+				ret =0x10; //not recover for now
 				*size += 7;
 			}
 			break;
@@ -1054,7 +1060,7 @@ int file_psd(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			}
 			else {
 				if (*size < (current_fs->blocksize - 2))
-					ret = 3;
+					ret = 2;
 			}
 			break;
 		case 1 :
@@ -1228,7 +1234,7 @@ int file_CDF(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 		case 0 :
 			if (*size < (current_fs->blocksize -7) && ((*size ) && buf[(*size)-1] == (unsigned char)0xff )){
 			*size = ((*size) +8) ;
-			ret = 3;
+			ret = 2;
 		}
 			break;
 		case 1:
@@ -1277,7 +1283,7 @@ int file_SQLite(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 				}
 				else{
 					*size = current_fs->blocksize;
-					ret = 3;
+					ret = 2;
 				}
 			}
 			break;
@@ -1328,6 +1334,7 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	}
 	return ret;
 }
+
 
 
 
