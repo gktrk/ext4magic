@@ -1336,6 +1336,201 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 }
 
 
+//mp3
+int file_mp3(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+#define MPEG_V25        0
+#define MPEG_V2         2
+#define MPEG_V1         3
+#define MPEG_L3 	0x01
+#define MPEG_L2 	0x02
+#define MPEG_L1 	0x03
+int	ret = 0;
+__u32	frame_offset = 0 ;
+int	frame_flag = 0;
+int 	mpeg_version;
+int 	mpeg_layer;
+int 	bit_rate_key;
+int 	sampling_rate_key;
+int 	padding;
+int 	bit_rate;
+int 	sample_rate;
+__u32 	frameLength;
+int 	i=1023;
+unsigned char head[5]={0,0,0,0,0};
+
+
+static const unsigned int sample_rate_table[4][4]={
+  {11025, 12000,  8000, 0},     /* MPEG_V25 */
+  {    0,     0,     0, 0},
+  {22050, 24000, 16000, 0},     /* MPEG_V2 */
+  {44100, 48000, 32000, 0}      /* MPEG_V1 */
+};
+
+static const unsigned int bit_rate_table[4][4][16]=
+{
+/* MPEG_V25 */
+  {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0},
+    { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0},
+    { 0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, 0}
+  },
+/* MPEG_INVALID */
+  {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  },
+  /* MPEG_V2 */
+  {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0},
+    { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0},
+    { 0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, 0}
+  },
+  /* MPEG_V1 */
+  {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0},
+    { 0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 0},
+    { 0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 294, 416, 448, 0}
+  },
+};
+
+
+switch (flag){
+		case 0 :
+			if ((f_data->size) && (f_data->size <= f_data->inode->i_size)){
+				if( f_data->size < (12 * current_fs->blocksize)){
+					f_data->inode->i_size = (f_data->size + current_fs->blocksize -1) & ~(current_fs->blocksize-1);
+					*size = f_data->size % current_fs->blocksize;
+				}
+				ret = 1;
+			}
+			else {
+				ret =0;
+			}
+			break;
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1 |  M_BLANK )) ? 0 :1 ;
+			break;
+		case 2 :
+
+	frameLength       = 0;
+	if(buf[frame_offset + 0]=='I' && buf[frame_offset + 1]=='D' && buf[frame_offset + 2]=='3' && (buf[frame_offset + 3]==2 || buf[frame_offset + 3]==3 || buf[frame_offset + 3]==4) && buf[frame_offset + 4]==0){
+
+		if(buf[frame_offset + 3]==4 && (buf[frame_offset + 5]&0x10)==0x10) 
+			frameLength = 10 ;
+
+		frameLength += ((buf[frame_offset + 6]&0x7f)<<21) + ((buf[frame_offset + 7]&0x7f)<<14) + ((buf[frame_offset + 8]&0x7f)<<7) + (buf[frame_offset + 9]&0x7f)+ 10;
+		frame_offset += frameLength ;
+		frame_flag++;
+		while (!(buf[frame_offset]) && i--)
+			frame_offset++;
+#ifdef DEBUG_MAGIC_MP3_STREAM
+		fprintf (stderr,"ID3-TAG : block %lu ; size %u ; padding %u\n",f_data->first, frameLength, 1023-i);
+#endif		
+	}
+	while (frame_offset < (12 * current_fs->blocksize)){
+		if((buf[frame_offset + 0]==0xFF && ((buf[frame_offset + 1]&0xFE)==0xFA || (buf[frame_offset + 1]&0xFE)==0xF2 || (buf[frame_offset + 1]&0xFE)==0xE2))){
+			mpeg_version      = (buf[frame_offset + 1]>>3) & 0x03;
+			mpeg_layer        = (buf[frame_offset + 1]>>1) & 0x03;
+			bit_rate_key      = (buf[frame_offset + 2]>>4) & 0x0F;
+			sampling_rate_key = (buf[frame_offset + 2]>>2) & 0x03;
+			padding           = (buf[frame_offset + 2]>>1) & 0x01;
+			bit_rate          = bit_rate_table[mpeg_version][mpeg_layer][bit_rate_key];
+			sample_rate       = sample_rate_table[mpeg_version][sampling_rate_key];
+			frameLength       = 0;
+	
+			if(sample_rate==0 || bit_rate==0 || mpeg_layer==MPEG_L1){
+				f_data->func = file_none;
+				return 0;
+			}
+			if(mpeg_layer==MPEG_L3)	{
+				if(mpeg_version==MPEG_V1)
+					frameLength = 144000 * bit_rate / sample_rate + padding;
+				else
+					frameLength = 72000 * bit_rate / sample_rate + padding;
+			}
+			else{
+				if(mpeg_layer==MPEG_L2)
+					frameLength = 144000 * bit_rate / sample_rate + padding;
+				else
+					frameLength = (12000 * bit_rate / sample_rate + padding) * 4;
+			}
+//#ifdef DEBUG_MAGIC_MP3_STREAM
+//			fprintf(stderr,"MP3-STREAM %8u-> framesize: %u, layer: %u, bitrate: %u, padding: %u\n", 
+//					frame_flag, frameLength, 4-mpeg_layer, bit_rate, padding);
+//#endif
+			if( ! frameLength ){
+				f_data->func = file_none;
+				return 0;
+			}
+			
+			if (! frame_flag) {
+				head[0] = buf[frame_offset];
+				head[1] = buf[frame_offset +1];
+				head[2] = buf[frame_offset +2];
+				head[3] = (unsigned char)((frameLength-padding) >>8);
+				head[4] = (unsigned char)((frameLength-padding) & 0xff);
+			}
+
+			frame_offset += frameLength;
+			frame_flag++;
+		}
+		else{
+			if( ! ( buf[frame_offset + 0]) && ( ! ( buf[frame_offset + 1]) )){
+#ifdef DEBUG_MAGIC_MP3_STREAM
+				fprintf (stderr,"\nMP3-END : blk %lu : offset %lu : last_frame %lu\n", f_data->first, frame_offset, frameLength);
+#endif
+				break;
+			}
+			if((buf[frame_offset + 0] =='T') && (buf[frame_offset + 1] == 'A') && (buf[frame_offset + 2] == 'G')){
+				frame_offset += 128 ;
+#ifdef DEBUG_MAGIC_MP3_STREAM
+				fprintf (stderr,"\nMP3-TAG-END : blk %lu : offset %lu : last_frame %lu\n", f_data->first, frame_offset, frameLength);
+#endif
+				break;
+			}
+			else {
+#ifdef DEBUG_MAGIC_MP3_STREAM
+				fprintf (stderr,"MP3-STREAM_END : blk %lu : offset %lu : last_frame %lu\n", f_data->first, frame_offset, frameLength);
+				blockhex(stderr,(void*)(buf+frame_offset),0,64);
+#endif
+				return 0;
+			}
+		}	
+
+	}
+	if (frame_flag > 2){
+#ifdef DEBUG_MAGIC_MP3_STREAM
+		fprintf(stderr,"MP3-STREAM layer: %u, bitrate: %u, testet last offset %u\n", 
+					 4-mpeg_layer, bit_rate,frame_offset );
+#endif
+		f_data->size = frame_offset;
+		if (head[0]){
+			__u16		 reverse = (__u16)(head[3]<<8) + head[4];
+			__u32 		 offset = current_fs->blocksize;
+			unsigned char	 *v_buf = buf - offset; 
+			if (reverse < (offset -1)){
+				if (((v_buf[offset-reverse] == head[0]) && (v_buf[offset-reverse +1 ] == head[1]) && (v_buf[offset-reverse+2] == head[2] & ~0x2)) ||
+				((v_buf[offset-reverse-1] == head[0]) && (v_buf[offset-reverse] == (head[1])) && (v_buf[offset-reverse+1] == head[2] | 0x2))){
+#ifdef DEBUG_MAGIC_MP3_STREAM
+					fprintf(stderr,"MP3-CHECK: Block %lu : is mp3-data but not begin of file\n", f_data->first);
+					blockhex(stderr,(void*)(v_buf+offset-reverse-16),0,64);
+#endif
+					f_data->func = file_none;
+				}
+			}
+		}
+		return 1;
+	}
+	break;	
+} //switch
+
+return ret;
+}//end mp3
 
 
 //change this only carefully
@@ -1802,7 +1997,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0204     :               //mpeg
-	//              this->func = file_mpeg ;
+	              this->func = file_mp3 ;
 		strncat(this->name,".mp3",7);
 		break;
 	
