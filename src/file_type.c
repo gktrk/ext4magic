@@ -35,7 +35,7 @@
 #endif
 
 //#define DEBUG_MAGIC_MP3_STREAM
-
+//#define DEBUG_OGG_STREAM
 
 extern ext2_filsys     current_fs ;
 
@@ -1304,32 +1304,77 @@ int file_SQLite(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 
 //ogg  
 int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	int 		ret = 0;
-	unsigned char token[7]= {0x80, 't', 'h', 'e', 'o', 'r', 'a'};
+	
+	int 			i, ret = 0;
+	unsigned char 		token[7]= {0x80, 't', 'h', 'e', 'o', 'r', 'a'};
+	unsigned char		*ogg_h;
+	__u8			*t_pointer;	
+	__u32			frame_offset = 0;
+	__u32			seq_len;
 
-	//FIXME for ext4. must follow the bitstream by the page header (variable page size, 4-8 kB, maximum 65307)
 	
 	switch (flag){
 		case 0 :
-			if (*size < (current_fs->blocksize -7)){
-				*size += 2;
-				ret =1;
-			}
-			else{
-				if (*size < (current_fs->blocksize -2)){
-				*size += 2;
-				ret =2;
+			if ((f_data->size) && (f_data->size <= f_data->inode->i_size)){
+				if( f_data->size < (12 * current_fs->blocksize)){
+					f_data->inode->i_size = (f_data->size + current_fs->blocksize -1) & ~(current_fs->blocksize-1);
+					*size = f_data->size % current_fs->blocksize;
 				}
-			}	
+				else
+					*size += 2;
+				ret = 1;
+			}
+			else {
+				ret =0;
+			}
+
 			break;
 		case 1 : 
 			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 		break;
 		
 		case 2 :
-			if(!(memcmp(&buf[28], token, 7))){
+			if(!(memcmp(&buf[28], token, 7)))
 				f_data->name[strlen(f_data->name)-1] == 'm' ;
-			return 0;
+			ogg_h = buf;
+			if (!(ogg_h[5] & 0x02)){
+#ifdef DEBUG_OGG_STREAM
+				fprintf(stderr,"OGG : Block %8lu is sequence %lu and not begin of a file\n",f_data->first, 
+					(ogg_h[18] | (ogg_h[19]<<8) | (ogg_h[20]<<16) | (ogg_h[21]<<24))); 
+#endif
+				f_data->func = file_none;
+				return 0;
+			}
+			while (frame_offset < ((12 * current_fs->blocksize)-27)){
+				if ( ogg_h[5] & 0x4){
+					ret = 1;
+					break;
+				}
+				ogg_h = (buf + frame_offset);
+				seq_len = 27;
+				t_pointer = (__u8*) (buf + frame_offset + seq_len);
+				
+				if ((ogg_h[0] == 0x4f)&&(ogg_h[1] == 0x67)&&(ogg_h[2] == 0x67) &&(ogg_h[3] == 0x53)){
+					for (i = 0; i < ogg_h[26] ;i++, t_pointer++){
+						if ((frame_offset + 27 + i) >= (12 * current_fs->blocksize))
+							break;
+						seq_len += *t_pointer;
+					}				
+				}
+				
+				if (seq_len >27)
+					frame_offset += seq_len + ogg_h[26];
+				else
+					break;
+#ifdef DEBUG_OGG_STREAM
+				fprintf(stderr,"OGG-STREAM: Block %8lu : serial number %12lu : size %6lu : offset %6lu \n",f_data->first,
+				 (ogg_h[14] | (ogg_h[15]<<8) | (ogg_h[16]<<16) | (ogg_h[17]<<24)), seq_len , frame_offset); 
+#endif
+					
+			}
+			if( ret || (frame_offset > (12 * current_fs->blocksize))){
+				f_data->size = frame_offset;
+				ret = 1;
 			}
 	}
 	return ret;
