@@ -183,9 +183,9 @@ static int check_file_data_end(struct found_data_t* this,unsigned char *buf, __u
 	int 		ret = 0;
 
 	size = get_block_len(buf);
-	ret = this->func(buf, &size ,this->scan ,0 , this);
+	ret = (this->func(buf, &size ,this->scan ,0 , this) & mask) ;
 
-	if (ret & mask) 			
+	if (ret) 			
            ret = file_data_correct_size(this,size);
 	return ret;
 }
@@ -215,7 +215,7 @@ static int check_file_data_possible(struct found_data_t* this, __u32 scan ,unsig
 
 
 
-static int check_meta3_block(unsigned char *block_buf, blk_t blk, __u32 size){
+static int check_meta3_block(unsigned char *block_buf, blk_t blk, __u32 size, int flag){
 	blk_t 		block, *pb_block;
 	int		i,j ;
 
@@ -226,7 +226,11 @@ static int check_meta3_block(unsigned char *block_buf, blk_t blk, __u32 size){
 		pb_block = (blk_t*)(block_buf+i);
 		block = ext2fs_le32_to_cpu(*pb_block);
 		if( block && (block < current_fs->super->s_blocks_count) &&
-		 (ext2fs_test_block_bitmap( d_bmap, block)) && (!ext2fs_test_block_bitmap(bmap,block))){
+		   (ext2fs_test_block_bitmap( d_bmap, block)) && ( ((!flag) && (!ext2fs_test_block_bitmap(bmap,block))) ||
+		   (((flag == 1) && (i == (size -4)) && (i>4))||(!ext2fs_test_block_bitmap(bmap,block))) ||
+		   (flag == 2) ) ){
+
+ 
 			if (i) {  //work not by sparse file
 				for (j = i - 4 ; j >= 0 ;j -= 4){
 					if (block == ext2fs_le32_to_cpu(*((blk_t*)(block_buf+j))))
@@ -283,7 +287,7 @@ static int check_dindirect_meta3(unsigned char * block_buf){
 		p_blk = (__u32*) block_buf;
 		block = ext2fs_le32_to_cpu(*p_blk);
 		io_channel_read_blk ( current_fs->io, block, 1, buf );
-		if (check_meta3_block(buf, block, get_block_len(buf))){
+		if (check_meta3_block(buf, block, get_block_len(buf),2)){
 			ret = check_indirect_meta3(buf);
 		}		
 	free (buf);
@@ -305,7 +309,7 @@ static int check_tindirect_meta3(unsigned char * block_buf){
 		p_blk = (__u32*) block_buf;
 		block = ext2fs_le32_to_cpu(*p_blk);
 		io_channel_read_blk ( current_fs->io, block, 1, buf );
-		if (check_meta3_block(buf, block, get_block_len(buf))){
+		if (check_meta3_block(buf, block, get_block_len(buf),2)){
 			ret = check_dindirect_meta3(buf);
 		}		
 	free (buf);
@@ -406,7 +410,7 @@ static int add_ext3_file_meta_data(struct found_data_t* this, unsigned char *buf
 		next_meta = 0;
 		io_channel_read_blk ( current_fs->io, meta, 1, buf );
 
-		if (check_meta3_block(buf, meta, get_block_len(buf)) &&  check_dindirect_meta3(buf)){
+		if (check_meta3_block(buf, meta, get_block_len(buf),1) &&  check_dindirect_meta3(buf)){
 			ret = inode_add_meta_block(this->inode , meta, &last_data, &next_meta, buf );
 			this->last = last_data;
 
@@ -415,7 +419,7 @@ static int add_ext3_file_meta_data(struct found_data_t* this, unsigned char *buf
 				next_meta = 0;
 				io_channel_read_blk ( current_fs->io, meta, 1, buf );
 
-				if (check_meta3_block(buf, meta, get_block_len(buf)) && check_tindirect_meta3(buf)){
+				if (check_meta3_block(buf, meta, get_block_len(buf),1) && check_tindirect_meta3(buf)){
 					ret = inode_add_meta_block(this->inode , meta, &last_data, &next_meta, buf );
 					this->last = last_data;
 				}
@@ -460,7 +464,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 
 	while ((count >= 0) && (*(buf+count) == 0)) count-- ;
 	if (ext2fs_le32_to_cpu(*(blk_t*)buf) == blk +1){
-		if (check_meta3_block(buf, blk, count+1)){
+		if (check_meta3_block(buf, blk, count+1, 0)){
 				retval = M_EXT3_META ;	
 				goto out;
 		}

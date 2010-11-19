@@ -525,6 +525,10 @@ unsigned long parse_ulong(const char *str, const char *cmd,
 }
 
 
+
+extern ext2fs_block_bitmap 	  	d_bmap;
+
+
 void get_nblock_len(char *buf, blk_t *blk, __u64 *p_len){
 	(*blk)++;
 	*p_len += current_fs->blocksize ;
@@ -555,7 +559,7 @@ int get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next, __u64 *p_
 		else break;
 	}
 	if ((block >= current_fs->super->s_blocks_count) ||
-		      (ext2fs_test_block_bitmap(bmap,block)) || (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf ))){
+		      (!ext2fs_test_block_bitmap(d_bmap,block)) || (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf ))){
 //		fprintf(stderr,"ERROR: while read block %10u\n",block);
 		return 0;
 	}
@@ -592,7 +596,7 @@ int get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p
 		else break;
 	}
 	if ((block >= current_fs->super->s_blocks_count) ||
-		         (ext2fs_test_block_bitmap(bmap,block)) || (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf ))){
+		         (!ext2fs_test_block_bitmap(d_bmap,block)) || (io_channel_read_blk ( current_fs->io,  block,  1,  priv_buf ))){
 //		fprintf(stderr,"ERROR: while read ind-block %10u\n",block);
 		return 0;
 	}
