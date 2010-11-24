@@ -34,6 +34,7 @@
 #define ext4magic_be64_to_cpu(x) ext2fs_swab64((x))
 #endif
 
+//#define DEBUG_QUICK_TIME
 //#define DEBUG_MAGIC_MP3_STREAM
 //#define DEBUG_OGG_STREAM
 
@@ -132,6 +133,23 @@ return 1;
 }
 
 
+
+static __u32 test_id3_tag(unsigned char *buf){
+	__u32 	offset = 0;
+
+	if(buf[0]=='I' && buf[1]=='D' && buf[2]=='3' && (buf[3]==2 || buf[3]==3 || buf[3]==4) && buf[4]==0){
+
+		if(buf[3]==4 && (buf[5]&0x10)==0x10) 
+			offset = 10 ;
+
+		offset += ((buf[6]&0x7f)<<21) + ((buf[7]&0x7f)<<14) + ((buf[8]&0x7f)<<7) + (buf[9]&0x7f)+ 10;
+//		while (!(buf[offset]) && i--)
+//			frame_offset++;
+
+//		fprintf (stderr,"ID3-TAG found : size  %lu \n", offset);	
+	}
+	return offset;
+} 
 
 //default
 int file_default(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
@@ -501,21 +519,22 @@ int file_ps(unsigned char *buf, int *size, __u32 scan , int flag, struct found_d
 
 //tar
 int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	int 	ret = 0;
+	int 	i,ret = 0;
+	__u64	offset;
+	__u64	len;
+	__u8	*o_str;
 
 	switch (flag){
 		case 0 :
-			if ((((__u64)f_data->inode->i_size |((__u64)f_data->inode->i_size_high<<32)) >= (__u64)0x2800 ) &&
-				((*size) < (current_fs->blocksize - 0x4ff))){
+			if ((((__u64)f_data->inode->i_size |((__u64)f_data->inode->i_size_high<<32)) >= (__u64)((f_data->size + 0x27ff) & ~0x27ff)) &&  
+				((*size) < (current_fs->blocksize - 0xff))){
 				if (!(*size))
 					*size = current_fs->blocksize;
 				else
 					*size = ((*size) + 1023) & ~1023 ;
 	
-				if (f_data->inode->i_block[12])   //FIXME for ext4
+				if ((f_data->inode->i_block[12]) || (f_data->size < f_data->inode->i_size))  //FIXME for ext4
 					ret = 1;
-				else
-					ret = 2;
 			}
 			break;
 		case 1 :
@@ -524,6 +543,29 @@ int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			 else 
 				ret = (scan & M_IS_META | M_CLASS_1 ) ? 0 :1 ;
 			break;
+		case 2 :
+			offset = 0x0;
+			while (offset < ((12 * current_fs->blocksize)-27)){
+				if ((buf[offset + 0x101] == 0x75) && (buf[offset + 0x102] == 0x73) && (buf[offset + 0x103] == 0x74)&&
+					(buf[offset + 0x104] == 0x61) && (buf[offset + 0x105] == 0x72)){
+					len = 0;
+					o_str = (__u8*)(buf + offset + 0x7c);
+					for (i=0;i<10;i++){
+						len += (*o_str & 0x7) ;
+						len <<= 3;
+						o_str++;
+					}
+					len += (*o_str & 0x7);
+					len = ((len + 0x1ff) & ~0x1ff);
+					offset += len + 0x200 ;
+//					printf("TAR : block %lu : offset %8lu \n",f_data->first, offset);
+					continue;
+				}
+				else
+					break;
+			}
+			f_data->size = offset;
+			ret = 1 ;		  
 	}
 	return ret;
 }	 
@@ -594,6 +636,10 @@ int file_object(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 }
 
 
+
+
+int file_qt(unsigned char*, int*, __u32, int, struct found_data_t*);
+
 //jpeg
 int file_jpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	ret = 0;
@@ -610,6 +656,14 @@ int file_jpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 		case 1 :
 			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
+		case 2 :
+			if(((buf[4]=='j') && (buf[5]=='P') &&(buf[6]==' '))||((buf[4]=='f') && (buf[5]=='t') &&(buf[6]=='y')&&(buf[7]=='p'))){
+				//this file a jp2  quicktime
+			  	f_data->func = file_qt;
+				ret = f_data->func( buf, size, scan , flag , f_data);
+			}
+
+		break;
 	}
 	return ret;
 }
@@ -943,22 +997,27 @@ int file_aiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 
 //asf
 int file_asf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+static const unsigned char top_header[16]   = { 0x30,0x26,0xb2,0x75,0x8e,0x66,0xcf,0x11,0xa6,0xd9,0x00,0xaa,0x00,0x62,0xce,0x6c };
+static const unsigned char data_header[16]  = { 0x36,0x26,0xb2,0x75,0x8e,0x66,0xcf,0x11,0xa6,0xd9,0x00,0xaa,0x00,0x62,0xce,0x6c };
+static const unsigned char index[4][4] = {{0x90,0x08,0x00,0x33},{0xd3,0x29,0xe2,0xd6},{0xf8,0x03,0xb1,0xfe},{0xd0,0x3f,0xb7,0x3c}};
 	int 		ret = 0;
-	__u32		*p_32;
-	__u32		ssize;
+	unsigned char	*p_offset;
+	__u64		offset;
+	__u64		obj_size;
+	int 		i,j;
 
 	switch (flag){
 		case 0 :
-			if (f_data->size ) {
-				ssize = f_data->size % current_fs->blocksize;
-				if (f_data->inode->i_size > (f_data->size - ssize)){
-					*size = ssize;
-					ret =1;
-				}
-			}
-			else{
-				if ((*size) < (current_fs->blocksize - 16)){
-					ret = 2;
+			if (f_data->size || f_data->h_size) {
+				if (f_data->h_size != f_data->inode->i_size_high)
+					ret = 0;
+				else{
+					if (f_data->inode->i_size < f_data->size)
+						ret = 0;
+					else{
+						*size += 4;
+						ret = 1;
+					}
 				}
 			}
 			break;
@@ -967,31 +1026,117 @@ int file_asf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			break;
 		
 		case 2:
-			if (buf[3] == 0x75){
-				p_32 = (__u32*)(buf+70);
-				ssize = ext2fs_le32_to_cpu(*p_32);
-				f_data->size = ssize;
-				ret = 1;
-			}
-		break;
+			offset = 0;
+			obj_size = 0;
+			if(! memcmp(buf,top_header,16)) {
+				obj_size = ext2fs_le64_to_cpu(*(__u64*)(buf+16)); 
+
+				if (obj_size < 30)  return 0;
+				offset += obj_size;
+				if (offset < (__u64)((12 * current_fs->blocksize) - 23) && (! memcmp(buf +(__u32)offset,data_header,16))){
+					p_offset = buf + (__u32)offset;	
+					obj_size =  ext2fs_le64_to_cpu(*(__u64*)(p_offset+16)); 
+					if ( obj_size < 50 ) return 0;
+				
+				offset += obj_size;
+				}	
+				while (offset < ((__u64)((12 * current_fs->blocksize) - 23))){
+					p_offset = buf + (__u32)offset;	
+					for (i=0 ; i<4 ; i++){
+						for (j=0;j<4;j++){
+							if (! (p_offset[j] == index[i][j])) 
+								break;
+						}
+						if(j < 4)
+							continue;
+						break;
+					}
+					if (i<4){
+						obj_size =  ext2fs_le64_to_cpu(*(__u64*)(p_offset+16));
+						offset += obj_size;
+					}
+					else
+						break;
+				}
+			f_data->size = offset & 0xFFFFFFFF ;
+			f_data->h_size = offset >> 32;
+			ret = 1;
+			break;	
+			}	
 	}
 	return ret;
 }
+
+
+
+//flac
+int file_flac(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	meta_size;
+	int 	ret = 0;
+	__u32	offset;
+static const unsigned char 	token[4]= {0x66,0x4c,0x61,0x43};
+
+switch (flag){
+		case 0 :
+			if ((f_data->size) && (f_data->size < f_data->inode->i_size)){
+				if (*size < current_fs->blocksize-7)
+					ret = 1;
+			}
+			else {
+				ret =0;
+			}
+			break;
+		case 1 :
+			if (f_data->size > f_data->inode->i_size)
+				ret = (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
+			else
+				ret = (scan & (M_IS_META | M_CLASS_1 | M_BLANK | M_TXT )) ? 0 :1 ;
+			break;
+		case 2:
+			offset = test_id3_tag(buf);
+			if(! memcmp((void*)(buf + offset),token,4)) {
+				offset += 4;
+				while ((buf[offset] != 0xff) && (offset < ((12*current_fs->blocksize)-4))){
+					meta_size = (buf[offset+1]<<16) + (buf[offset+2]<<8) + buf[offset+3] + 4;
+					offset += meta_size;
+				}
+				if ((offset < ((12*current_fs->blocksize)-4)) && (buf[offset] == 0xff)&& ((buf[offset+1] & 0xfc)==0xf8)){
+					f_data->size = offset+2;
+					ret = 1;
+				}
+				else 
+					f_data->func = file_none;
+			}
+			break;
+	}
+	return ret;
+}
+
+
 
 
 //mpeg
 int file_mpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	i,j;
 	int 	ret = 0;
-	unsigned char	token[5];
-	sprintf(token,"%c%c%c%c",0x00,0x00,0x01,0xb9);
+static const unsigned char 	token0[4]= {0x00,0x00,0x01,0xb9};
+static const unsigned char	token1[4]= {0x00,0x00,0x01,0xb7};
+
 	switch (flag){
 		case 0 :
-				j = 3 ; //strlen(token) -1;
+				j = 3 ; 
 				i = (*size) -1;
-				while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
+				while ((i >= 0) && (j >= 0) && (buf[i] == token0[j])){
 					i--;
 					j--;
+				}
+				if ((i != -1 ) && (j != -1)){
+					j = 3 ; 
+					i = (*size) -1;
+					while ((i >= 0) && (j >= 0) && (buf[i] == token1[j])){
+						i--;
+						j--;
+					}
 				}
 				if ((i == -1) || (j == -1)){
 					ret=1;
@@ -1009,7 +1154,7 @@ int file_mpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 //riff
 int file_riff(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	__u32		*p_32  ;
-	__u32		ssize ;
+	__u32		ssize , offset ;
 	int 		ret = 0;
 
 	switch (flag){
@@ -1027,9 +1172,10 @@ int file_riff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
 			break;
 		case 2 :
-			p_32 = (__u32*)buf;
+			offset = test_id3_tag(buf);
+			p_32 = (__u32*)(buf + offset);
 			p_32++;
-			switch (buf[3]){
+			switch (buf[offset + 3]){
 				case 'F' :
 					ssize =  ext2fs_le32_to_cpu(*p_32) + 8 ;
 					break;
@@ -1039,7 +1185,7 @@ int file_riff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 				default :
 					ssize = 0;
 			}
-			f_data->size = ssize;
+			f_data->size = ssize ? (offset + ssize) : ssize ;
 			ret=1;
 		break;
 	}
@@ -1302,6 +1448,281 @@ int file_SQLite(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 }
 
 
+//au
+int file_au(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+static const unsigned char au_header[4]= {'.','s','n','d'};
+struct au_header_t
+{
+	__u32 	magic;
+	__u32 	offset;
+	__u32 	size;
+	__u32 	encoding;
+	__u32 	sample_rate;
+	__u32 	channels;
+};
+	int 			ret = 0;
+	__u32			ssize;
+	struct au_header_t	*p_header;
+
+	switch (flag){
+		case 0 :
+			if (f_data->size ) {
+				ssize = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size > (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			else{
+				if (*size < (current_fs->blocksize -4)){
+					*size += 4;
+					ret = 4;
+				}
+			}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_TXT)) ? 0 :1 ;
+			break;
+		
+		case 2:
+			p_header = (struct au_header_t*) buf;
+			if(memcmp(buf,p_header,sizeof(struct au_header_t)) == 0 &&
+    			    ext2fs_be32_to_cpu(p_header->encoding)<=27 && ext2fs_be32_to_cpu(p_header->channels)<=256){
+				if(ext2fs_be32_to_cpu(p_header->size)!=0xffffffff){
+					f_data->size = ext2fs_be32_to_cpu(p_header->offset) + ext2fs_be32_to_cpu(p_header->size);
+				}
+				ret = 1;
+			}
+			break;
+	}
+	return ret;
+}
+
+
+
+//ra
+int file_ra(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+static const unsigned char ra_header[4]= { '.', 'r', 'a', 0xfd};
+static const unsigned char rm_header[9]  = { '.', 'R', 'M', 'F', 0x00, 0x00, 0x00, 0x12, 0x00};
+	int 			ret = 0;
+	__u32			ssize;
+
+	switch (flag){
+		case 0 :
+			if (f_data->size ) {
+				ssize = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size > (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			else{
+				if (*size < (current_fs->blocksize -4)){
+					*size += 4;
+					ret = 4;
+				}
+			}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_TXT)) ? 0 :1 ;
+			break;
+		
+		case 2:
+			if(! memcmp(buf,ra_header,4)) {
+				if(buf[4]==0x00 && buf[5]==0x03)
+					return 1;  //V3
+				if(buf[4]==0x00 && buf[5]==0x04 && buf[9]=='r' && buf[10]=='a' && buf[11]=='4'){  //V4
+					f_data->size = (buf[12]<<24) + (buf[13]<<16) + (buf[14]<<8) + buf[15] + 40;
+					return 1;
+				}
+			}
+			else{
+				if(! memcmp(buf,rm_header,9))
+					return 1 ;
+			}
+			break;
+	}
+	return ret;
+}
+
+
+
+//QuickTime  
+int file_qt(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 			i, j, ret = 0;
+	__u32			atom_size;
+	__u32			offset;
+static unsigned char 	basic[18][4]={
+{'f','t','y','p'},
+{'m','d','a','t'},
+{'m','o','o','v'},
+{'c','m','o','v'},
+{'c','m','v','d'},
+{'p','n','o','t'},
+{'d','c','o','m'},
+{'w','i','d','e'},
+{'f','r','e','e'},
+{'s','k','i','p'},
+{'j','p','2','h'},
+{'i','d','s','c'},
+{'i','d','a','t'},
+{'m','d','i','a'},
+{'p','c','k','g'},
+{'s','t','b','l'},
+{'t','r','a','k'},
+{'j','P',' ',' '}};
+
+
+static unsigned char ftype[10][3]={
+{'i','s','o'},
+{'m','p','4'},
+{'m','m','p'},
+{'M','4','A'},
+{'M','4','B'},
+{'M','4','C'},
+{'3','g','p'},
+{'3','g','2'},
+{'j','p','2'},
+{'q','t',' '}};
+
+static unsigned char atom[20][4]={
+{'c','m','o','v'},
+{'c','m','v','d'},
+{'d','c','o','m'},
+{'f','r','e','e'},
+{'f','t','y','p'},
+{'j','p','2','h'},
+{'m','d','a','t'},
+{'m','d','i','a'},
+{'m','o','o','v'},
+{'P','I','C','T'},
+{'p','n','o','t'},
+{'s','k','i','p'},
+{'s','t','b','l'},
+{'r','m','r','a'},
+{'m','e','t','a'},
+{'i','d','s','c'},
+{'i','d','a','t'},
+{'t','r','a','k'},
+{'u','u','i','d'},
+{'w','i','d','e'}};
+
+switch (flag){
+		case 0 :
+			if (f_data->size || f_data->h_size) {
+				if ((f_data->h_size == 0xff )&& (!f_data->size)){
+					if (*size < (current_fs->blocksize - 4)){
+						ret = 4;
+						break;
+					}
+				}
+				if (f_data->h_size != f_data->inode->i_size_high)
+					ret = 0;
+				else{
+					if (f_data->inode->i_size < f_data->size)
+						ret = 0;
+					else{
+						ret = 1;
+					}
+				}
+			}
+			else {
+				ret =0;
+			}
+			break; 
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK | M_TXT)) ? 0 :1 ;
+			break;
+		case 2 :
+
+offset = 0;
+atom_size=(buf[offset+0]<<24)+(buf[offset+1]<<16)+(buf[offset+2]<<8)+buf[offset+3];
+for (i=0;i<18;i++){
+	if(memcmp((void*)(buf + offset +4), basic[i], 4))
+		continue;
+	if((!atom_size) && (i == 1)){ //FIXME
+		f_data->h_size = 0xff;
+#ifdef DEBUG_QUICK_TIME
+		fprintf(stderr,"QuickTime : found a \"mdat\" atom at begin , block %lu\n",f_data->first);
+#endif
+		return 1;
+	}
+	if(atom_size == 1){
+		f_data->size   = (buf[offset+12]<<24)+(buf[offset+13]<<16)+(buf[offset+14]<<8)+buf[offset+15];
+		f_data->h_size = (buf[offset+8]<<24)+(buf[offset+9]<<16)+(buf[offset+10]<<8)+buf[offset+11];
+#ifdef DEBUG_QUICK_TIME
+		fprintf(stderr,"QuickTime : found a large atom, block %lu ; offset size :%llu\n",f_data->first,
+				 ((__u64)f_data->h_size<<32) + f_data->size + offset);
+#endif
+		return 1;
+	}
+	if(!i){
+		for (j=0;j<10;j++){
+			if(memcmp((void*)(buf + offset +8), ftype[j], 3))
+			continue;
+#ifdef DEBUG_QUICK_TIME
+			fprintf(stderr,"QuickTime : Type \"%c%c%c\"\n",ftype[j][0],ftype[j][1],ftype[j][2]);
+#endif
+		//FIXME
+		}
+		if (i == 10){
+#ifdef DEBUG_QUICK_TIME
+			fprintf(stderr,"QuickTime : Type : \"%c%c%c%c\" is unknown\n",buf[offset +4],buf[offset +5],buf[offset+6],buf[offset+7]);
+#endif
+			//return 0;
+		}
+	}
+	offset += atom_size;
+	break;
+}
+if (i == 18){
+#ifdef DEBUG_QUICK_TIME
+	fprintf(stderr,"QuickTime : first Container atom unknown ; block %lu ; size %lu\n",f_data->first, atom_size);
+#endif
+	return 0;
+}
+
+while ((offset < ((12 * current_fs->blocksize)-8)) && (buf[offset+4])){
+	atom_size=(buf[offset+0]<<24)+(buf[offset+1]<<16)+(buf[offset+2]<<8)+buf[offset+3];
+	for (i=0;i<20;i++){
+		if(memcmp((void*)(buf + offset +4), atom[i], 4))
+			continue;
+		if (atom_size == 1){
+			f_data->size   = (buf[offset+12]<<24)+(buf[offset+13]<<16)+(buf[offset+14]<<8)+buf[offset+15];
+			f_data->h_size = (buf[offset+8]<<24)+(buf[offset+9]<<16)+(buf[offset+10]<<8)+buf[offset+11];
+#ifdef DEBUG_QUICK_TIME
+			fprintf(stderr,"QuickTime : found a large atom, block %lu ; offset size :%llu\n",f_data->first,
+				 ((__u64)f_data->h_size<<32) + f_data->size + offset);
+#endif
+			return 1;
+		}
+		offset += atom_size;
+#ifdef DEBUG_QUICK_TIME
+			fprintf(stderr,"QuickTime : atom \"%c%c%c%c\" ; size %lu\n", atom[i][0],atom[i][1],atom[i][2],atom[i][3],offset);
+#endif
+		break;
+	}
+	if (i == 20){
+#ifdef DEBUG_QUICK_TIME
+		fprintf(stderr,"QuickTime : atom \"%c%c%c%c\" unknown ; block  %lu ; offset %lu , size %lu\n", 
+			atom[i][0],atom[i][1],atom[i][2],atom[i][3], f_data->first, offset, atom_size);
+#endif
+		return 0;
+	}	
+}
+#ifdef DEBUG_QUICK_TIME
+	fprintf(stderr,"QuickTime : found ;  block  %lu ; offset %lu\n", f_data->first, offset);
+#endif
+	f_data->size = offset;
+	ret = 1;
+	break;
+}
+return ret;
+}
+
+
+
+
 //ogg  
 int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	
@@ -1330,13 +1751,14 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 
 			break;
 		case 1 : 
-			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK | M_TXT)) ? 0 :1 ;
 		break;
 		
 		case 2 :
-			if(!(memcmp(&buf[28], token, 7)))
+			frame_offset = test_id3_tag(buf);
+			if(!(memcmp((void*)(buf + frame_offset +28), token, 7)))
 				f_data->name[strlen(f_data->name)-1] == 'm' ;
-			ogg_h = buf;
+			ogg_h = (buf + frame_offset) ;
 			if (!(ogg_h[5] & 0x02)){
 #ifdef DEBUG_OGG_STREAM
 				fprintf(stderr,"OGG : Block %8lu is sequence %lu and not begin of a file\n",f_data->first, 
@@ -1376,9 +1798,12 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				f_data->size = frame_offset;
 				ret = 1;
 			}
+			else 
+				f_data->func = file_none;
 	}
 	return ret;
 }
+
 
 
 //mp3
@@ -1440,7 +1865,7 @@ static const unsigned int bit_rate_table[4][4][16]=
     { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0},
     { 0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 0},
     { 0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 294, 416, 448, 0}
-  },
+  }
 };
 
 
@@ -1463,20 +1888,7 @@ switch (flag){
 		case 2 :
 
 	frameLength       = 0;
-	if(buf[frame_offset + 0]=='I' && buf[frame_offset + 1]=='D' && buf[frame_offset + 2]=='3' && (buf[frame_offset + 3]==2 || buf[frame_offset + 3]==3 || buf[frame_offset + 3]==4) && buf[frame_offset + 4]==0){
-
-		if(buf[frame_offset + 3]==4 && (buf[frame_offset + 5]&0x10)==0x10) 
-			frameLength = 10 ;
-
-		frameLength += ((buf[frame_offset + 6]&0x7f)<<21) + ((buf[frame_offset + 7]&0x7f)<<14) + ((buf[frame_offset + 8]&0x7f)<<7) + (buf[frame_offset + 9]&0x7f)+ 10;
-		frame_offset += frameLength ;
-		frame_flag++;
-		while (!(buf[frame_offset]) && i--)
-			frame_offset++;
-#ifdef DEBUG_MAGIC_MP3_STREAM
-		fprintf (stderr,"ID3-TAG : block %lu ; size %u ; padding %u\n",f_data->first, frameLength, 1023-i);
-#endif		
-	}
+	frame_offset	= test_id3_tag(buf);
 	while (frame_offset < (12 * current_fs->blocksize)){
 		if((buf[frame_offset + 0]==0xFF && ((buf[frame_offset + 1]&0xFE)==0xFA || (buf[frame_offset + 1]&0xFE)==0xF2 || (buf[frame_offset + 1]&0xFE)==0xE2))){
 			mpeg_version      = (buf[frame_offset + 1]>>3) & 0x03;
@@ -1695,8 +2107,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0114     :               //vnd.rn-realmedia
-	//              this->func = file_vnd.rn-realmedia ;
-	//              strncat(this->name,".vnd.rn-realmedia",7);
+	              this->func = file_ra ;
+	              strncat(this->name,".ra",7);
 		break;
 	
 		case 0x0115     :               //vnd.symbian.install
@@ -1930,8 +2342,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0143     :               //x-quicktime-player
-	//              this->func = file_x-quicktime-player ;
-	//              strncat(this->name,".x-quicktime-player",7);
+	              this->func = file_qt;
+	              strncat(this->name,".qt",7);
 		break;
 	
 		case 0x0144     :               //x-rar
@@ -2027,7 +2439,7 @@ void get_file_property(struct found_data_t* this){
 	//----------------------------------------------------------------
 	//Audio
 		case 0x0201     :               //basic
-	//              this->func = file_basic ;
+	              this->func = file_au ;
 		strncat(this->name,".au",7);
 		break;
 	
@@ -2037,7 +2449,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0203     :               //mp4
-	//              this->func = file_mp4 ;
+		     this->func = file_qt ;
 		strncat(this->name,".mp4",7);
 		break;
 	
@@ -2047,8 +2459,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0205     :               //x-adpcm
-	//              this->func = file_x-adpcm ;
-	//              strncat(this->name,".x-adpcm",7);
+	              this->func = file_au ;
+	              strncat(this->name,".au",7);
 		break;
 	
 		case 0x0206     :               //x-aiff
@@ -2062,8 +2474,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0208     :               //x-flac
-	//              this->func = file_x-flac ;
-	//              strncat(this->name,".x-flac",7);
+	              this->func = file_flac ;
+	              strncat(this->name,".flac",7);
 		break;
 	
 		case 0x0209     :               //x-hx-aac-adif        
@@ -2087,7 +2499,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x020d     :               //x-pn-realaudio
-	//              this->func = file_x-pn-realaudio ;
+	              this->func = file_ra;
 		strncat(this->name,".ra",7);
 		break;
 	
@@ -2190,8 +2602,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0312     :               //x-quicktime
-	//              this->func = file_x-quicktime ;
-	              strncat(this->name,".qti",7);
+	              this->func = file_qt ;
+	              strncat(this->name,".qtif",7);
 		break;
 	
 		case 0x0313     :               //x-unknown
@@ -2396,8 +2808,8 @@ void get_file_property(struct found_data_t* this){
 	//----------------------------------------------------------------
 	//Video
 		case 0x0701     :               //3gpp
-	//              this->func = file_3gpp ;
-		strncat(this->name,".gpp",7);
+	              this->func = file_qt ;
+		strncat(this->name,".3gpp",7);
 		break;
 	
 		case 0x0702     :               //h264
@@ -2416,7 +2828,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0705     :               //mp4
-	//              this->func = file_mp4 ;
+	             this->func = file_qt ; 
 		strncat(this->name,".mp4",7);
 		break;
 	
@@ -2436,7 +2848,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0709     :               //quicktime
-	//              this->func = file_quicktime ;
+	              this->func = file_qt ;
 		strncat(this->name,".qt",7);
 		break;
 	
