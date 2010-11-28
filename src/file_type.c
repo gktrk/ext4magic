@@ -47,13 +47,14 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 //they are used for indices to the filestypes
 	char	typestr[] ="application/ audio/ image/ message/ model/ text/ video/ ";
 	char	imagestr[] ="gif jp2 jpeg png svg+xml tiff vnd.adobe.photoshop vnd.djvu x-coreldraw x-cpi x-ico x-ms-bmp x-niff x-portable-bitmap x-portable-greymap x-portable-pixmap x-psion-sketch x-quicktime x-unknown x-xcursor x-xpmi x-tga ";
-	char	videostr[] ="3gpp h264 mp2p mp2t mp4 mp4v-es mpeg mpv quicktime x-flc x-fli x-flv x-jng x-mng x-msvideo x-sgi-movie x-unknown x-ms-asf ";
+	char	videostr[] ="3gpp h264 mp2p mp2t mp4 mp4v-es mpeg mpv quicktime x-flc x-fli x-flv x-jng x-mng x-msvideo x-sgi-movie x-unknown x-ms-asf x-matroska ";
 	char	audiostr[] ="basic midi mp4 mpeg x-adpcm x-aiff x-dec-basic x-flac x-hx-aac-adif x-hx-aac-adts x-mod x-mp4a-latm x-pn-realaudio x-unknown x-wav ";
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text ";
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 ";
+//Files not found as mime-type
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -526,7 +527,7 @@ int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 
 	switch (flag){
 		case 0 :
-			if ((((__u64)f_data->inode->i_size |((__u64)f_data->inode->i_size_high<<32)) >= (__u64)((f_data->size + 0x27ff) & ~0x27ff)) &&  
+			if ((((__u64)f_data->inode->i_size |((__u64)f_data->inode->i_size_high<<32)) >= (__u64)((f_data->size + 0xfff) & ~0xfff)) &&  
 				((*size) < (current_fs->blocksize - 0xff))){
 				if (!(*size))
 					*size = current_fs->blocksize;
@@ -656,14 +657,31 @@ int file_jpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 		case 1 :
 			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
-		case 2 :
-			if(((buf[4]=='j') && (buf[5]=='P') &&(buf[6]==' '))||((buf[4]=='f') && (buf[5]=='t') &&(buf[6]=='y')&&(buf[7]=='p'))){
-				//this file a jp2  quicktime
-			  	f_data->func = file_qt;
-				ret = f_data->func( buf, size, scan , flag , f_data);
-			}
+	}
+	return ret;
+}
 
-		break;
+
+
+
+//art
+int file_art(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	ret = 0;
+	static const unsigned char header[8]   = {0x4a,0x47,0x04,0x0e,0x00,0x00,0x00,0x00};
+	switch (flag){
+		case 0 :
+			if ((*size >1) && (*size < current_fs->blocksize) && (buf[(*size)-1] == 0xcb) && (buf[(*size)-2] == 0xcf))
+					ret = 1;
+			break;
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1 | M_TXT | M_BLANK )) ? 0 :1 ;
+			break;
+		case 2 :
+			if(memcmp(buf,header,8)) 
+				f_data->func = file_none;
+			else 
+				ret = 1 ;
+			break;
 	}
 	return ret;
 }
@@ -764,6 +782,99 @@ int file_mng(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	}
 	return ret;
 }
+
+
+//iff
+int file_iff(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		i,ret = 0;
+	__u32		ssize;
+	char 		token[5];	
+	char type[] = "AIFF AIFC 8SVX 16SV SAMP MAUD SMUS CMUS ILBM RGBN RGB8 DEEP DR2D TDDD LWOB LWO2 LWLO REAL MC4D ANIM YAFA SSA ACBM FAXX FTXT CTLG PREF DTYP PTCH AMFF WZRD DOC ";
+
+	switch (flag){
+		case 0 : 
+			if (f_data->size ) {
+				ssize = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size > (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			break;
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
+			break;
+
+		case 2 :
+
+		if ((buf[0]==0x46) && (buf[1]==0x4f) && (buf[2] ==0x52) && (buf[3]==0x4d)){
+			for (i=0;i<4;i++)
+				token[i]=buf[i+8];
+			token[i] = 0;
+			if(strstr(type,token)){
+				f_data->size = (buf[4]<<24) + (buf[5]<<16) + (buf[6]<<8) + buf[7] + 8;
+				ret =1;
+			}
+		}
+		break;
+	}
+return ret;
+}
+
+
+
+//pcx
+int file_pcx(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	ret = 0;
+struct pcx_header {
+  __u8  	Manufacturer; /* should always be 0Ah                */
+  __u8  	Version; 
+  __u8  	Encoding;    /* 0: uncompressed, 1: RLE compressed */
+  __u8  	BitsPerPixel;
+  __u16		XMin;        /* image width = XMax-XMin+1      */
+  __u16		YMin;        /* image height = YMax-YMin+1    */
+  __u16		XMax;
+  __u16		YMax;
+  __u16 	H_DPI;
+  __u16		V_DPI;
+  __u8  	Palette[48];
+  __u8  	Reserved;
+  __u8  	ColorPlanes;   /* 4 -- 16 colors ; * 3 -- 24 bit color (16.7 million colors) */
+  __u16 	BytesPerLine;
+  __u16 	PaletteType;
+  __u16 	HScrSize;    /* only supported by            */
+  __u16 	VScrSize;    /* PC Paintbrush IV or higher   */
+  __u8  	Filler[54];
+};
+struct pcx_header	*pcx;
+
+	switch (flag){
+		case 0 :
+			if (*size < (current_fs->blocksize -3))
+				ret = 4;
+			if (*size < (current_fs->blocksize - 48))
+				ret = 2;
+			if (*size < (current_fs->blocksize - 128))
+					ret = 1;
+			break;
+		case 1 :return (scan & (M_IS_META | M_CLASS_1 | M_BLANK | M_TXT)) ? 0 :1 ;
+			break;
+		case 2 :
+		pcx = (struct pcx_header*) buf;
+
+		if ((pcx->Version<=5 && pcx->Version!=1) && pcx->Encoding <=1 && 
+      			(pcx->BitsPerPixel==1 || pcx->BitsPerPixel==4 || pcx->BitsPerPixel==8 || pcx->BitsPerPixel==24) &&
+      			(pcx->Reserved==0) && (! pcx->Filler[1])  && (! pcx->Filler[53]))
+
+			ret = 1;
+		else
+			f_data->func = file_none;
+	break;	
+	}
+return ret;
+}
+
+
 
 //ico
 int file_ico(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
@@ -898,6 +1009,7 @@ int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	}
 	return ret;
 }	
+
 
 
 //midi
@@ -1140,7 +1252,19 @@ static const unsigned char	token1[4]= {0x00,0x00,0x01,0xb7};
 				}
 				if ((i == -1) || (j == -1)){
 					ret=1;
-				}	
+				}
+				else{
+					if(*size < (current_fs->blocksize - 48))
+						ret=4;
+					else{
+					//possible ????? a stream cat at block-size ; I seen this in test files ????
+						if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) && (*size > (current_fs->blocksize - 2)) && (f_data->inode->i_size > (12 * current_fs->blocksize))){
+							*size = current_fs->blocksize;
+							 ret = 4;
+						}
+					}
+				}
+					
 			break;
 		case 1 :	
 			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
@@ -1164,8 +1288,11 @@ int file_riff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 				*size = (ssize >= *size)? ssize : (*size) + 2;
 				ret = 1;
 			}
-			else {
-				ret =0;
+			else { 
+				if ( (!f_data->size) && (*size>4) && (buf[(*size)-2] == 'D') && (buf[(*size)-3] == 'N') &&(buf[(*size)-4] == 'E'))
+					ret = 1;
+				else
+					ret =0;
 			}
 			break;
 		case 1 :
@@ -1585,13 +1712,14 @@ static unsigned char ftype[10][3]={
 {'j','p','2'},
 {'q','t',' '}};
 
-static unsigned char atom[20][4]={
+static unsigned char atom[21][4]={
 {'c','m','o','v'},
 {'c','m','v','d'},
 {'d','c','o','m'},
 {'f','r','e','e'},
 {'f','t','y','p'},
 {'j','p','2','h'},
+{'j','p','2','c'},
 {'m','d','a','t'},
 {'m','d','i','a'},
 {'m','o','o','v'},
@@ -1684,9 +1812,17 @@ if (i == 18){
 
 while ((offset < ((12 * current_fs->blocksize)-8)) && (buf[offset+4])){
 	atom_size=(buf[offset+0]<<24)+(buf[offset+1]<<16)+(buf[offset+2]<<8)+buf[offset+3];
-	for (i=0;i<20;i++){
+	for (i=0;i<21;i++){
 		if(memcmp((void*)(buf + offset +4), atom[i], 4))
 			continue;
+		if ((!atom_size ) && (i == 6)){
+			f_data->func = file_jpeg;
+#ifdef DEBUG_QUICK_TIME
+			fprintf(stderr,"QuickTime : found JP-2000, block %lu ; offset size :%llu\n",f_data->first,
+				 ((__u64)f_data->h_size<<32) + f_data->size + offset);
+#endif
+			return 1;
+		}
 		if (atom_size == 1){
 			f_data->size   = (buf[offset+12]<<24)+(buf[offset+13]<<16)+(buf[offset+14]<<8)+buf[offset+15];
 			f_data->h_size = (buf[offset+8]<<24)+(buf[offset+9]<<16)+(buf[offset+10]<<8)+buf[offset+11];
@@ -1702,7 +1838,7 @@ while ((offset < ((12 * current_fs->blocksize)-8)) && (buf[offset+4])){
 #endif
 		break;
 	}
-	if (i == 20){
+	if (i == 21){
 #ifdef DEBUG_QUICK_TIME
 		fprintf(stderr,"QuickTime : atom \"%c%c%c%c\" unknown ; block  %lu ; offset %lu , size %lu\n", 
 			atom[i][0],atom[i][1],atom[i][2],atom[i][3], f_data->first, offset, atom_size);
@@ -1721,6 +1857,35 @@ return ret;
 }
 
 
+
+
+//fli
+int file_fli(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 			ret = 0;
+	__u32			ssize;
+
+	switch (flag){
+		case 0 :
+			if (f_data->size ) {
+				ssize = f_data->size % current_fs->blocksize;
+				if (f_data->inode->i_size > (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_TXT)) ? 0 :1 ;
+			break;
+		
+		case 2:
+			f_data->size = (buf[3]<<24) + (buf[2]<<16) + (buf[1]<<8) + buf[0] ;
+			ret =  1;
+			break;
+	}
+	return ret;
+}
 
 
 //ogg  
@@ -2378,7 +2543,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x014a     :               //x-stuffit
 	//              this->func = file_x-stuffit ;
-	//              strncat(this->name,".x-stuffit",7);
+	              strncat(this->name,".sit",7);
 		break;
 	
 		case 0x014b     :               //x-svr4-package
@@ -2505,7 +2670,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x020e     :               //x-unknown
 	//              this->func = file_x-unknown ;
-	//              strncat(this->name,".x-unknown",7);
+	              strncat(this->name,".voc",7);
 		break;
 	
 		case 0x020f     :               //x-wav
@@ -2838,7 +3003,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0707     :               //mpeg
-	//              this->func = file_mpeg ;
+	              this->func = file_mpeg ;
 		strncat(this->name,".mpeg",7);
 		break;
 	
@@ -2853,12 +3018,12 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x070a     :               //x-flc
-	//              this->func = file_x-flc ;
+	              this->func = file_fli ;
 		strncat(this->name,".flc",7);
 		break;
 	
 		case 0x070b     :               //x-fli
-	//              this->func = file_x-fli ;
+	              this->func = file_fli ;
 		strncat(this->name,".fli",7);
 		break;
 	
@@ -2896,7 +3061,11 @@ void get_file_property(struct found_data_t* this){
 	              this->func = file_asf ;
 	              strncat(this->name,".asf",7);
 		break;
-	
+
+		case 0x0713     :               //x-matroska
+	//              this->func = file_x-matroska ;
+	              strncat(this->name,".mkv",7);
+		break;
 	
 	
 	//----------------------------------------------------------------
@@ -2996,7 +3165,39 @@ void get_file_property(struct found_data_t* this){
 	              strncat(this->name,".vmdk",7);
 		break;
 
+		case 0x0814     :               //JPEG
+	              this->func = file_jpeg ;
+	              strncat(this->name,".jp2",7);
+		break;
 
+		case 0x0815     :               //ART
+	              this->func = file_art ;
+	              strncat(this->name,".art",7);
+		break;
+		case 0x0816     :               //PCX
+	              this->func = file_pcx ;
+	              strncat(this->name,".pcx",7);
+		break;
+
+		case 0x0817     :               //RIFF
+	              this->func = file_riff ;
+	              strncat(this->name,".amv",7);
+		break;
+
+		case 0x0818     :               //DIF
+	//              this->func = file_dv ;
+	              strncat(this->name,".dv",7);
+		break;
+
+		case 0x0819     :               //IFF
+	              this->func = file_iff ;
+	              strncat(this->name,".iff",7);
+		break;
+
+		case 0x081a     :               //ATSC
+	//              this->func = file_ac3 ;
+	              strncat(this->name,".ac3",7);
+		break;
 	//----------------------------------------------------------------
 		default:
 			this->func = file_default ;
