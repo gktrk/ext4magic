@@ -152,6 +152,70 @@ static __u32 test_id3_tag(unsigned char *buf){
 	return offset;
 } 
 
+
+
+/*
+// skeleton function (Version:  0.2.0)
+// The following functions control the recover of the individual file types. All this functions have the same
+// call parameters and run on a common function-pointer.
+// This is a statement of values and variables for your own extensions.
+// For each file type, such a specific function can be defined. If no function is assigned, is used automatically "file_default()".
+// In accordance with the scan result one of these functions is selected by "get_file_property()" 
+// and invoked during the program run, with different parameters for different tasks.
+// The variables have also different meanings. 
+
+int file_dummy(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+
+switch (flag){ 	
+// the function is controlled by the variable "flag"
+  case 0  : // Called to test whether the file is encountered.
+	// unsigned char *buf   	==  pointer to the data of the current last known block 
+	//				    (allowed access buf[0] to buf[blocksize-1] )
+	// int *size            	==  pointer to the "size" of this block. (means: The last character which is not NULL.)
+	//			   	    this can be changed here to set the correct file length
+	// __u32 scan			==  undefined
+	// struct found_data_t* f_data  ==  pointer to the data structure of its own file, including the generated inode.
+					    allowed full access to all fields.
+	return	
+		// 0 == this is not a file end (do not recover now)
+		// 1 == file end is here ; File length is adjusted according to the value in "size". (The length of the last block)
+		//	recover this file.
+		// 2 == The file could end here if the next block is a new file. (Or the next data block can not be attached)
+		//	File length is adjusted accordingly "size". recover if possible
+		// 4 == As at "return 2" ; but not if the length of the file currently has 12 blocks.
+
+
+  case  1 : // Test if a single block can be added to the file or has a wrong content for this file.(ext3 only small files <= 12*blocksize)
+	// unsigned char *buf   	==  undefined
+	// int *size            	==  undefined
+	// __u32 scan			==  the scan result of the next data block, Use the Macro in src/util.h
+	// struct found_data_t* f_data  ==  undefined
+	
+	return
+		// 0 == not attach this block
+		// 1 == attach this block
+
+
+  case 2:  // Called during initialization, can test the beginning of the file and the initial course of the file 
+	// unsigned char *buf   	==  pointer to data blocks for a possible new file of this type
+	//				    (allowed access buf[-blocksize] to buf[(blocksize * 12]) -1 )
+	//				    The data of the file can be checked up to 12 data block. 
+	//				    For many file types can be determined in the final file length.
+	// int *size            	==  undefined
+	// __u32 scan			==  undefined
+	// struct found_data_t* f_data  ==  pointer to the new data structure for the new file.
+	//				    allowed full access to all fields, except inode, (these data are not produced at this time).
+	//				    possible change of the name for the file, or change the file_function() for this filetype,
+	//				    often a sign created for the file length in the variable "f_data->size", which will
+	//				    be used later for file length determination. (see "case 0:" )
+
+	return 
+		// the return value is currently not evaluated.
+  }
+}
+*/
+
+
 //default
 int file_default(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int ret = 0;
