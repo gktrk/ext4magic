@@ -51,10 +51,10 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 	char	audiostr[] ="basic midi mp4 mpeg x-adpcm x-aiff x-dec-basic x-flac x-hx-aac-adif x-hx-aac-adts x-mod x-mp4a-latm x-pn-realaudio x-unknown x-wav ";
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
-	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf ";
+	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf x-compress ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text ";
 //Files not found as mime-type
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ";
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker ";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -580,6 +580,48 @@ int file_ps(unsigned char *buf, int *size, __u32 scan , int flag, struct found_d
 		}
 	return ret;
 }
+
+
+
+//arj
+int file_arj(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	ret = 0;
+
+	switch (flag){
+		case 0 :
+			if ((*size>1) && (*size < current_fs->blocksize) && (buf[(*size)-1] == (unsigned char)0xea) && 
+				(buf[(*size)-2] == (unsigned char)0x60))
+					*size +=2;
+					ret = 1;
+			break;
+			
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1)| M_BLANK | M_TXT) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}
+
+
+
+//xz
+int file_xz(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	ret = 0;
+
+	switch (flag){
+		case 0 :
+			if ((*size>1) && (*size < current_fs->blocksize) && (buf[(*size)-1] == (unsigned char)0x5a) && 
+				(buf[(*size)-2] == (unsigned char)0x59))
+					ret = 1;
+			break;
+			
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1)| M_BLANK | M_TXT) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}
+
 
 
 //tar
@@ -1289,8 +1331,6 @@ switch (flag){
 }
 
 
-
-
 //mpeg
 int file_mpeg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	i,j;
@@ -1322,7 +1362,8 @@ static const unsigned char	token1[4]= {0x00,0x00,0x01,0xb7};
 						ret=4;
 					else{
 					//possible ????? a stream cat at block-size ; I seen this in test files ????
-						if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) && (*size > (current_fs->blocksize - 2)) && (f_data->inode->i_size > (12 * current_fs->blocksize))){
+						if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) && (*size > (current_fs->blocksize - 2)) && (f_data->inode->i_size > (12 * current_fs->blocksize)) &&
+						((f_data->inode->i_blocks - (13 * (current_fs->blocksize / 512))) % 256)  ){
 							*size = current_fs->blocksize;
 							 ret = 4;
 						}
@@ -1511,9 +1552,9 @@ int file_tiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 	switch (flag){
 		case 0 :
 			if (f_data->size ){
-				if (f_data->inode->i_size > f_data->size){  //FIXME
+				if ((f_data->inode->i_size > f_data->size) && (*size < (current_fs->blocksize -8))){  //FIXME
 					*size += 8;
-					ret =1;
+					ret = 4;
 				}
 			}
 			else{
@@ -1529,12 +1570,14 @@ int file_tiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 		case 2 :
 			p_32 = (__u32*)buf;
 			p_32++;
+	//precise calculations are very complex, we will see later if we need it for ext4
+	//for the moment we take only the offset for the first IDF
 			if ((*buf == 0x49) && (*(buf+1) == 0x49))
 				ssize = ext2fs_le32_to_cpu(*p_32);
 			if ((*buf == 0x4d) && (*(buf+1) == 0x4d))
 				ssize = ext2fs_be32_to_cpu(*p_32);
 			
-			f_data->size = ssize;
+			f_data->size = ssize + 120;
 			ret = 1;
 			
 		break;
@@ -1550,7 +1593,7 @@ int file_mod(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 
 	switch (flag){
 		case 0 :
-			if (*size < (current_fs->blocksize -2)){
+			if (*size < (current_fs->blocksize -4)){
 				*size = ((*size) +3) & 0xfffc ;
 				ret = 1;
 			}
@@ -2366,8 +2409,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x011a     :               //x-arj
-	//              this->func = file_x-arj ;      
-	//              strncat(this->name,".x-arj",7);
+	              this->func = file_arj ;      
+	              strncat(this->name,".arj",7);
 		break;
 	
 		case 0x011b     :               //x-bittorrent
@@ -2517,7 +2560,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0138     :               //x-lha
 	//              this->func = file_x-lha ;
-		strncat(this->name,".lha",7);
+		strncat(this->name,".lzh",7);
 		break;
 	
 		case 0x0139     :               //x-lharc
@@ -2646,8 +2689,8 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0152     :               //x-xz
-	//              this->func = file_x-xz ;
-	//              strncat(this->name,".x-xz",7);
+	              this->func = file_xz ;
+	              strncat(this->name,".xz",7);
 		break;
 	
 		case 0x0153     :               //x-zoo
@@ -2665,6 +2708,11 @@ void get_file_property(struct found_data_t* this){
 	             strncat(this->name,".ttf",7);
 		break;
 	
+		case 0x0156     :               //x-compress
+	//           this->func = file_compress ;
+	             strncat(this->name,".Z",7);
+		break;
+
 	//----------------------------------------------------------------
 	//Audio
 		case 0x0201     :               //basic
@@ -3038,7 +3086,7 @@ void get_file_property(struct found_data_t* this){
 	//Video
 		case 0x0701     :               //3gpp
 	              this->func = file_qt ;
-		strncat(this->name,".3gpp",7);
+		strncat(this->name,".3gp",7);
 		break;
 	
 		case 0x0702     :               //h264
@@ -3097,7 +3145,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x070d     :               //x-jng
-	//              this->func = file_x-jng ;
+	              this->func = file_mng ;
 		strncat(this->name,".jng",7);
 		break;
 	
@@ -3262,6 +3310,12 @@ void get_file_property(struct found_data_t* this){
 	//              this->func = file_ac3 ;
 	              strncat(this->name,".ac3",7);
 		break;
+		
+		case 0x081b     :              // ScreamTracker III
+	              this->func = file_mod ;
+	              strncat(this->name,".s3m",7);
+		break;
+
 	//----------------------------------------------------------------
 		default:
 			this->func = file_default ;

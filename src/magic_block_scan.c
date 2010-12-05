@@ -559,7 +559,7 @@ if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"text",4))
 	}
 
 	if (strstr(magic_buf,"application/octet-stream")){
-		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ";
+		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker ";
 		p_search = searchstr;
 		while (*p_search){
 			len=0;
@@ -812,7 +812,7 @@ int						blocksize, ds_retval,count,i,ret;
 __u32						scan,follow, size;
 
 
-printf("MAGIC-3 :Start ext3-magic-scan search. Please wait, this may take a long time\n");
+printf("MAGIC-3 : start ext3-magic-scan search. Please wait, this may take a long time\n");
 blocksize = current_fs->blocksize ;
 count = 0;
 blk[0] = 0;
