@@ -51,7 +51,7 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 	char	audiostr[] ="basic midi mp4 mpeg x-adpcm x-aiff x-dec-basic x-flac x-hx-aac-adif x-hx-aac-adts x-mod x-mp4a-latm x-pn-realaudio x-unknown x-wav ";
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
-	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf x-compress ";
+	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm text ";
 //Files not found as mime-type
 	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot Linux filesystem x86 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker ";
@@ -590,9 +590,10 @@ int file_arj(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	switch (flag){
 		case 0 :
 			if ((*size>1) && (*size < current_fs->blocksize) && (buf[(*size)-1] == (unsigned char)0xea) && 
-				(buf[(*size)-2] == (unsigned char)0x60))
+				(buf[(*size)-2] == (unsigned char)0x60)){
 					*size +=2;
 					ret = 1;
+			}
 			break;
 			
 		case 1 :
@@ -1095,23 +1096,36 @@ int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 		case 2 :
-			if (*(buf+2) < 4){
-				p = (__u16*) (buf + 12);
-				ssize = ext2fs_le16_to_cpu(*p);
-				p++;
-				ssize *= ext2fs_le16_to_cpu(*p);
-				ssize *= ((*(buf+16) +1 ) / 8);
-				if (*(buf+1) == 1) {
-					p = (__u16*) (buf + 5);
-					psize = ext2fs_le16_to_cpu(*p) * ((*(buf+7) +1) / 8);
-					p--;
-					psize  += ext2fs_le16_to_cpu(*p);
+			if ((buf[16]==1) || (buf[16]==8) || (buf[16]==15) || (buf[16]==16) || (buf[16]==24) || (buf[16]==32)){
+				if (buf[2] < 4){
+					p = (__u16*) (buf + 12);
+					ssize = ext2fs_le16_to_cpu(*p);
+					p++;
+					ssize *= ext2fs_le16_to_cpu(*p);
+					switch (buf[16]){
+						case 1  : ssize  = 0; break;
+						case 15 : ssize *= 2; break;
+						default : ssize *= (buf[16] / 8); break;
+					}
+
+					if (ssize && (buf[1] == 1)) {
+						p = (__u16*) (buf + 5);
+						psize = ext2fs_le16_to_cpu(*p) ;
+						psize *= ((buf[7]+1) / 8);
+						p--;
+						psize += ext2fs_le16_to_cpu(*p);
+					}
+					if (ssize)
+						ssize += (psize + 18);
+					f_data->size = ssize;
+					ret = 1;
 				}
-				if (ssize)
-					ssize += (psize + 18);
-				f_data->size = ssize;
-				ret = 1;
 			}
+			else{
+				f_data->func = file_none;
+				ret = 0;
+			}
+			break;
 	}
 	return ret;
 }	
@@ -1252,14 +1266,16 @@ static const unsigned char index[4][4] = {{0x90,0x08,0x00,0x33},{0xd3,0x29,0xe2,
 				if (obj_size < 30)  return 0;
 				offset += obj_size;
 				if (offset < (__u64)((12 * current_fs->blocksize) - 23) && (! memcmp(buf +(__u32)offset,data_header,16))){
-					p_offset = buf + (__u32)offset;	
-					obj_size =  ext2fs_le64_to_cpu(*(__u64*)(p_offset+16)); 
+					p_offset = buf + (offset & 0xffffffff);	
+					obj_size = (__u64) p_offset[16] | (p_offset[17]<<8) | (p_offset[18]<<16) |  (p_offset[19]<<24) | 
+						   ((__u64)p_offset[20]<<32) | ((__u64)p_offset[21]<<40) | ((__u64)p_offset[22]<<48) | ((__u64)p_offset[23]<<56) ;  
+					//obj_size =  ext2fs_le64_to_cpu(*(__u64*)(p_offset+16)); 
 					if ( obj_size < 50 ) return 0;
 				
 				offset += obj_size;
 				}	
 				while (offset < ((__u64)((12 * current_fs->blocksize) - 23))){
-					p_offset = buf + (__u32)offset;	
+					p_offset = buf + (offset & 0xffffffff);	
 					for (i=0 ; i<4 ; i++){
 						for (j=0;j<4;j++){
 							if (! (p_offset[j] == index[i][j])) 
@@ -1270,7 +1286,9 @@ static const unsigned char index[4][4] = {{0x90,0x08,0x00,0x33},{0xd3,0x29,0xe2,
 						break;
 					}
 					if (i<4){
-						obj_size =  ext2fs_le64_to_cpu(*(__u64*)(p_offset+16));
+						obj_size = (__u64) p_offset[16] | (p_offset[17]<<8) | (p_offset[18]<<16) |  (p_offset[19]<<24) | 
+						   ((__u64)p_offset[20]<<32) | ((__u64)p_offset[21]<<40) | ((__u64)p_offset[22]<<48) | ((__u64)p_offset[23]<<56) ;  
+						//obj_size =  ext2fs_le64_to_cpu(*(__u64*)(p_offset+16));
 						offset += obj_size;
 					}
 					else
@@ -2028,8 +2046,6 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 		
 		case 2 :
 			frame_offset = test_id3_tag(buf);
-			if(!(memcmp((void*)(buf + frame_offset +28), token, 7)))
-				f_data->name[strlen(f_data->name)-1] == 'm' ;
 			ogg_h = (buf + frame_offset) ;
 			if (!(ogg_h[5] & 0x02)){
 #ifdef DEBUG_OGG_STREAM
@@ -2042,10 +2058,12 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			while (frame_offset < ((12 * current_fs->blocksize)-27)){
 				if ( ogg_h[5] & 0x4){
 					ret = 1;
-					break;
 				}
 				ogg_h = (buf + frame_offset);
 				seq_len = 27;
+				i = 0;
+				if(!(memcmp((void*)(buf + frame_offset +28), token, 7)))
+				f_data->name[strlen(f_data->name)-1] = 'm' ;
 				t_pointer = (__u8*) (buf + frame_offset + seq_len);
 				
 				if ((ogg_h[0] == 0x4f)&&(ogg_h[1] == 0x67)&&(ogg_h[2] == 0x67) &&(ogg_h[3] == 0x53)){
@@ -2055,18 +2073,20 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 						seq_len += *t_pointer;
 					}				
 				}
-				
-				if (seq_len >27)
-					frame_offset += seq_len + ogg_h[26];
-				else
+				else {
+					if (ret && ogg_h[0]) 
+						ret = 0;
 					break;
+				}
+				
+				frame_offset += seq_len + ogg_h[26];
 #ifdef DEBUG_OGG_STREAM
 				fprintf(stderr,"OGG-STREAM: Block %8lu : serial number %12lu : size %6lu : offset %6lu \n",f_data->first,
 				 (ogg_h[14] | (ogg_h[15]<<8) | (ogg_h[16]<<16) | (ogg_h[17]<<24)), seq_len , frame_offset); 
 #endif
 					
 			}
-			if( ret || (frame_offset > (12 * current_fs->blocksize))){
+			if( ret || ((frame_offset + 27 + i) >= (12 * current_fs->blocksize))){
 				f_data->size = frame_offset;
 				ret = 1;
 			}
@@ -2425,7 +2445,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x011d     :               //x-compress
 	//              this->func = file_x-compress ;
-	//              strncat(this->name,".z",7);
+	              strncat(this->name,".Z",7);
 		break;
 	
 		case 0x011e     :               //x-coredump
@@ -2708,11 +2728,6 @@ void get_file_property(struct found_data_t* this){
 	             strncat(this->name,".ttf",7);
 		break;
 	
-		case 0x0156     :               //x-compress
-	//           this->func = file_compress ;
-	             strncat(this->name,".Z",7);
-		break;
-
 	//----------------------------------------------------------------
 	//Audio
 		case 0x0201     :               //basic
