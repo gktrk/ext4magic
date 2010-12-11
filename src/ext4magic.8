@@ -1,11 +1,8 @@
-.TH ext4magic 8 "Sep 2010" "version 0.2.0" "Administrations Tool"
+.TH ext4magic 8 "Dec 2010" "version 0.2.0" "Administrations Tool"
 .SH NAME
 ext4magic \- allows to recover deleted files on ext3/4 filesystems
 .SH SYNOPSIS
-.B ext4magic \-M 
-[\-j <journal_file>] [\-d <target_dir>] <filesystem>
-
-.B ext4magic \-m 
+.B ext4magic {\-M|\-m} 
 [\-j <journal_file>] [\-d <target_dir>] <filesystem>
 
 .B ext4magic
@@ -29,16 +26,18 @@ be possible to recover any file at any time. Many factors affects which data and
 long the data store in the Journal. Read the ext4magic documentation for more
 extensive information about the filesytem Journal.
 
-.B
-Direct use of the Journal of a currently read-write open filesystem produce reading of bad blocks. Such bad blocks provide program errors and false results. You shall therefore never use the Journal of such a read-write open file system directly. 
-
 
 
 .SH OPTIONS
 .B
-Magic Options: (new and experimental)
-These options are for a mulit-stage recover especially for file restore after delete the file system. These functions are currently only available for ext3.
-Umount the file system directly after an accidentally destroy and use these options with a copy of this file system. These functions are not adequately tested in this version and can include a lot of bugs.
+Magic Options: (new in version 0.2.0)
+These options are for a mulit-stage recover especially for file restore after a recursiv deletion of parts or the whole file system. 
+(third step currently only available for ext3.)
+
+Umount the file system directly after an accidentally destroy and use these options with the umount file system or with a copy of this file system. 
+The program automatically determines the correct time options. 
+In the first and second step files restored by copies of inodes.
+The third step is trying to restore the remaining files without inode copies. This may take a long time 
 
 .TP
 .B
@@ -393,7 +392,7 @@ The Time options affect the search. If a file name already exists, or you recove
 "#"
 will created. The maximum ist the extension "
 .B
-######
+#####
 " for a filename.
 
 single files also can recovered, possible search with time-stamps or transaction number. 
@@ -449,7 +448,7 @@ With option "
 " works ext4magic more accurately, and can avoid such false and duplicate files. This requires old data blocks of the directories in the Journal. You will not find of all directories those old blocks in the Journal. Only directories in which files have been previously created or deleted, but not of directories in which no change has been a long time. You should set the time stamp "
 .B
 before
-" immediately before destruction time of the files. Are not sufficient directory data available, may be, ext4magic can't found deleted files or entire directory content.
+" immediately before destruction time of the files. Are not sufficient directory data available, may be, ext4magic can't found deleted files or entire directory content. This option should be used carefully.
 
 .PP
 .B
@@ -514,7 +513,7 @@ try to restore all files deleted last 24 hours. Write in directory "./RECOVERDIR
 .B
  # ext4magic /dev/sda3 -M -d /home/recover
 
-try the new experimental multi-stage recover of all files after the filesystem is deleted with a "rm -rf *" . Write the files to "/home/recover". 
+try multi-stage recover of all files after the filesystem is deleted with a "rm -rf *" . Write the files to "/home/recover". (on ext4 : in this version skipped the last step.) 
 
 
 .B
@@ -531,12 +530,16 @@ try to restore the directory tree "user1/Dokuments/". The "-b" timestamp you mus
 try to restore only all deleted files from directory tree "user1/", and have "jpg" in filename. (last 24 hour) and write to "/mnt/testrecover" - use a temporary file "./tmpfile" for a list of filenames.
 
 
+.SH BUGS
+Direct use of the Journal of a currently read-write open filesystem produce reading of bad blocks. Such bad blocks provide program errors and false results. You shall therefore never use the Journal of such a read-write open file system directly. 
+Should it be necessary to use a mounted file system, create a copy of the file system journal and used the option
+.B
+-j
+
+
 .SH AUTHOR
 Roberto Maar
 
 .SH SEE ALSO
 debugfs(8)
-
-
-
 

@@ -1,3 +1,8 @@
+ext4magic 0.2.0		The Magic features for ext3 are complete.		
+			Support for most files types of a typical Linux system and lots of multimedia files.
+			
+			
+
 ext4magic 0.2.0 pv2	The magic functions have been adjusted for libmagic (file-5.04)
 			Many bugs have been fixed and added support for many file types
 

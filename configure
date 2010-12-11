@@ -2494,7 +2494,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=ext4magic
- VERSION=0.2.0-pv2
+ VERSION=0.2.0
 
 
 cat >>confdefs.h <<_ACEOF
@@ -11692,9 +11692,9 @@ $as_echo "$as_me: error: You must have ext2fs version >= 1.41.9 to build ext4mag
    { (exit 1); exit 1; }; }
 
 fail=0
-{ $as_echo "$as_me:$LINENO: checking for library containing magic_buffer" >&5
-$as_echo_n "checking for library containing magic_buffer... " >&6; }
-if test "${ac_cv_search_magic_buffer+set}" = set; then
+{ $as_echo "$as_me:$LINENO: checking for library containing magic_getpath" >&5
+$as_echo_n "checking for library containing magic_getpath... " >&6; }
+if test "${ac_cv_search_magic_getpath+set}" = set; then
   $as_echo_n "(cached) " >&6
 else
   ac_func_search_save_LIBS=$LIBS
@@ -11711,11 +11711,11 @@ cat >>conftest.$ac_ext <<_ACEOF
 #ifdef __cplusplus
 extern "C"
 #endif
-char magic_buffer ();
+char magic_getpath ();
 int
 main ()
 {
-return magic_buffer ();
+return magic_getpath ();
   ;
   return 0;
 }
@@ -11748,7 +11748,7 @@ $as_echo "$ac_try_echo") >&5
 	 test "$cross_compiling" = yes ||
 	 $as_test_x conftest$ac_exeext
        }; then
-  ac_cv_search_magic_buffer=$ac_res
+  ac_cv_search_magic_getpath=$ac_res
 else
   $as_echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
@@ -11759,21 +11759,21 @@ fi
 rm -rf conftest.dSYM
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext
-  if test "${ac_cv_search_magic_buffer+set}" = set; then
+  if test "${ac_cv_search_magic_getpath+set}" = set; then
   break
 fi
 done
-if test "${ac_cv_search_magic_buffer+set}" = set; then
+if test "${ac_cv_search_magic_getpath+set}" = set; then
   :
 else
-  ac_cv_search_magic_buffer=no
+  ac_cv_search_magic_getpath=no
 fi
 rm conftest.$ac_ext
 LIBS=$ac_func_search_save_LIBS
 fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_search_magic_buffer" >&5
-$as_echo "$ac_cv_search_magic_buffer" >&6; }
-ac_res=$ac_cv_search_magic_buffer
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_search_magic_getpath" >&5
+$as_echo "$ac_cv_search_magic_getpath" >&6; }
+ac_res=$ac_cv_search_magic_getpath
 if test "$ac_res" != no; then
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
@@ -11782,8 +11782,8 @@ else
 fi
 
 test $fail = 1 &&
-{ { $as_echo "$as_me:$LINENO: error: The library libmagic.so not found, install the package \"file\" to build ext4magic" >&5
-$as_echo "$as_me: error: The library libmagic.so not found, install the package \"file\" to build ext4magic" >&2;}
+{ { $as_echo "$as_me:$LINENO: error: library libmagic.so file-version >= 5.04 not found, install the package \"file-5.04\" to build ext4magic" >&5
+$as_echo "$as_me: error: library libmagic.so file-version >= 5.04 not found, install the package \"file-5.04\" to build ext4magic" >&2;}
    { (exit 1); exit 1; }; }
 
 

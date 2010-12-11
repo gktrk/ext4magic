@@ -1,125 +1,17 @@
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-Instructions to experimenting with new features, the magic functions.
----------------------------------------------------------------------
-
-Use no file system specially created for this purpose.
-Why?
- If you create a test file system, it is likely that all inode copies are included
- in the Journal. The first stage can restore all files, and you'll never see the
- magic functions in the third stage.
-
-
-Better is the following:
- Use an existing ext3 filesystem. The last hours should no "find" or a backup tool
- used global in this file system. That too would write to many inode copies.
- umount this file system, and create a 1-to-1 copy of the file system.
- Now mount the file system copy and delete all or many files. Then umount the file system copy.
-
-
-
-Now you can test ext4magic with the deleted copy.
- You need free space for writing the recovered files.
- Assuming, the copy is "/dev/sdb1" and you have enough free
- space at "/home/test/"
-
- # ext4magic /dev/sdb1 -d /home/test/RECOVER -M
- if you have deleted all files.
-
- or
- # ext4magic /dev/sdb1 -d /home/test/RECOVER -m
- if not all files were deleted.
-
-
- It will automatically search for the time of the last deletion.
- And with a little delay should start the recover. You can now only wait. Depending on the
- number of deleted files can take a long time. Then you can compare the files with those
- in the original file system.
-
- The functions are developed from scratch and can not be stable and reliable.
- A few responses: working or not working, the last words before a crash, or what file types
- are ok and which not, can help to improve the features and to develop the tool further.
-
-
-
- 
- A few words about the current development status 0.2.0-pv2
- -----------------------------------------------------------
- Extensive testing has confirmed that magic-functions are now stable with libmagic of file-5.04.
- Good support exists for: all text file types, a lot of image formats, Open Office documents, PDF, 
- TAR, CPIO, BZ2, ZIP, GZIP, 7Z. Some audio and video formats and a lot more is often restored correctly.
-
- Major problems still exist with some multimedia formats and some documents. 
- For example: MP3, OGG and MS Office files. The recovery of CD/DVD images and other file system containers
- is also problematic.
-
- The Magic functions do not work particularly fast, but we find some files that other tools can not recover.
- In real file systems are unfortunately often ext4magic also find many very old files.
- The idea, to prevent this by using the metadata from the journal, is definitely good, but 
- in a real file system it works only limited. In test file systems it works very well, but in a real
- file system journal we find not always enough of these metadata to prevent the recover of very old files.
-
- 
-
- robi@users.berlios.de
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
---------------------------------------------------------------------
-
-
-
-FIXME:
-so far only draft
-
-What is, and what can ext4magic ?
-=================================
-
-ext4magic is a small utility and can help to recover deleted or 
-overwritten files on ext3 or ext4 filesystems. It uses the information 
-stored in the filesystem Journal to attempt to recover a file that has 
-been deleted from the partition.
-
-A reliable way to restore all deleted data from a ext3 or ext4 filesystem 
-does not exist. 
-In all official documents the ext3/ext4 developer write the same:
-
- "it isn't possible to undelete ext3 or ext4 files." 
-
-The only way for a long time was: 
- "to grep for parts of deleted files and hope for the best."
-
-
-There are two other programs: 
-     ext3grep     ( http://www.xs4all.nl/~carlo17/howto/undelete_ext3.html )
-     extundelete  ( http://extundelete.sourceforge.net) 
-which can restore deleted files with old journal data. ext4magic uses also 
-this experience.  The whole functionality was again developed from scratch,
-and ext4magic goes one step further.
-
-
-It handles more file types, hardlinks and softlinks, has more possibilities 
-of working with the Journal and filesystem, restore owner and group of files
-and directories, restore the modification time, can find moved and overwritten
-directories and files, can find more then one version of a file, search older 
-directory versions, prints a lot of helpful information over the Journal and 
-the contained data, and any more. 
-
-But, there is absolutely no guarantee that any particular file will be able
-to be undeleted. The program is dependent on the data on the journal and 
-the datablocks on disk. The Journal has a different purpose, it is directed
-forwarding. For a recover we can only hope, old information still available.
-And not always, we can find there for each file, was required for a recovery.
-
-
-
-
 
 You accidentally deleted files ?
 =================================
  
 Now, you can try it with ext4magic - probably you will find many - but not all
-deleted files.  
+deleted files. ext4magic will not change the data on your partition.
+It write copies of the found files. For that you need enough disk space
+on a different Linux file system. 
 
+This tool requires a working file system. If the partition table ore the file system
+damaged, ext4magic can not help. Then you should use a different recover tool.
+In addition to the recovery functions a lot of other functions are included.
+These functions allow a deep look into the file system and can also help to find 
+data and files which are not automatically recover.
 
 
 
@@ -157,9 +49,18 @@ undelete the file. We find in the Inode the properties and all refer to the
 data blocks. In the directory we find the old file name.  With a little luck,
 the data blocks are not reused.
 
-This is the principle of the ext4magic recover. 
+This is the principle of ext4magic to recover from inode copies. 
+
+In the Journal there are not only inode copies.  We will also find tables with
+the block and inode allocation. This data are used in the magic functions
+for controlling the file carving. The functions of the file carving matched
+exactly to the respective properties of the file system types and these functions
+included into a multi-stage recover process. This feature is new in this version
+and currently only usable for ext3.
 
 
+
+----------------------------------------------------------------------------------
 
 
 How we can use ext4magic ?
@@ -217,17 +118,19 @@ exceptional cases. Never use ext4magic for a not readonly mounted partition.
 ext4magic read over the filesystem buffer from journal but the kernel write 
 unbuffered to journal.
 
-The first read is often ok, but all subsequent reads can read wrong data 
-blocks from journal. So long the journalfile is buffered, you read wrong data
-blocks at the moment of the first read.  
-First, if you can, stop all writing processes to write to that file system
+The first read of the Journal is often ok, but all subsequent reads can read
+wrong data blocks from journal. So long the journalfile is buffered, you read 
+wrong data blocks at the moment of the first read. The file system is operating
+normally, but ext4magic reads wrong blocks from the Journal.   
 
 
-ext4magic supports external journal. 
-You can make a copy of the filesystem Journal with the following command. 
-Use this copy as external Journal. But, if mounted readwrite, here also only
-the first backup will work good, after read the journal, it is also 
-buffered and the next ext4magic process read also wrong blocks.
+Workaround : ext4magic supports external journal. 
+You can make a copy of the filesystem journal with the following command. 
+Use this copy as external Journal for the mounted file system.
+But, if mounted readwrite, here also only the first backup will work good,
+after read the journal by debug2fs, it is also buffered and the next read by
+debug2fs results also a bad journal copy.
+
 
   # debug2fs  -R  "dump <8> /path/to/journalbackup" /dev/sda1
 
@@ -237,49 +140,152 @@ you can use this copy of Journal
 
 ext4magic then only read Journal data from this Journal backup.
   
-Warning: This procedure is at this time not fully tested, 
-this reason to say, it is very risky.
+Warning: This procedure is tested, it works, but please be very careful 
+with this feature. 
 
 
 
+--------------------------------------------------------------------------------------------------
 
 
+A few words about the magic functions (current version 0.2.0)
+ ============================================================
+ These functions are designed to make undo of recursive deletes. It is a  multi-level recover.
+
+   1. recover files of the file system tree with the help of old inode copies.
+   2. recover all other inode copies which were not found in first stage. 
+   3. (currently only ext3) recover the remaining data blocks, using a file carving function (we say magic function)  
+ 
 
 
-       
+ After an accidental deletion:  prevent all writing into this file system and if possible also
+ prevent reading of this file system. Also reading overwrites old journal data
+ which are needed for the restore. 
 
+ Umount the file system, and use ext4magic before you mount the file system again,
+ or create a copy of the file system and use this for the recover.
+ Perform no file system check on this file system before.
+
+
+ The magic functions are very user friendly because very few command options are required.
+
+ Extensive testing has confirmed that magic-scan-functions are now stable with libmagic of file-5.04.
+ Good support exists for: all text file types, a lot of image formats, 
+ often-used video and audio file types, Open Office documents,
+ PDF, RAR, TAR, CPIO, BZ2, ZIP, GZIP, 7Z ...
+ 
+ Many other file types are also found and restored with default function, but without examining
+ the contents of the files. This works more or less.
+
+ Problems still exist with some multimedia formats and some documents. Not every file type
+ can be restored only based on head and foot patterns. Some types of multimedia streams, splited or
+ truncated files are hard to recover.
+ The recovery of CD/DVD images and other file system containers is also problematic.
+ Sparse files, and large files if these not deleted in one step, can not be restored with this function.
+ Of course, we can only find files when the "file" command recognize this file type.
+ 
+
+ Some files are one (or few) byte too short. These are final zero byte.
+ Most of these files can be repaired by appending zeros.
+ The following command illustrates how attach two zero byte to a file.
+
+ #echo -en "\0\0" >> file
+
+
+ Some files are one or more bytes to long. These are often zero byte at the end of the restored file.
+ You can see this at the end of a file. "hexdump-C file | tail -4"
+ These files can be opened usually normal, possibly with a warning. Only a few programs block the
+ processing of such files.  Here is an example,  how this can be fixed (xz compressed file)
+
+# ls -l test.xz
+-rw-r--r-- 1 rob users 1005  4. Dez 12:54 test.xz
+# xz -t test.xz
+xz: test.xz: Compressed data is corrupt
+# xz -d test.xz
+xz: test.xz: Compressed data is corrupt
+# dd if=test.xz of=test_.xz bs=1 count=1004
+1004+0 Datensätze ein
+1004+0 Datensätze aus
+1004 Bytes (1,0 kB) kopiert, 0,0164605 s, 61,0 kB/s
+# xz -t test_.xz
+# xz -d test_.xz
+
+ 
+ The magic functions do not work particularly fast, but very efficient and can find some files
+ that other tools can not recover. It also find very long files when the data are fragmented in the
+ file system. Others file carving tools find here often no complete files, or recover data trash.
+ Because of the previously running recover stages, the hit rate of this function is often very good.
+ But, at very high fragmentation the chances are low for a successful recovery for many files.
+ 
+ In real file systems the magic function find also unfortunately some very old files.
+ The idea, to prevent this by using the metadata from the journal, is definitely good, but, 
+ in a real file system it works only limited. In test file systems it works very well, but in a real
+ file system journal we find not always enough of these metadata to prevent the recover of very old files.
 
  
 
-  
- 
+--------------------------------------------------------------------
+
+
+
+Instructions to experimenting with new features, the magic functions.
+---------------------------------------------------------------------
+
+Use no file system specially created for this purpose.
+Why?
+ If you create a test file system, it is likely that all inode copies are included
+ in the Journal. The first stage can restore all files, and you'll never see the
+ magic functions in the third stage.
+
+
+Better is the following:
+ Use an existing ext3 filesystem. The last hours should no run a global "find" or a backup tool
+ in this file system. That too would write to many inode copies and to be easy to recover.
+ umount this file system, and create a 1-to-1 copy of the file system.
+ Now mount the file system copy and delete all or many files. Then umount the file system copy.
+
+
+
+Now you can test ext4magic with the deleted copy.
+ You need free space for writing the recovered files.
+ Assuming, the copy is "/dev/sdb1" and you have enough free
+ space at "/home/test/"
+
+ # ext4magic /dev/sdb1 -d /home/test/RECOVER -M
+ if you have deleted all files.
+
+ or
+ # ext4magic /dev/sdb1 -d /home/test/RECOVER -m
+ if not all files were deleted.
+
+
+ It will automatically search for the time of the last deletion.
+ And with a little delay should start the recover. You can now only wait. Depending on the
+ number of deleted files can take a long time. Then you can compare the files with 
+ the original file system.
 
 
 
 
+---------------------------------------------------------------------------------------------
+
+
+Some common problems
+
+Command not found 
+------------------
+ext4magic is installed to /usr/local/sbin/ 
+This directory is only included in the PATH if you use root as a login shell.
+For a full root environment  use "su -l" for the user change.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ext4magic nothing works
+-----------------------
+two possible causes: 
+- either you are not root
+- or the time options are not set correctly. Only the magical functions automatically search 
+  for the right time, all other options use default values. (See manpage) 
 
 
 
