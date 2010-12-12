@@ -1,11 +1,13 @@
+README for ext4magic V-0.2.0
+
 
 You accidentally deleted files ?
 =================================
  
 Now, you can try it with ext4magic - probably you will find many - but not all
 deleted files. ext4magic will not change the data on your partition.
-It write copies of the found files. For that you need enough disk space
-on a different Linux file system. 
+It write copies of found deleted files to a directory on a different file system.
+For that you need enough disk space on a ext4 or ext3 Linux file system. 
 
 This tool requires a working file system. If the partition table ore the file system
 damaged, ext4magic can not help. Then you should use a different recover tool.
@@ -29,7 +31,7 @@ all the bytes for a jpg image
 During the deletion of a file, be completely destroyed all refer to the data
 blocks in inode data. The content of data blocks are not destroyed, but the 
 block now marked as free.
-If we write new files, this free data blocks can reused for new files.
+If you write new files, this free data blocks can reused for new files.
 The old inode is also marked as free and is also ready for reuse.
 Name and Inode number in the directory block are only marked deleted, 
 they are skipped for now when searching for file names in this directory.
@@ -39,19 +41,19 @@ this purpose.  Exactly what the developers say.
 
 But there is the filesystem Journal. Journaling ensures the integrity of the 
 filesystem by keeping a log of the ongoing disk changes.
-After deleting a file, there we found a copy of the data block in which the 
+After deleting a file, there you found a copy of the data block in which the 
 deleted Inode is included. Well, this copy is not usable for a recover. 
 The Inode is deleted, but perhaps there is also still an even older copy of 
 the same data block.
-If we find such an older block in the Journal, then we can find there the old
-intact Inode copy of the deleted file. And with such an old Inode, we can now
-undelete the file. We find in the Inode the properties and all refer to the 
-data blocks. In the directory we find the old file name.  With a little luck,
+If you find such an older block in the Journal, then you can find there the old
+intact Inode copy of the deleted file. And with such an old Inode, you can now
+undelete the file. You find in the Inode the properties and all refer to the 
+data blocks. In the directory you find the old file name.  With a little luck,
 the data blocks are not reused.
 
 This is the principle of ext4magic to recover from inode copies. 
 
-In the Journal there are not only inode copies.  We will also find tables with
+In the Journal there are not only inode copies.  You will also find tables with
 the block and inode allocation. This data are used in the magic functions
 for controlling the file carving. The functions of the file carving matched
 exactly to the respective properties of the file system types and these functions
@@ -63,10 +65,10 @@ and currently only usable for ext3.
 ----------------------------------------------------------------------------------
 
 
-How we can use ext4magic ?
+How you can use ext4magic ?
 ===========================
 
-You need, of course, the file system from which we want try to recover deleted 
+You need, of course, the file system from which you want try to recover deleted 
 files. The safest way is to create an image of the partition. 
 Important, for this, the filesystem must umounted or readony mounted.
 
@@ -76,9 +78,9 @@ For example: the filesystem is on /dev/sda1
 
 
 With the shell, you change to a directory, where enough free space to write 
-the data recovers.  You need also options, but that later. 
+the data recovers.  You need also some options, but that later. 
 
-We can use ext4magic:
+You can use ext4magic:
 
  # ext4magic  /path/to/image_name  options
 
@@ -87,9 +89,9 @@ We can use ext4magic:
 
 Not enough free space for a imagefile of the entire filesytem ?
 -------------------------------------------------------------
- 
+
 If you can use ext4magic from a rescue system or from a LINUX Live-system,
-or on a other LINUX system, do not mount the partition and use it directly 
+or on a other LINUX system, do not mount the partition with the deleted files and use it directly 
 
   # ext4magic /dev/sda1 options
 
@@ -118,18 +120,18 @@ exceptional cases. Never use ext4magic for a not readonly mounted partition.
 ext4magic read over the filesystem buffer from journal but the kernel write 
 unbuffered to journal.
 
-The first read of the Journal is often ok, but all subsequent reads can read
-wrong data blocks from journal. So long the journalfile is buffered, you read 
+The first read of the journal is often ok, but all subsequent reads can read
+wrong data blocks from journal. So long the journal file is buffered, you read 
 wrong data blocks at the moment of the first read. The file system is operating
-normally, but ext4magic reads wrong blocks from the Journal.   
+normally without errors, but ext4magic reads wrong blocks from the Journal.   
 
 
 Workaround : ext4magic supports external journal. 
-You can make a copy of the filesystem journal with the following command. 
+You can create a copy of the filesystem journal with the "debug2fs" command. 
 Use this copy as external Journal for the mounted file system.
 But, if mounted readwrite, here also only the first backup will work good,
-after read the journal by debug2fs, it is also buffered and the next read by
-debug2fs results also a bad journal copy.
+after read the journal by debug2fs, the journal is also buffered and the next
+read by debug2fs results also a bad journal copy.
 
 
   # debug2fs  -R  "dump <8> /path/to/journalbackup" /dev/sda1
@@ -138,19 +140,24 @@ you can use this copy of Journal
 
   # ext4magic /dev/sda1 -j  /path/to/journalbackup options 
 
-ext4magic then only read Journal data from this Journal backup.
+ext4magic then only read journal data from this journal backup. 
   
 Warning: This procedure is tested, it works, but please be very careful 
-with this feature. 
+with this feature. Remember, for ext4magic the file system is frozen at the time at
+which the journal copy created. Any subsequent changes will not recognize by ext4magic.
+This works only for a limited time if you continue to write into the file system.
+
 
 
 
 --------------------------------------------------------------------------------------------------
 
 
-A few words about the magic functions (current version 0.2.0)
+A few words about the new magic functions (current version 0.2.0)
  ============================================================
- These functions are designed to make undo of recursive deletes. It is a  multi-level recover.
+ These functions are designed to make undo of recursive deletes. It is a  multi-level recover
+ and also restore files if no old journal copies can be found for this file.
+
 
    1. recover files of the file system tree with the help of old inode copies.
    2. recover all other inode copies which were not found in first stage. 
@@ -175,14 +182,17 @@ A few words about the magic functions (current version 0.2.0)
  PDF, RAR, TAR, CPIO, BZ2, ZIP, GZIP, 7Z ...
  
  Many other file types are also found and restored with default function, but without examining
- the contents of the files. This works more or less.
+ the contents of the files. This works more or less. 
 
  Problems still exist with some multimedia formats and some documents. Not every file type
  can be restored only based on head and foot patterns. Some types of multimedia streams, splited or
  truncated files are hard to recover.
- The recovery of CD/DVD images and other file system containers is also problematic.
- Sparse files, and large files if these not deleted in one step, can not be restored with this function.
- Of course, we can only find files when the "file" command recognize this file type.
+ The recovery of CD/DVD images and other file system containers is also problematic. This can only work 
+ in file systems with 4KB block size.
+ Sparse files, and very large files if not deleted in one step, can not be restored with this 
+ function. (Bug:#017607)
+ Of course, you can only find files when the "file" command recognize this file type. It is theoretically
+ possible to enable the restore of unknown file types by an entry in the configuration file to "magic".
  
 
  Some files are one (or few) byte too short. These are final zero byte.
@@ -193,7 +203,7 @@ A few words about the magic functions (current version 0.2.0)
 
 
  Some files are one or more bytes to long. These are often zero byte at the end of the restored file.
- You can see this at the end of a file. "hexdump-C file | tail -4"
+ You can see this at the end of a file. "hexdump-C file | tail "
  These files can be opened usually normal, possibly with a warning. Only a few programs block the
  processing of such files.  Here is an example,  how this can be fixed (xz compressed file)
 
@@ -220,7 +230,7 @@ xz: test.xz: Compressed data is corrupt
  In real file systems the magic function find also unfortunately some very old files.
  The idea, to prevent this by using the metadata from the journal, is definitely good, but, 
  in a real file system it works only limited. In test file systems it works very well, but in a real
- file system journal we find not always enough of these metadata to prevent the recover of very old files.
+ file system journal you find not always enough of these metadata to prevent the recover of very old files.
 
  
 
@@ -265,6 +275,46 @@ Now you can test ext4magic with the deleted copy.
  the original file system.
 
 
+--------------------------------------------------------------------------------------------
+
+The Options of ext4magic
+=========================
+
+ext4magic has a lot of options, here are just a small overview.
+Detailed information take from the manpage.
+
+One option must always be specified, the file system.
+
+
+Information Options  -S -J -H -T 
+---------------------------------
+This can display information from the file system, the journal ore the transactions from journal.
+
+
+
+Selections  -I -B  -f
+-----------------------
+select the specific inode, blocks or file names for the information- and action options.
+
+
+
+Time Options -a -b -t
+------------------------
+These are important control options. This indicates the time window for searching for files.
+
+
+
+File input and output options  -d -i -j
+---------------------------------------
+This can be specified, the output directory, a input file list and an external journal file
+
+
+
+Action Options  -l -L -r -R -m -M
+----------------------------------
+For select of the various listing- and recover actions.
+
+
 
 
 ---------------------------------------------------------------------------------------------
@@ -280,12 +330,35 @@ For a full root environment  use "su -l" for the user change.
 
 
 
+Manpage not found
+-----------------
+The manpage is installed under /usr/local/*/man/man8/
+Check if the MANPATH variable include the following directories.
+
+ /usr/local/man /usr/local/share/man
+
+
+
 ext4magic nothing works
 -----------------------
 two possible causes: 
 - either you are not root
 - or the time options are not set correctly. Only the magical functions automatically search 
-  for the right time, all other options use default values. (See manpage) 
+  for the best time window, all other options use default time values. (See manpage) 
 
 
+
+----------------------------------------------------------------------------------------------
+
+Known Bugs
+
+Only on big endian environments, there are some incorrect outputs of time stamps, and missing of
+deleted directory entries. (BUG #017304 #017305) 
+These errors occur only if the journal is not read and so only called functions of libext2fs for
+printout of inode and directorys. All journal options and the file restoring are not affected. 
+The error is not within ext4magic and can not be compensated in ext4magic. This would be patched
+in libext2fs. The error is very rare and not significant. If anyone needs a patch for this,
+no problem, within ext4magic the problem is solved. It is also possible to write an unofficial patch
+for libext2fs. I just think that nobody will really need it. Otherwise, send a request to the ext4magic 
+mailing list.
 
