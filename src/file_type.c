@@ -1469,7 +1469,7 @@ int file_psd(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 
 //pnm
 int file_pnm(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	int		x,y,d;
+	int		x,y,d,s ;
 	unsigned char	*c, *txt;
 	__u32		ssize = 0;
 	int 		ret = 0;
@@ -1499,8 +1499,16 @@ case 2:
 		c++;
 		txt = c + 1;
 		while (isspace(*txt)) txt++;
-		if (*txt == '#'){
-			while (!isspace(*txt)) txt++;
+		while (*txt == '#'){
+			s = 0;
+			while ((*txt != 0x0a) && (*txt != 0x0d) && (s < 70)){
+			 	txt++;
+			 	s++;
+			}
+			if (s == 70) {
+				f_data->func = file_none;
+				return 0;
+			}
 			while (isspace(*txt)) txt++;
 		}
 		x=atoi(txt);
@@ -1571,8 +1579,10 @@ int file_tiff(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 		case 0 :
 			if (f_data->size ){
 				if ((f_data->inode->i_size > f_data->size) && (*size < (current_fs->blocksize -8))){  //FIXME
-					*size += 8;
 					ret = 4;
+					if (*size < (current_fs->blocksize - 256))
+						ret = 1;
+					*size += 8;
 				}
 			}
 			else{
