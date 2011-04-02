@@ -163,7 +163,8 @@ struct  dir_list_head_t* clean_up_dir_list(struct dir_list_head_t* o_dir ){
 //			 	continue;
 //			break;					
 		  case	DIRENT_DELETED_FILE:
-			if (d_find_entry(n_dir , pointer->inode_nr , pointer->filename))
+			if (d_find_entry(n_dir , pointer->inode_nr , pointer->filename)||
+				(pointer->inode_nr < EXT2_GOOD_OLD_FIRST_INO))
 			 	continue;
 			break;
 		  default:
