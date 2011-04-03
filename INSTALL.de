@@ -1,0 +1,308 @@
+Installations HOWTO deutsch 
+
+Quick Installation von ext4magic  
+================================
+
+Allgemeine Voraussetzungen
+--------------------------
+Die Installation von ext4magic ist derzeit nur auf Linux möglich. Andere Unix basierende
+Betriebssyteme werden sich nicht ohne größere Änderungen am Quellcode kompilieren lassen.
+Das Programm unterstützt auch "Big endian" basierende Prozessoren, getestet wurden derzeit
+
+OpenSuse x86 32/64Bit  
+Ubuntu Sparc64   
+Fedora (VM)
+
+
+Zum Installieren von ext4magic aus dem Quellcode werden folgende Pakete auf dem Rechner benötigt
+diese werden noch einige andere Pakete aus der Entwicklergruppe mit installieren und sollten soweit
+nicht schon vorhanden, vorher installiert werden. 
+
+gcc
+make
+
+Desweiteren sind Abhängigkeiten zu folgenden Libraries zu beachten.
+
+ libmagic
+ libext2fs
+
+Diese Libraries sind zwar auf jedem Linux vorhanden, doch es werden aktuelle Versionen für ext4magic benötigt.
+Überprüfe die Versionen mit den folgenden Kommandos:
+
+   # file -v
+   # /sbin/fsck.ext3 -V
+
+Die Version von "file" muss > 5.03 sein
+und die EXT2FS Library Version >= 1.41.9
+
+In diesem Fall ist die Installation recht einfach.
+Installiere folgende Develpakete:
+Entsprechend der Linuxdistribution können diese etwas unterschiedliche Namen tragen.
+
+openSuse                        debian                 Fedora
+----------------------------------------------------------------------
+libext2fs-devel                 e2fslibs-dev        e2fsprogs-devel 
+libuuid-devel                   uuid-dev            libuuid-devel 
+libblkid-devel                  libblkid-dev        libblkid-devel 
+file-devel			libmagic-dev	    file-devel
+
+
+Entpacke das Archive und mit cd in das Verzeichnis wechseln
+
+   # tar -xzf ext4magic-?.?.?.tar.gz
+   # cd ext4magic-?.?.?
+
+Die folgenden Kommandos kompilieren ext4magic
+
+   # ./configure
+   # make
+
+installieren dann als root
+
+   # make install
+
+
+dass ist schon alles, es wurden dabei folgende Dateien installiert.
+
+/usr/local/sbin/ext4magic  
+/usr/local/share/man/man8/ext4magic.8
+
+------------------------------------------------------------------------------------------
+
+
+
+Ausführliche Installationsbeschreibung für Problemfälle
+=======================================================
+Diese Beschreibung berücksichtig auch ältere Betriebssystemversionen für die es die benötigten
+Libraries oder Devel-Pakete eventuell nicht gibt, oder wenn ein statisch gelinktes Programm erstellt
+werden muss.
+
+
+Das Kommando "file" und "libmagic"
+===================================
+In ext4magic > 0.1.4 wird zusätzlich noch "libmagic" des Linux Befehls "file" benutzt.
+Es wird dabei für den stabilen Betrieb der Magic-funktionen eine Version > 5.03 benötigt.(siehe auch BUG:#017561)
+Welche Version installiert ist zeigt der Befehl
+
+# file -v
+
+Sollte für die Version 5.04  auch ein Devel Paket für diese Distribution auffindbar sein, dann dieses auch
+installieren. Nicht in allen Distributionen wird ein solches Devel Paket für "file" gepflegt.
+Das daraus entstehende Problem kann auch durch einen einfachen Symlink umgangen werden. (Siehe weiter unten)
+
+
+Sollte keine Version >= file-5.04 für dein Linux erhältlich sein,  kann auch die Version "file-5.04" aus dem 
+Quellcode installieren werden.
+Download ftp://ftp.astron.com/pub/file/
+
+Es kann die alte "file" Version vom Rechner deinstalliert werden, (nicht empfohlener Weg)
+soweit keine weiteren Abhängikeiten zu anderen Paketen (zB apache, perl,...) bestehen, 
+Wird die alte Version gelöscht, muss die neue zwingend wieder für /usr und nicht für /usr/local
+konfiguriert werden. 
+
+Oder, es kann auch eine zweite Version zusätzlich unterhalb von /usr/local installiert, werden. (empfohlener Weg)
+In diesem Fall dann das Devel Paket einer älteren Version nicht installieren.
+
+Die Installation einer zweiten Version hier im Überblick.
+
+ # tar -xzf file-5.04.tar.gz
+ # cd file-5.04
+ # ./configure
+ # make
+ # su -
+ # cd ????/file-5.04
+ # make install
+ # ldconfig
+
+
+Das folgenden Kommando sollte jetzt beide Versionen von libmagic zeigen, unterhalb "/usr/lib/" und unterhalb "/usr/local/lib/"
+(Auf einem 64-bit System könnten die Library Verzeichnisse auch /usr/lib64 und /usr/local/lib64 sein)
+ # ldconfig -p | grep libmagic
+        libmagic.so.1 (libc6) => /usr/local/lib/libmagic.so.1
+        libmagic.so.1 (libc6) => /usr/lib/libmagic.so.1
+        libmagic.so (libc6) => /usr/local/lib/libmagic.so
+
+In diesem Fall sollte dann der Symlink "/usr/lib/libmagic.so" nicht existieren (siehe weiter unten).
+Wird die libmagic.so jetzt nicht unterhalb von /usr/local/ angezeigt, oder das Kommando
+
+ # /usr/local/bin/file -v
+
+bringt eine Fehlermeldung, obwohl "ldconfig" nach der Installation
+ausgeführt wurde, dann ist wahrscheinlich in der Datei /etc/ld.so.conf das Verzeichnis 
+/usr/local/lib oder /usr/local/lib64 nicht eingetragen. 
+In diesem Fall noch einmal als root den Befehl mit dem Library Verzeichnis absetzten.
+ # ldconfig /usr/local/lib /usr/local/lib64 
+
+ 
+
+
+Welche der beiden libmagic Versionen das fertig ext4magic nutzt, kann später wie folgt überprüft werden:
+# ldd /usr/local/sbin/ext4magic | grep libmagic
+        libmagic.so.1 => /usr/local/lib/libmagic.so.1 (0xb7741000)
+
+
+
+
+Erzeugt configure bei ext4magic trotz installiertem "file-5.04" Paket folgende Fehlermeldung:
+
+"error: library libmagic.so file-version >= 5.04 not found, install the package "file-5.04" to build ext4magic"
+
+Es ist in diesem Fall wohl das devel Paket nicht installiert. Dieses ist auch nicht für jedes Linux erhältlich.
+Es fehlt nur ein Symlink, dieser ist schnell auch per Hand angelegt.
+Dazu als root in das Verzeichnis /usr/lib  oder /usr/lib64 wechseln und einen Symlink libmagic.so 
+auf die dort vorhandene Version dieser Library erzeugen. Folgender Konsollog zeigt das Vorgehen.
+(auf einem 64-bit System könnte dieses Verzeichnis auch /usr/lib64 sein)
+
+# ls -l /usr/lib/libmagic*
+lrwxrwxrwx 1 root root     17 Aug 28 16:09 /usr/lib/libmagic.so.1 -> libmagic.so.1.0.0
+-rwxr-xr-x 1 root root 116720 Oct 24  2009 /usr/lib/libmagic.so.1.0.0
+# cd /usr/lib
+# ln -s libmagic.so.1 libmagic.so
+# ls -l /usr/lib/libmagic*
+lrwxrwxrwx 1 root root     13 Sep 23 01:40 /usr/lib/libmagic.so -> libmagic.so.1
+lrwxrwxrwx 1 root root     17 Aug 28 16:09 /usr/lib/libmagic.so.1 -> libmagic.so.1.0.0
+-rwxr-xr-x 1 root root 116720 Oct 24  2009 /usr/lib/libmagic.so.1.0.0
+
+Die Version von libmagic mit der ext4magic zusammen kompiliert werden soll, muss diesen Link besitzen.
+Eine eventuelle weitere Version von libmagic sollte diesen Link nicht besitzen damit sie nicht unbeabsichtigt
+während der Kompilierung doch benutzt wird. Dieses würde innerhalb von ext4magic zu Speicherfehlern und Abstürzen führen.
+
+
+
+
+
+Devel Pakete und Libraries libext2fs
+====================================
+Was weiter benötigt wird, ist abhängig von der Version einer auf ihrem System verwendeten Library libext2fs.
+Auf dieser Library basieren die Befehle zum Erstellen und Verwalten der ext2/3/4 Filesysteme  
+
+
+Installation bei einer aktuellen Version von libext2fs
+------------------------------------------------------
+Soweit eine aktuelle Version (>= 1.41.9 ) von libext2fs auf dem Rechner installiert ist,
+kann die folgende Vorgehensweise zum erstellen des Programmes genutzt werden.
+Die Version kann mit folgendem Befehl ermittet werden.
+
+ # /sbin/fsck.ext3 -V
+ e2fsck 1.41.9 (22-Aug-2009)
+        Using EXT2FS Library version 1.41.9, 22-Aug-2009
+
+Zum kompilieren werden dabei einige Devel-Pakete benötigt, diese können in den einzelnen Distributionen
+unterschiedliche Namen tragen. Hier als Beispiel der Vergleich der Paketnamen 
+zwischen einigen Distributionen
+
+openSuse                        debian                 Fedora
+----------------------------------------------------------------------
+libext2fs-devel                 e2fslibs-dev        e2fsprogs-devel 
+libuuid-devel                   uuid-dev            libuuid-devel 
+libblkid-devel                  libblkid-dev        libblkid-devel 
+
+
+
+Das ext4magic Archiv downloaden und entpacken und in das so entstehende Verzeichnis wechseln
+
+ # tar -xzf ext4magic-0.1.4.tar.gz 
+ # cd ext4magic-0.1.4
+
+Das Paket wird jetzt kompiliert.
+
+ # ./configure
+ # make
+
+Damit wird das binäre Programm ext4magic erstellt. Dieses befindet sich derzeit noch im
+Unterverzeichnis ext4magic/src/ und kann aber auch schon von dort aus gestartet werden.
+
+ # make install
+
+Als root ausgeführt, wird das Programm nach /usr/local/sbin/ installieren.
+Deinstallieren dann entsprechend mit "make uninstall"
+
+
+
+
+
+
+Installation bei einer älteren Version von libext2fs
+========================================================
+
+Sollte ihr Rechner aktuell noch kein ext4 Filesystem unterstützen, befindet sich auf dem Rechner 
+derzeit wahrscheinlich auch eine ältere Version von libext2fs. Damit läßt sich ext4magic nicht
+kompilieren. Eine Upgrade von libext2fs auf ein nicht zu ihrer Distribution passenden Version ist jedoch
+nicht anzuraten, da auch wichtige Administrationskommandos wie zB "mkfs.ext3" und "fsck.ext3" 
+davon betroffen sind. 
+Mit folgender Vorgehensweise kann dieses Problem umgangen werden.
+
+
+Von http://e2fsprogs.sourceforge.net/ eine Version von e2fsprogs größer oder gleich Version 1.41.9 herunterladen.
+Das Archiv entpacken und in das Verzeichnis wechseln.
+Dort den Quellcode kompilieren, jedoch ohne ihn zu installieren.
+
+ # tar -xzf e2fsprogs-1.41.9.tar.gz
+ # cd e2fsprogs-1.41.9
+ # ./configure
+ # make
+
+Die letzten beiden Befehle werden einige Zeit benötigen und eine Reihe von Ausgaben auf dem Bildschirm machen.
+Erfolgreich ist der Vorgang, wenn in den letzen Zeilen nichts von  "ERROR" steht.
+Das aktuelle Verzeichnis in dem sie sich momentan noch befinden mit folgendem Befehl 
+in einer Variable abspeichern. Diesen Path benötigen wir zum kompilieren von ext4magic.
+
+ # EXT2LIB="$(pwd)/lib"
+
+
+Danach in das Verzeichnis von ext4magic wechseln, welches beim Entpacken des Archives von
+ext4magic angelegt wird. Jetzt die gleiche Shell benutzen in der die EXT2LIB Variable angelegt wurde.
+
+ wie folgt compilieren
+
+ # tar -xzf ext4magic-0.1.4.tar.gz 
+ # cd ext4magic-0.1.4
+ # ./configure CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread"
+ # make
+
+ installieren dann als root mit
+
+ # make install
+
+
+Somit wurde ext4magic statisch gegen eine neuere Version gelinkt. 
+Die Verwendung der unterschiedlichen Versionen von libext2fs kann im Vergleich der 
+Ausgabe folgender Befehle erkannt werden:
+ 
+
+  # ext4magic -V x
+  ext4magic  version : 0.1.4
+  libext2fs version : 1.41.11
+  CPU is little endian.
+  #
+  # /sbin/fsck.ext3 -V
+  e2fsck 1.39 (29-May-2006)
+      Benutze EXT2FS Library version 1.39, 29-May-2006
+
+
+
+Sollten sie ext4magic installiert haben und dennoch nicht als root aufrufen können, liegt es wahrscheinlich an der PATH Variable.
+In vielen Distributionen ist /usr/local/sbin default entweder gar nicht in der PATH-Variable, oder nur wenn sie bei der Anmeldung
+als root wirklich eine Loginshell durchlaufen haben. Sollte obwohl sie als root ausgeführt ext4magic
+nicht gefunden werden, wechseln mit dem Befehl
+
+ # su - 
+
+noch einmal zu root. 
+Dabei wird eine Loginshell durchlaufen und die PATH-Variable auch auf diese lokalen Systemverwalter Programme gesetzt.
+Sollte es auch jetzt nicht funktionieren, überprüfen sie ihre PATH Variable des Users root. 
+Hier sollte "/usr/local/sbin" mit aufgeführt sein.
+
+Das selbe was eben bei der PATH-Variable gesagt wurde, könnte sich ähnlich auch bei der  
+MANPATH Variable darstellen. Sollten sie die Manpage von ext4magic, obwohl sie das Programm installiert haben, 
+nicht aufrufen können. Überprüfen sie die MANPATH Variable.
+
+Sollten sie ext4magic nicht installieren, können sie dennoch die Manpage auch ohne Installation anschauen. 
+Aus dem Verzeichnis in dem sie configure und make ausführen,  starten sie einen der folgenden Befehl 
+um die Manpage zu lesen:
+
+
+  # nroff -man src/ext4magic.8 | more  
+  # man -l src/ext4magic.8
+ 
+-----------------------------------------------------------------------------
