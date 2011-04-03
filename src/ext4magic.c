@@ -637,7 +637,7 @@ if (mode & INPUT_TIME){
 
 
 //check for the recoverdir
-if ((mode & RECOVER_INODE) && (recovermodus &  (REC_DIR_NEEDED)) || mode & RECOVER_LIST || magicscan) {
+if ((mode & RECOVER_INODE) && (recovermodus & REC_DIR_NEEDED) || mode & RECOVER_LIST || magicscan) {
 	struct stat     st_buf;
 	dev_t           file_rdev=0;
 	
@@ -845,6 +845,24 @@ if (mode & READ_JOURNAL){
 	}
 
 
+
+// recover all mode if possible
+// activate magic level 1 and 2 for recover from the root inode
+	if ((inode_nr == EXT2_ROOT_INO) && (mode & COMMAND_INODE) && (mode & RECOVER_INODE)
+	     && (recoverquality) && (recovermodus & REC_DIR_NEEDED) && (! magicscan)) {
+		if( ext2fs_copy_bitmap(current_fs->inode_map, &imap)){
+			fprintf(stderr,"%s Error while copy bitmap\n",argv[optind]);
+			imap = NULL;
+		}else{
+			int i;
+			ext2fs_clear_inode_bitmap(imap);
+			for (i = 1; i < current_fs->super->s_first_ino; i++)
+				ext2fs_mark_generic_bitmap(imap,i); //mark inode 1-8
+		}
+	}
+
+
+
 // print journal transaction bocklist
 	if (mode &  PRINT_BLOCKLIST){
 		if (mode & COMMAND_BLOCK)
@@ -928,10 +946,10 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 // I think imap is no longer needed from here, free the allocated memory 
 						ext2fs_free_inode_bitmap(imap);
 						imap = NULL;
-						if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)) 
+						if (bmap && (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS))) 
 							magic_block_scan3(des_dir, t_after);
 						else
-							printf("The MAGIC Funktion is currently only for ext3 filesystems available\n");
+							if (bmap) printf("The MAGIC Funktion is currently only for ext3 filesystems available\n");
 					}
 					clear_dir_list(dir);
 				}

@@ -37,7 +37,7 @@
 #define RECOV_ALL	0x8000
 #define HIST_DIR	0x0800
 #define REC_FILTER	0xF800
-#define REC_DIR_NEEDED   RECOV_ALL | RECOV_DEL
+#define REC_DIR_NEEDED  (RECOV_ALL | RECOV_DEL)
 
 //Definitions to magic scan functions
 #define  M_SIZE		0x00003FFF
