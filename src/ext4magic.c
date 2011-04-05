@@ -305,7 +305,11 @@ t_after = t_before - 86400 ;
  
 
 // decode arguments
+#ifdef EXPERT_MODE
+while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:Hs:n:c")) != EOF) { 
+#else
 while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) { 
+#endif
                 switch (c) {
 		case 'M':
 			//not active, still in development
@@ -489,10 +493,6 @@ while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 			mode |= HIGH_QUALITY;
                         break;
 
-		case 'w'://experimental not activ at default
-			journal_backup=1;
-			break;
-
                 case 'j':
                         j_file_name = optarg;
 			retval = stat (j_file_name, &filestat);
@@ -514,15 +514,44 @@ while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 			pathname = malloc(512);
 			strcpy(pathname,optarg);
 			break;
-			
-		case 'v'://experimental not activ at default
+#ifdef EXPERT_MODE
+		case 'c':
+			journal_backup=1;
+			break;
+
+		case 's':
                         blocksize = parse_ulong(optarg, argv[0],
                                                 "block size", 0);
+			if ((!blocksize) || (blocksize % 1024)){
+				fprintf(stderr,"Error: Invalid parameter: -s  %d\n", blocksize);
+				fprintf(stderr,"ERROR: blocksize allowed only 1024 ; 2048 or 4096\n");
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
+			}
                         break;
-                case 's'://experimental not activ at default
+                case 'n':
                         superblock = parse_ulong(optarg, argv[0],
                                                  "superblock number", 0);
+			if ((!superblock) || (!blocksize) || ((blocksize * 8) > superblock)){
+				fprintf(stderr,"Error: Invalid parameter: -s  %d\n", superblock);
+				switch (blocksize){
+					case 1024: 
+						fprintf(stderr, "blocksize 1024 posible 8193, 24577, 40961, 57345 ....\n");
+						break;
+					case 2048:
+						fprintf(stderr, "blocksize 2048 posible 16384, 49152, 81920, 114688 ....\n");
+						break;
+					case 4096:
+						fprintf(stderr, "blocksize 4096 posible 32768, 98304, 163840, 229376 ....\n");
+						break;
+					default:
+					  	fprintf(stderr, "blocksize unknown\n");
+				}
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
+			}
                         break;
+#endif
 		case 'T':
 			mode |= PRINT_BLOCKLIST;
 			mode |= READ_JOURNAL;

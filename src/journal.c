@@ -176,7 +176,9 @@ extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 			memcpy(&journal_inode.i_block[0], jsb_pointer->s_jnl_blocks, EXT2_N_BLOCKS*4);
 			journal_inode.i_size = jsb_pointer->s_jnl_blocks[16];
 			journal_inode.i_links_count = 1;
-			journal_inode.i_mode = LINUX_S_IFREG | 0600;
+			journal_inode.i_mode = LINUX_S_IFREG | 0600;	
+			if (jsb_pointer->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)
+				journal_inode.i_flags |= EXT4_EXTENTS_FL;
 		} else {
 			if (intern_read_inode(journal_inum, &journal_inode))
 				goto errout;
@@ -191,7 +193,7 @@ extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 		journal_source.where = JOURNAL_IS_INTERNAL;
 		journal_source.file = journal_file;
 		journal_source.fd = -1 ;
-		printf("Using internal Journal at Inode %d\n",journal_inum);
+		printf("Using %s internal Journal at Inode %d\n",(journal_backup_flag)?"a recovered":"",journal_inum);
 
 	} else {
 		char uuid[37];
