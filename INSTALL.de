@@ -145,10 +145,10 @@ Welche der beiden libmagic Versionen das fertig ext4magic nutzt, kann später wi
 
 Erzeugt configure bei ext4magic trotz installiertem "file-5.04" Paket folgende Fehlermeldung:
 
-"error: library libmagic.so file-version >= 5.04 not found, install the package "file-5.04" to build ext4magic"
+"library libmagic.so >= 5.04 not found, install package "file-5.04" and "file-devel" (workaround see INSTALL)"
 
 Es ist in diesem Fall wohl das devel Paket nicht installiert. Dieses ist auch nicht für jedes Linux erhältlich.
-Es fehlt nur ein Symlink, dieser ist schnell auch per Hand angelegt.
+Es fehlt nur ein Symlink zum kompilieren, dieser ist schnell auch per Hand angelegt.
 Dazu als root in das Verzeichnis /usr/lib  oder /usr/lib64 wechseln und einen Symlink libmagic.so 
 auf die dort vorhandene Version dieser Library erzeugen. Folgender Konsollog zeigt das Vorgehen.
 (auf einem 64-bit System könnte dieses Verzeichnis auch /usr/lib64 sein)

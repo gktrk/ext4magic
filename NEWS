@@ -1,3 +1,11 @@
+ext4magic 0.2.1         Optional Expert-Mode with the following new options "-s blocksize" ; "-n blockcount" ; "-c"
+			This makes it possible to open front corrupted file systems.
+
+			Modified flow control allows automatic a recover-all ("-r" or "-R" on the entire file system) 
+			This enables the restore of deleted inode even if the directory inode is not found in journal.
+			The function uses the first two stages of the magic functions (ext3/ext4)
+
+
 ext4magic 0.2.0		The Magic features for ext3 are complete.		
 			Support for most files types of a typical Linux system and lots of multimedia files.
 			

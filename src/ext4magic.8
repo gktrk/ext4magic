@@ -1,4 +1,4 @@
-.TH ext4magic 8 "Dec 2010" "version 0.2.0" "Administrations Tool"
+.TH ext4magic 8 "Apr 2011" "version 0.2.1" "Administrations Tool"
 .SH NAME
 ext4magic \- allows to recover deleted files on ext3/4 filesystems
 .SH SYNOPSIS
@@ -30,8 +30,8 @@ extensive information about the filesytem Journal.
 
 .SH OPTIONS
 .B
-Magic Options: (new in version 0.2.0)
-These options are for a mulit-stage recover especially for file restore after a recursiv deletion of parts or the whole file system. 
+Magic Options: 
+(new in version 0.2.0) These options are for a mulit-stage recover especially for file restore after a recursiv deletion of parts or the whole file system. 
 (third step currently only available for ext3.)
 
 Umount the file system directly after an accidentally destroy and use these options with the umount file system or with a copy of this file system. 
@@ -215,14 +215,49 @@ the mount point for this filesystem is "
 The root directory of the filesystem you can use
  
 .B
--f /
+\-f /
  or 
 
 .B
--f ""
+\-f ""
  for ext4magic this is the same.
 
 you should specify no leading "/" for all other filename. And directory names you should specify without final "/" .
+
+
+
+.PP
+.B
+Expert Options: 
+(new 0.2.1) The optional Expert-Mode must be enabled with the option 
+.B
+"\-\-enable\-expert\-mode" 
+by configure. This makes it possible to open and recover front corrupted file systems. 
+In the current version it is possible to address backup superblocks 
+and the attempt to recover of the Journal address from the data of the super block.
+
+.TP
+.B
+\-s blocksize \-n blocknumber
+with this options you can select the backup superblock. 
+.B
+blocksize 
+can be 1024, 2048 or 4096. 
+.B
+blocknumber 
+is the block number of the backup superblock this depends on the block size. Use the same values as with "fsck" or "debugfs"
+or use the output of "mkfs -n .." to determine the correct value. 
+
+Use the options necessarily in the order
+.B
+"\-s ... \-n ..."
+
+.TP
+.B
+\-c 
+This will attempt to find the journal using the data of the superblock.
+Can help if the first inode blocks of the file system are damaged. 
+
 
 
 .PP
@@ -257,7 +292,7 @@ n
 is the number of seconds since 1970-01-01 00:00:00 UTC. This time information can you find in many prints of ext4magic, and you can it produce on the console with the command "date" and also insert directly in the ext4magic command line.
 
 .B
--a $(date -d "-3day" +%s) -b $(date -d "-2day" +%s)
+\-a $(date \-d "\-3day" +%s) \-b $(date \-d "\-2day" +%s)
 
 this example set "after=now-36h" and "before=now-24h"
 
@@ -279,7 +314,7 @@ or in the print of the Inode content.
  
 .PP
 .B
-File-, IN- and OUT-Options:
+File\-, IN\- and OUT\-Options:
 With these options group, you select the filesystem, and other optional file input and output for control of ext4magic.
 .TP
 .B
@@ -398,6 +433,20 @@ will created. The maximum ist the extension "
 single files also can recovered, possible search with time-stamps or transaction number. 
 
 
+.B
+(new 0.2.1): 
+Starts this function from the root directory the first stage of the magic functions will follow.
+
+This starts 
+.B
+"lost directory search" 
+and 
+.B
+"lost file search" 
+and recovers all the deleted inode that can not be assigned to a file name.
+These files you can find in the directories MAGIC-1 and MAGIC-2
+
+
 .TP
 .B
 \-R
@@ -412,13 +461,13 @@ This recovers all deleted and all undeleted files, and it's possible to recover 
 
 In completely deleted directories the behavior "
 .B
--R
+\-R
 " and "
 .B
--r
+\-r
 " is identical. The difference is there only the complete recover of all directories with option "
 .B
--R
+\-R
 ". 
 You can also restore individual files with time options or a transaction number.
 
@@ -428,10 +477,10 @@ You can also restore individual files with time options or a transaction number.
 \-Q
 This is a optional high quality Option for recover and only impact with "
 .B
--r
+\-r
 " and "
 .B
--R
+\-R
 ". Without this option, any valid file name restored from the directories and you can set the "
 .B
 before
@@ -444,7 +493,7 @@ or some files created with wrong content. You have to check the files and find b
 
 With option "
 .B
--Q
+\-Q
 " works ext4magic more accurately, and can avoid such false and duplicate files. This requires old data blocks of the directories in the Journal. You will not find of all directories those old blocks in the Journal. Only directories in which files have been previously created or deleted, but not of directories in which no change has been a long time. You should set the time stamp "
 .B
 before
@@ -453,7 +502,7 @@ before
 .PP
 .B
 For all recover cases
-ACL and extended attribute can not recovered in the current version. 
+ACL, SEL and other extended attribute can not recovered in the current version. 
 
 The output starts at line with a string "--------" before the recovered file name. This is a sign of successful recover. Are not enough permissions to write the recovered files, then you will see there some "x" in the string. 
 
@@ -469,17 +518,17 @@ Check in any case, all the recoverd files before you use them.
 Print the content of a Inode, there are some possibilities.
 
 .B
- # ext4magic /dev/sda3 -f /
+ # ext4magic /dev/sda3 \-f /
 
 .B
- # ext4magic /dev/sda3 -I 2
+ # ext4magic /dev/sda3 \-I 2
 
 the output is the actual filesystem root Inode. In first example input the pathname, second example Inode 2 is also the root directory
 
 
 
 .B
- # ext4magic /tmp/filesystem.iso -f / -T -x
+ # ext4magic /tmp/filesystem.iso \-f / \-T \-x
 
 use filesystem image "/tmp/filesystem.iso", search and print all transactions of the Block which included the root Inode, and print all differend
 Inode. Inclusiv the blocklist off the data blocks. If it's a directory, then print also for each individual Inode the content of the directory.
@@ -487,7 +536,7 @@ Inode. Inclusiv the blocklist off the data blocks. If it's a directory, then pri
 
 
 .B
- # ext4magic /tmp/filesystem.iso -j /tmp/journal.backup -I 8195 -t 182
+ # ext4magic /tmp/filesystem.iso \-j /tmp/journal.backup \-I 8195 \-t 182
 
 Use filesystem image "/tmp/filesystem.iso" and read from external Journal in file "/tmp/journal.backup" and 
 print the content of the Inode number 8195 from the journal transaction number 182
@@ -495,7 +544,7 @@ print the content of the Inode number 8195 from the journal transaction number 1
 
 
 .B
- # ext4magic /dev/sda3 -f user1/Documents -a $(date -d "-3 day" +%s) -b $(date -d "-2 day" +%s)
+ # ext4magic /dev/sda3 \-f user1/Documents \-a $(date \-d "\-3 day" +%s) \-b $(date \-d "\-2 day" +%s)
 
 print a undeleded Inode for pathname "user1/Documents" two to three days back. If it's a directory, then also the content of this directory.
 If can not found the old directory blocks in Journal, the directory content would be the actual from filesystem.
@@ -505,27 +554,27 @@ If can not found the old directory blocks in Journal, the directory content woul
 Examples of simple Recover
 
 .B
- # ext4magic /dev/sda3 -r
+ # ext4magic /dev/sda3 \-r
 
 try to restore all files deleted last 24 hours. Write in directory "./RECOVERDIR/"
 
 
 .B
- # ext4magic /dev/sda3 -M -d /home/recover
+ # ext4magic /dev/sda3 \-M \-d /home/recover
 
 try multi-stage recover of all files after the filesystem is deleted with a "rm -rf *" . Write the files to "/home/recover". (on ext4 : in this version skipped the last step.) 
 
 
 .B
- # ext4magic /dev/sda3 -RQ -f user1/Dokuments -a 1274210280 -b 1274211280 -d /mnt/testrecover
+ # ext4magic /dev/sda3 \-RQ \-f user1/Dokuments \-a 1274210280 \-b 1274211280 \-d /mnt/testrecover
 
 try to restore the directory tree "user1/Dokuments/". The "-b" timestamp you must set just before deleting files, the "-a" timestamp prevents found old file versions. This will only work well, if you've there created or deleted files bevor the "-b" timestamp. Write in directory "/mnt/testrecover/"
 
 
 .B
- # ext4magic /home/filesystem.iso -Lx  -f user1 | grep "jpg" > ./tmpfile
+ # ext4magic /home/filesystem.iso \-Lx  \-f user1 | grep "jpg" > ./tmpfile
 .B
- # ext4magic /home/filesystem.iso -i ./tmpfile -r -d /mnt/testrecover
+ # ext4magic /home/filesystem.iso \-i ./tmpfile \-r \-d /mnt/testrecover
 
 try to restore only all deleted files from directory tree "user1/", and have "jpg" in filename. (last 24 hour) and write to "/mnt/testrecover" - use a temporary file "./tmpfile" for a list of filenames.
 
@@ -534,7 +583,7 @@ try to restore only all deleted files from directory tree "user1/", and have "jp
 Direct use of the Journal of a currently read-write open filesystem produce reading of bad blocks. Such bad blocks provide program errors and false results. You shall therefore never use the Journal of such a read-write open file system directly. 
 Should it be necessary to use a mounted file system, create a copy of the file system journal and used the option
 .B
--j
+\-j
 
 
 .SH AUTHOR

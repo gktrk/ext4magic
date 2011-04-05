@@ -64,7 +64,7 @@ this is everything, and it installs the following files
 
 
 
-Detailed Installation Howto
+Detailed Install Howto
 ============================
 
 Following detailed instructions for installing considered special cases,
@@ -132,10 +132,11 @@ Which of the two libmagic versions the finished ext4magic use, you can check wit
 
 If you get the following error during configure ext4magic:
 
-"error: library libmagic.so file-version >= 5.04 not found, install the package "file-5.04" to build ext4magic"
+"library libmagic.so >= 5.04 not found, install package "file-5.04" and "file-devel" (workaround see INSTALL)"
 
-and "file-5.04" is installed, probably the devel package it is not installed. Not for all distributions
-it is available. You can work around that by generate a symlink to the existing version of this library. (on a 64-bit system, the library path can also be /usr/lib64 )
+and >= "file-5.04" is installed, then no file "libmagic.so" is found, probably the devel package is not installed. 
+Not for all distributions it is available. You can work around that by generate a symlink "libmagic.so" to the 
+existing version of this library. (on a 64-bit system, the library path can also be /usr/lib64 )
 
 see the following log:
 # cd /usr/lib
@@ -145,6 +146,7 @@ lrwxrwxrwx 1 root root     13 Sep 23 01:40 /usr/lib/libmagic.so -> libmagic.so.1
 lrwxrwxrwx 1 root root     17 Aug 28 16:09 /usr/lib/libmagic.so.1 -> libmagic.so.1.0.0
 -rwxr-xr-x 1 root root 116720 Oct 24  2009 /usr/lib/libmagic.so.1.0.0
 
+For more than one version of libmagic:
 The version for compiling with ext4magic should have the symlink "libmagic.so"
 another version of libmagic should not have this symlink. 
 

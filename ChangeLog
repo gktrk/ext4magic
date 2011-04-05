@@ -1,3 +1,8 @@
+0.2.1		new : optional Expert-Mode (activate at configure) new Options "-s blocksize" ; "-n blockcount" ; "-c"
+		change : activate magic level 1 and 2 for recover from the root inode
+		BUG : #018040 
+
+
 0.2.0		change :optimization of the ext3 magic scan functions
 		new: support for a lot of images, video and audio
 		new: possibility of the stream orientation. (needed for mp3)
@@ -7,7 +12,7 @@
 		 
 
 0.2.0-pv2	new: support and modification for a lot of filetype 
-                change :adjusting settings for version file-5.04
+		change :adjusting settings for version file-5.04
 		change :stabilization of the magic scan functions
 		BUG: segfault if filesystem can not open.
 		BUG: #017625; #017618

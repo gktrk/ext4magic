@@ -1,4 +1,4 @@
-README for ext4magic V-0.2.0
+README for ext4magic V-0.2.1
 
 
 You accidentally deleted files ?
@@ -269,7 +269,7 @@ Now you can test ext4magic with the deleted copy.
  if not all files were deleted.
 
 
- It will automatically search for the time of the last deletion.
+ It will automatically search for the time of the last deletion. 
  And with a little delay should start the recover. You can now only wait. Depending on the
  number of deleted files can take a long time. Then you can compare the files with 
  the original file system.
@@ -316,6 +316,12 @@ For select of the various listing- and recover actions.
 
 
 
+(NEW 2.0.1) Expert Options  -s -n -c
+-------------------------
+available only if enabled by configure
+Allow access to damaged file systems, backup superblocks, ....
+
+
 
 ---------------------------------------------------------------------------------------------
 
@@ -355,7 +361,7 @@ Known Bugs
 Only on big endian environments, there are some incorrect outputs of time stamps, and missing of
 deleted directory entries. (BUG #017304 #017305) 
 These errors occur only if the journal is not read and so only called functions of libext2fs for
-printout of inode and directorys. All journal options and the file restoring are not affected. 
+printout of inode and directory. All journal options and the file restoring are not affected. 
 The error is not within ext4magic and can not be compensated in ext4magic. This would be patched
 in libext2fs. The error is very rare and not significant. If anyone needs a patch for this,
 no problem, within ext4magic the problem is solved. It is also possible to write an unofficial patch
