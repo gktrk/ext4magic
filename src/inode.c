@@ -31,7 +31,8 @@
 #include "inode.h"
 #include "ring_buf.h"
 
-extern ext2_filsys     current_fs;
+extern ext2_filsys	current_fs;
+extern time_t		now_time ;
 
 
 
@@ -799,7 +800,8 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 		if ( ext2fs_read_inode_full(current_fs, inode_nr, (struct ext2_inode*)inode_buf, pos.size))
 			goto errout;
 		inode_pointer = (struct ext2_inode*) inode_buf ;
-		if(((! inode_pointer->i_dtime) && inode_pointer->i_ctime) || (inode_pointer->i_ctime > ctime)){
+		if((((! inode_pointer->i_dtime) && inode_pointer->i_ctime) || (inode_pointer->i_ctime > ctime)) &&
+			(inode_pointer->i_ctime < (__u32) now_time)){
 			item = r_item_add(buf);
 			if ( ! item){
 				fprintf(stderr,"Error: can not allocate memory for inode\n");

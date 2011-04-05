@@ -62,6 +62,7 @@ ext2_filsys     		current_fs = NULL;
 ext2_ino_t      		root, cwd;
 ext2fs_inode_bitmap 		imap = NULL ;
 ext2fs_block_bitmap 	  	bmap = NULL ; 
+time_t				now_time ;
 
 //print Versions an CPU-endian-type
 void print_version ( void )
@@ -258,7 +259,6 @@ int main(int argc, char *argv[]){
 char* progname = argv[0];
 int             retval, exitval;
 char		defaultdir[] = "RECOVERDIR" ;
-time_t 		help_time;
 //FIXME : usage is not correct
 const char      *usage = "\next4magic -M [-j <journal_file>] [-d <target_dir>] <filesystem> \n\
 ext4magic -m [-j <journal_file>] [-d <target_dir>] <filesystem> \n\
@@ -299,8 +299,8 @@ if ( argc < 3 )
 
 // set default Time from "now -1 day" to "now"
 	
-time( &help_time ); 
-t_before = (__u32) help_time;
+time( &now_time ); 
+t_before = (__u32) now_time;
 t_after = t_before - 86400 ;
  
 
@@ -636,7 +636,7 @@ if (mode && magicscan){
 	printf("Warning: Activate magic scan function, may be some command line options ignored\n");
 	mode &= MASK_MAGIC_SCAN;
 	inode_nr = EXT2_ROOT_INO;
-	t_before = (__u32) help_time;
+	t_before = (__u32) now_time;
 	if ((!(mode & INPUT_TIME)) || (t_after == t_before - 86400)){
 		t_after = get_last_delete_time(current_fs);
 		mode |= INPUT_TIME;
