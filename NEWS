@@ -1,3 +1,12 @@
+
+
+
+
+			Expansion of the Expert-Mode.
+			With the new "-D" option it is possible to recover data from severely damaged file systems.
+			For example: the file system has been partially overwritten. But large parts of the file
+			system are not destroyed.  
+
 ext4magic 0.2.1         Optional Expert-Mode with the following new options "-s blocksize" ; "-n blockcount" ; "-c"
 			This makes it possible to open front corrupted file systems.
 

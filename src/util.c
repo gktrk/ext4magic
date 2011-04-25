@@ -340,6 +340,7 @@ if(!flag) first = last;
 		free(buf);
 		buf = NULL;
 	}
+	if (! first) fprintf(stderr,"Warning: No time window found, because no found a deleted inode\n");
 return first - 1 ;
 } 
 

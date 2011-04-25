@@ -1,3 +1,10 @@
+
+
+
+
+		new : Option -D (Disaster recovery) recover data from severely damaged file systems (Expert-Mode)
+		the option -Q has been moved to the expert mode(too much confusion for normal users)
+
 0.2.1		new : optional Expert-Mode (activate at configure) new Options "-s blocksize" ; "-n blockcount" ; "-c"
 		change : activate magic level 1 and 2 for recover from the root inode
 		BUG : #018040 

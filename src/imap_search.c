@@ -63,18 +63,23 @@ for (group = 0 ; group < current_fs->group_desc_count ; group++){
 	gdp = &current_fs->group_desc[group];
 	zero_flag = 0;
 
-	// NEXT GROUP IF INODE NOT INIT
-	if (gdp->bg_flags & (EXT2_BG_INODE_UNINIT)) continue;
-
-	// SET ZERO-FLAG IF FREE INODES == INODE/GROUP for fast ext3 
-	if (gdp->bg_free_inodes_count == inode_per_group) zero_flag = 1;
+	if (!(flag & 0x02)){ //skip this in disaster mode
+		// NEXT GROUP IF INODE NOT INIT
+		if (gdp->bg_flags & (EXT2_BG_INODE_UNINIT)) continue;
+	
+		// SET ZERO-FLAG IF FREE INODES == INODE/GROUP for fast ext3 
+		if (gdp->bg_free_inodes_count == inode_per_group) zero_flag = 1;
+	}
 
 //FIXME for struct ext4_group_desc 48/64BIT	
 	for (block_nr = gdp->bg_inode_table , block_count = 0 ;
 			 block_nr < (gdp->bg_inode_table + inode_block_group); block_nr++, block_count++) {
+		
+		if (!(flag & 0x02)){ //skip this in disaster mode
+			// break if the first block only zero inode
+			if ((block_count ==1) && (zero_flag == (inode_per_block + 1))) break;
+		}
 
-		// break if the first block only zero inode
-		if ((block_count ==1) && (zero_flag == (inode_per_block + 1))) break;
 //FIXME  inode_max ????	
 		first_block_inode_nr = (group * inode_per_group) + (block_count * inode_per_block) + 1;
 		load = 0;
@@ -96,32 +101,47 @@ for (group = 0 ; group < current_fs->group_desc_count ; group++){
 					inode = (struct ext2_inode_large*) (buf + (x*inodesize));
 					c_time = ext2fs_le32_to_cpu(inode->i_ctime);
 					mode = ext2fs_le32_to_cpu(inode->i_mode);
-					if ((! c_time ) && (!(inode->i_mode & LINUX_S_IFMT)) ) {
-						if(zero_flag) zero_flag++ ;
-					 continue;
-					}
-
-					d_time = ext2fs_le32_to_cpu(inode->i_dtime);
-					if ( (! d_time) || d_time <= t_after){
-						ext2fs_mark_generic_bitmap(imap,inode_nr);
-					  continue;
+					if ( ! ( flag & 0x02)) { 
+						//no check this inode in disaster mode
+ 						if ((! c_time ) && (!(inode->i_mode & LINUX_S_IFMT)) ) {
+							if(zero_flag) zero_flag++ ;
+						continue;
+						}
+	
+						d_time = ext2fs_le32_to_cpu(inode->i_dtime);
+						if ( (! d_time) || d_time <= t_after){
+							ext2fs_mark_generic_bitmap(imap,inode_nr);
+						continue;
+						}
 					}
 // 1. magical step 
-					if (LINUX_S_ISDIR(mode) && flag ){ 
+					if (LINUX_S_ISDIR(mode) && ( flag & 0x01) ){ 
 						sprintf(pathname,"<%lu>",inode_nr);
 
 	
 						struct dir_list_head_t * dir = NULL;
-						dir = get_dir3(NULL,0, inode_nr , "MAGIC-1",pathname, t_after,t_before, DELETED_OPT);
-						if (dir) {
-							lookup_local(des_dir, dir,t_after,t_before, DELETED_OPT | RECOV_ALL | LOST_DIR_SEARCH );
-							clear_dir_list(dir);
+						if (flag & 0x02){
+							//disaster mode 
+							//only search for undeleted entry 
+							dir = get_dir3(NULL,0, inode_nr , "MAGIC-1",pathname, t_after,t_before, 0);
+							if (dir) {
+								lookup_local(des_dir, dir,t_after,t_before, RECOV_ALL | LOST_DIR_SEARCH );
+								clear_dir_list(dir);
+							}
 						}
+						else{   //search for all 
+							dir = get_dir3(NULL,0, inode_nr , "MAGIC-1",pathname, t_after,t_before, DELETED_OPT);
+							if (dir) {
+								lookup_local(des_dir, dir,t_after,t_before, DELETED_OPT | RECOV_ALL | LOST_DIR_SEARCH );
+								clear_dir_list(dir);
+							}
+						}
+
 						
 					}
 
 // 2. magical step
-					if (!flag){
+					if (! (flag & 0x01) ){
 						i_list = get_j_inode_list(current_fs->super, inode_nr);
 						item = get_undel_inode(i_list,t_after,t_before);
 						ext2fs_mark_generic_bitmap(imap,inode_nr);
@@ -181,9 +201,9 @@ if (recovername && dirname){
 				retval = rename(recovername, dirname);
 				rename_hardlink_path(recovername, dirname);
 			}
-//#ifdef DEBUG
+#ifdef DEBUG
 			printf("move return: %d : ernno %d : %s -> %s\n",retval, errno, recovername, dirname);
-//#endif
+#endif
 		}
 	}	
 	free(recovername);
@@ -195,11 +215,11 @@ return retval;
 
 
 //2 step search for journalinode, will find some lost directory and files 
-void imap_search(char* des_dir, __u32 t_after, __u32 t_before){
+void imap_search(char* des_dir, __u32 t_after, __u32 t_before , int disaster ){
 	printf("MAGIC-1 : start lost directory search\n"); 
-	search_imap_inode(des_dir, t_after, t_before, 1); //search for lost fragments of directorys
+	search_imap_inode(des_dir, t_after, t_before, 1 | disaster ); //search for lost fragments of directorys
 	printf("MAGIC-2 : start lost file search\n");
-	search_imap_inode(des_dir, t_after, t_before, 0); //search for lost files
+	search_imap_inode(des_dir, t_after, t_before, 0 | disaster ); //search for lost files
 return;
 }
 

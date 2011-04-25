@@ -78,6 +78,9 @@ void print_version ( void )
                 printf("CPU is little endian.\n");
         else
                 printf("CPU is big endian.\n");
+#ifdef EXPERT_MODE
+	printf("Expert Mode is activ\n");
+#endif
 }
 
 
@@ -248,7 +251,7 @@ errout:
 
 //subfunction for main
 void print_modus_error(){
-	char message0[] = "Invalide parameter : only input of one modus allowed [ -M | -m | -R | -r | -L | -l | -H ]\n";
+	char message0[] = "Invalide parameter : only input of one modus allowed [ -M | -m | -R | -r | -L | -l | -H | D ]\n";
 	fprintf(stderr,"%s",message0);
 }
 
@@ -267,6 +270,7 @@ int             c;
 int             open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
 int             exit_status = 0 ;
 int		recovermodus = 0 ;
+int 		disaster = 0;
 int 		recoverquality = DELETED_OPT; // default use also delete dir entry
 char            *j_file_name = NULL;
 char		*pathname = NULL;
@@ -306,9 +310,9 @@ t_after = t_before - 86400 ;
 
 // decode arguments
 #ifdef EXPERT_MODE
-while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:Hs:n:c")) != EOF) { 
+while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:Hs:n:cD")) != EOF) { 
 #else
-while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) { 
+while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) { 
 #endif
                 switch (c) {
 		case 'M':
@@ -489,10 +493,6 @@ while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         format = 1;
                         break;
 
-		case 'Q':
-			mode |= HIGH_QUALITY;
-                        break;
-
                 case 'j':
                         j_file_name = optarg;
 			retval = stat (j_file_name, &filestat);
@@ -514,9 +514,26 @@ while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 			pathname = malloc(512);
 			strcpy(pathname,optarg);
 			break;
+
 #ifdef EXPERT_MODE
-		case 'c':
+		case 'Q':
+			mode |= HIGH_QUALITY;
+                        break;
+
+		case 'c': // use a backup journal inode 
 			journal_backup=1;
+			break;
+
+		case 'D': // Disaster recovery 
+			if(mode & RECOVER_INODE){
+				print_modus_error();
+				exitval = EXIT_FAILURE ; 
+                              	goto errout;
+			}
+			mode |= RECOVER_INODE;
+			mode |= READ_JOURNAL;
+			recovermodus = RECOV_ALL ;
+			disaster = 2;
 			break;
 
 		case 's':
@@ -632,14 +649,24 @@ while ((c = getopt (argc, argv, "TJRMLlmrQSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 //--------------------------------------------------------------------------------------------
 // check any parameter an options
 // check time option
-if (mode && magicscan){
-	printf("Warning: Activate magic scan function, may be some command line options ignored\n");
-	mode &= MASK_MAGIC_SCAN;
+if ((mode && magicscan) || disaster){
+	printf("Warning: Activate magic-scan or disaster-recovery function, may be some command line options ignored\n");
 	inode_nr = EXT2_ROOT_INO;
 	t_before = (__u32) now_time;
-	if ((!(mode & INPUT_TIME)) || (t_after == t_before - 86400)){
-		t_after = get_last_delete_time(current_fs);
-		mode |= INPUT_TIME;
+	if (disaster){
+		t_after = t_before - 60;
+		printf("Start ext4magic Disaster Recovery\n"); 
+	}
+	else{
+		mode &= MASK_MAGIC_SCAN;
+		if ((!(mode & INPUT_TIME)) || (t_after == t_before - 86400)){
+			t_after = get_last_delete_time(current_fs);
+			if (! (t_after + 1) ){
+				exitval = EXIT_FAILURE ; 
+                		goto errout;
+			}
+			mode |= INPUT_TIME;
+		}
 	}
 }
 
@@ -971,8 +998,8 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 						print_coll_list(t_after, t_before, format);
 //Magic step 1 + 2 +3
 					if (imap){
-						imap_search(des_dir, t_after, t_before);
-// I think imap is no longer needed from here, free the allocated memory 
+						imap_search(des_dir, t_after, t_before, disaster );
+						// we use imap as a flag for the disaster mode
 						ext2fs_free_inode_bitmap(imap);
 						imap = NULL;
 						if (bmap && (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS))) 
@@ -994,6 +1021,16 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 		 }	
 		else
 			fprintf(stdout,"No undeled inode %u in journal found\n",inode_nr);
+
+#ifdef EXPERT_MODE
+		if (disaster && imap){
+			// Nothing worked, trying to recover all undeleted files under catastrophic conditions
+			printf("Force a disaster recovery\n");
+			imap_search(des_dir, t_after, t_before, disaster );
+			ext2fs_free_inode_bitmap(imap);
+			imap = NULL;
+		}
+#endif
  
 		if (i_list) ring_del(i_list);
 	}

@@ -42,7 +42,7 @@
 #include "util.h"
 #include "journal.h"
 
-enum journal_location {JOURNAL_IS_INTERNAL, JOURNAL_IS_EXTERNAL};
+enum journal_location {JOURNAL_IS_INTERNAL, JOURNAL_IS_EXTERNAL, JOURNAL_IS_DUMMY};
 
 //flags for journaldescriptor control
 #define ANY_BLOCK ((blk_t) -1)
@@ -57,6 +57,7 @@ struct journal_source
 	enum journal_location where;
 	int fd;
 	ext2_file_t file;
+	char* j_dummy;
 }; 
 
 
@@ -140,6 +141,7 @@ static void journal_superblock_to_cpu ( __u32 *jsb )
 extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 {
 	char		*journal_dev_name = NULL;
+	char		*dummy_journal = NULL;
 	int		journal_fd = 0;
         ext2_ino_t	journal_inum;
 	struct ext2_inode journal_inode;
@@ -164,6 +166,7 @@ extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 		journal_source.where = JOURNAL_IS_EXTERNAL;
 		journal_source.fd = journal_fd;
 		journal_source.file = NULL;
+		journal_source.j_dummy = NULL;
 		printf("Using external Journal at File %s \n",journal_file_name);
 
 	} else if ((journal_inum = jsb_pointer->s_journal_inum)) {
@@ -186,14 +189,65 @@ extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 
 		retval = ext2fs_file_open2(current_fs, journal_inum,
 					   &journal_inode, 0, &journal_file);
+#ifdef EXPERT_MODE
+		if (journal_backup_flag){
+			//check the Journal Magic Number
+			char*			jsb_buffer =  NULL;
+			int 			got;
+			journal_superblock_t*	jsb;	
+
+			jsb_buffer = malloc(1024);
+			journal_source.where = JOURNAL_IS_INTERNAL;
+			journal_source.file = journal_file;
+			if ((jsb_buffer) && (! read_journal_block(0,jsb_buffer, 1024, &got))){
+				jsb = (journal_superblock_t *) jsb_buffer;
+				if ((be32_to_cpu(jsb->s_header.h_magic) != JFS_MAGIC_NUMBER) ||
+					 (current_fs->blocksize != be32_to_cpu(jsb->s_blocksize))) {
+					retval =  1;
+				}
+				free(jsb_buffer);
+			}
+			else return JOURNAL_ERROR ;
+		}
+#endif
 		if (retval) {
 			fprintf(stderr," Error %d while opening journal\n",retval);
+#ifdef EXPERT_MODE
+			if (journal_backup_flag) {
+				journal_superblock_t    *jsb;
+
+//the journal is defect, create a insubstantial blank journal
+				dummy_journal = (char*) malloc(current_fs->blocksize * 2);
+				if (dummy_journal){
+					memset (dummy_journal,0,current_fs->blocksize *2);
+					jsb = (journal_superblock_t*) dummy_journal;
+ 					jsb->s_header.h_magic = htonl(JFS_MAGIC_NUMBER);
+			                jsb->s_header.h_blocktype = htonl(JFS_SUPERBLOCK_V2);
+        				jsb->s_blocksize = htonl(current_fs->blocksize);
+        				jsb->s_maxlen = htonl(2);
+        				jsb->s_nr_users = htonl(1);
+        				jsb->s_first = htonl(1);
+        				jsb->s_sequence = htonl(1);
+        				memcpy(jsb->s_uuid, current_fs->super->s_uuid, sizeof(current_fs->super->s_uuid));
+					journal_source.where = JOURNAL_IS_DUMMY;
+					journal_source.file = NULL;
+					journal_source.fd = -1 ;
+					journal_source.j_dummy = dummy_journal;
+					printf("Journal defect, using a dummy Journal\n");
+				}else 
+					goto errout;
+			}
+			else
+#endif
 			goto errout;
 		}
-		journal_source.where = JOURNAL_IS_INTERNAL;
-		journal_source.file = journal_file;
-		journal_source.fd = -1 ;
-		printf("Using %s internal Journal at Inode %d\n",(journal_backup_flag)?"a recovered":"",journal_inum);
+		else {
+			journal_source.where = JOURNAL_IS_INTERNAL;
+			journal_source.file = journal_file;
+			journal_source.fd = -1 ;
+			journal_source.j_dummy = NULL;
+			printf("Using %s internal Journal at Inode %d\n",(journal_backup_flag)?"a recovered":"",journal_inum);
+		}
 
 	} else {
 		char uuid[37];
@@ -236,15 +290,25 @@ extern int journal_close(void)
 		free(pt_buff);
 		pt_buff = NULL;
 	}
-
-	if ((journal_source.where == JOURNAL_IS_INTERNAL) && (journal_source.file)){ 	
-		ext2fs_file_close(journal_source.file);
-        	journal_source.file = NULL;
-          }
-	else  if (journal_source.fd > 0) {
-		close(journal_source.fd);
-		journal_source.fd = -1;
+	switch (journal_source.where){
+	case JOURNAL_IS_DUMMY : 
+		if (journal_source.j_dummy){
+			free(journal_source.j_dummy);
+			journal_source.j_dummy = NULL;
 		}
+	break;
+	case JOURNAL_IS_INTERNAL :
+		if (journal_source.file){ 	
+			ext2fs_file_close(journal_source.file);
+        		journal_source.file = NULL;
+          	}
+	break;
+	case JOURNAL_IS_EXTERNAL :
+		if (journal_source.fd > 0) {
+			close(journal_source.fd);
+			journal_source.fd = -1;
+		}
+	}
         return (JOURNAL_CLOSE);
 }
 
@@ -273,8 +337,8 @@ int dump_journal_block( __u32 block_nr , int flag){
 int read_journal_block(off_t offset, char *buf, int size, unsigned int *got)
 {
 	int retval;
-
-	if (journal_source.where == JOURNAL_IS_EXTERNAL) {
+	switch (journal_source.where) {
+	case JOURNAL_IS_EXTERNAL :
 		if (lseek(journal_source.fd, offset, SEEK_SET) < 0) {
 			retval = errno;
 			fprintf(stderr,"Error %d while seeking in reading journal",retval);
@@ -285,14 +349,22 @@ int read_journal_block(off_t offset, char *buf, int size, unsigned int *got)
 			*got = retval;
 			retval = 0;
 		} else 	retval = errno;
-	} else {
+		break;
+	case JOURNAL_IS_INTERNAL :
 		retval = ext2fs_file_lseek(journal_source.file, offset, EXT2_SEEK_SET, NULL);
 		if (retval) { 
                          fprintf(stderr,"Error %d while seeking in reading journal",retval);
 			return retval;
 		}
 		retval = ext2fs_file_read(journal_source.file, buf, size, got);
-	}
+		break;
+	case JOURNAL_IS_DUMMY :
+			if((offset + size) > (2 *current_fs->blocksize)) retval = -1 ;
+			memcpy(buf,journal_source.j_dummy + offset,size);
+			*got = (unsigned int) size;
+			retval = 0;
+		break;
+	}		
 
 	if (retval)
                 fprintf(stderr,"Error %d while reading journal",retval);

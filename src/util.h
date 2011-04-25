@@ -171,7 +171,7 @@ int check_dir(char*);//check if the target directory existent
 
 
 //public functions imap_search.c
-void imap_search(char* , __u32, __u32 ); // search inode by imap (step1 + step2)
+void imap_search(char* , __u32, __u32 ,int ); // search inode by imap (step1 + step2)
 int check_find_dir(char*, ext2_ino_t, char*, char*); //check if the directory always recovert; then move
 
 
