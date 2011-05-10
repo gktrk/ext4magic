@@ -138,11 +138,7 @@ static void local_dump_extents(FILE *f, const char *prefix, struct ext2_inode * 
                 if (extent.e_flags & EXT2_EXTENT_FLAGS_LEAF) {
                         if ((flags & DUMP_LEAF_EXTENTS) == 0)
                                 continue;
-                } else {
-                        if ((flags & DUMP_NODE_EXTENTS) == 0)
-                                continue;
-                }
-
+                } 
 
                 errcode = ext2fs_extent_get_info(handle, &info);
                 if (errcode)
@@ -153,17 +149,14 @@ static void local_dump_extents(FILE *f, const char *prefix, struct ext2_inode * 
                                 continue;
 
                         if (flags & DUMP_EXTENT_TABLE) {
-                                fprintf(f, "%2d/%2d %3d/%3d %*llu - %*llu "
-                                        "%*llu%*s %6u\n",
+                                fprintf(f, "%2d/%2d %3d/%3d %11llu - %11llu "
+                                        "%11llu%14s %6u\n",
                                         info.curr_level, info.max_depth,
                                         info.curr_entry, info.num_entries,
-                                        logical_width,
                                         extent.e_lblk,
-                                        logical_width,
                                         extent.e_lblk + (extent.e_len - 1),
-                                        physical_width,
                                         extent.e_pblk,
-                                        physical_width+3, "", extent.e_len);
+					"", extent.e_len);
                                 continue;
                         }
 
@@ -178,23 +171,18 @@ static void local_dump_extents(FILE *f, const char *prefix, struct ext2_inode * 
                 }
 
                 if (flags & DUMP_EXTENT_TABLE) {
-                        fprintf(f, "%2d/%2d %3d/%3d %*llu - %*llu "
-                                "%*llu - %*llu %6u %s\n",
+                        fprintf(f, "%2d/%2d %3d/%3d %11llu - %11llu %11llu - %11llu %6u %s\n",
                                 info.curr_level, info.max_depth,
                                 info.curr_entry, info.num_entries,
-                                logical_width,
                                 extent.e_lblk,
-                                logical_width,
                                 extent.e_lblk + (extent.e_len - 1),
-                                physical_width,
                                 extent.e_pblk,
-                                physical_width,
                                 extent.e_pblk + (extent.e_len - 1),
                                 extent.e_len,
                                 extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT ?
                                         "Uninit" : "");
                         continue;
-                }
+               }
 
                 if (extent.e_len == 0)
                         continue;
@@ -490,7 +478,7 @@ void dump_inode(FILE *out, const char *prefix,
         } else if (do_dump_blocks && !(inode->i_dtime)) {
                 if (inode->i_flags & EXT4_EXTENTS_FL)
                         local_dump_extents(out, prefix, inode,
-                                     DUMP_LEAF_EXTENTS|DUMP_EXTENT_TABLE, 8, 8);
+                                     DUMP_LEAF_EXTENTS | DUMP_EXTENT_TABLE, 11, 11);
                 else
                         dump_blocks(out, prefix, inode);
         }
@@ -539,7 +527,7 @@ int get_transaction_inode(ext2_ino_t inode_nr, int transaction_nr, struct ext2_i
 	else {
 		buf =(char*) malloc(blocksize);
 		if(buf){
-			//inode = (struct ext2_inode_large *)(buf + blocksize);
+
 			retval = read_journal_block(journal_block * blocksize ,buf,blocksize,&got);
 			if ((! retval) && (got == blocksize)){
 				inode_buf = (struct ext2_inode_large *)(buf + pos.offset);
