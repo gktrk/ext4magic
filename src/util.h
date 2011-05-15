@@ -27,6 +27,7 @@
 #define PARSE_OPT       0x0004
 #define ONLY_JOURNAL	0x0008
 #define DELETED_DIR	0x0010
+#define SKIP_HTREE	0x0020
 
 // control flags for recover- and listmodus
 #define DOUPLE_QUOTES_LIST	0x0100
@@ -185,5 +186,7 @@ void get_file_property(struct found_data_t*); //set the file properties and the 
 //public functions magic_block_scan.c
 int magic_block_scan3(char*, __u32);//main of the magic_scan_engine for ext3
 
+//functions in develop
+int magic_block_scan4(char*, __u32);//main of the magic_scan_engine for ext4
 
 #endif

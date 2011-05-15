@@ -288,7 +288,7 @@ static int convert_dir_block(char *buf, int flags){
         int             changed = 0;
         int             do_abort = 0;
         unsigned int    rec_len, size;
-        int             entry;
+        int             entry, i;
         struct ext2_dir_entry *dirent;
  	trans_range_t *transaction = NULL;
 
@@ -311,6 +311,12 @@ static int convert_dir_block(char *buf, int flags){
 	if (bmap)
 		ext2fs_mark_generic_bitmap(bmap, *blocknr);
 	
+	i=0;
+	while  ((!(ctx->buf[i++])) && (i<8)) ;
+	if (i==8)
+		return 0;  //Interior nodes of an htree which the full length of a data block
+		 
+
 	while (offset < fs->blocksize) {
                 dirent = (struct ext2_dir_entry *) (ctx->buf + offset);
                 if (ext2fs_get_rec_len(fs, dirent, &rec_len))
@@ -351,6 +357,13 @@ next:
 
                 if (ctx->flags & DIRENT_FLAG_INCLUDE_REMOVED) {
                         size = ((dirent->name_len & 0xFF) + 11) & ~3;
+			if (ctx->flags & SKIP_HTREE){
+				if ((! *(__u32*)(ctx->buf + (offset+size))) && 
+					(*(ctx->buf + (offset+size+5)) == 0x08) && ( !(*(ctx->buf + (offset+size+7))))){
+					ctx->flags &= ~SKIP_HTREE;
+					break;
+				}
+			}
 
                         if (rec_len != size)  {
                                 unsigned int final_offset = 0;
@@ -459,6 +472,7 @@ static errcode_t local_dir_iterate3(ext2_filsys fs,
 
 
 // list dir over journal inode use real fs dir blocks an real dir-entry-inodes
+// function current not used
 void list_dir2(ext2_ino_t ino, struct ext2_inode *inode)
 {
         int             retval;
@@ -474,6 +488,7 @@ void list_dir2(ext2_ino_t ino, struct ext2_inode *inode)
 
         flags = DIRENT_FLAG_INCLUDE_EMPTY;
         if (ls.options & DELETED_OPT) flags |= DIRENT_FLAG_INCLUDE_REMOVED;
+// not testet        flags = (inode->i_flags & EXT2_INDEX_FL) ? SKIP_HTREE : 0 ;
 
         retval = local_dir_iterate3(current_fs,ino, inode, flags,0, list_dir_proc, &ls);
         fprintf(stdout, "\n");
@@ -526,6 +541,7 @@ void list_dir2(ext2_ino_t ino, struct ext2_inode *inode)
 
 //        			flags = DIRENT_FLAG_INCLUDE_EMPTY;
 				flags = 0;
+				flags = (inode->i_flags & EXT2_INDEX_FL) ? SKIP_HTREE : 0 ; 
 				if (options & DELETED_OPT ) flags |= DIRENT_FLAG_INCLUDE_REMOVED;
 				retval = local_dir_iterate3(current_fs,ino, inode, flags,0, find_dir_proc, &fl);
 			 	if (retval )
@@ -702,6 +718,7 @@ void list_dir3(ext2_ino_t ino, struct ext2_inode *inode, trans_range_t* transact
         flags = DIRENT_FLAG_INCLUDE_EMPTY + ONLY_JOURNAL;
 
         if (ls.options & DELETED_OPT) flags |= DIRENT_FLAG_INCLUDE_REMOVED;
+	flags |= (inode->i_flags & EXT2_INDEX_FL) ? SKIP_HTREE : 0 ; 
 
         retval = local_dir_iterate3(current_fs,ino, inode, flags,0, list_dir_proc, &ls);
         fprintf(stdout, "\n");
