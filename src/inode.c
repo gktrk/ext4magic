@@ -891,6 +891,7 @@ struct ext2_inode_large* new_inode(){
 	struct ext2_inode_large			*inode;
 	__u32 					a_time;
 	time_t  				help_time;
+	struct ext3_extent_header		*p_extent_header;
 	
 	time( &help_time ); 
 	a_time = (__u32) help_time;
@@ -904,9 +905,94 @@ struct ext2_inode_large* new_inode(){
 	inode->i_links_count = 1 ;
 	if (current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) {
 		inode->i_flags = EXT4_EXTENTS_FL ;
+		p_extent_header = (struct ext3_extent_header*) inode->i_block;
+		p_extent_header->eh_magic = ext2fs_cpu_to_le16(EXT3_EXT_MAGIC) ;
+		p_extent_header->eh_max = ext2fs_cpu_to_le16(4);		
 	}
 return inode;
 }
+
+
+//add extent to inode
+int inode_add_extent(struct ext2_inode_large* inode , blk_t blk , void *buf, int flag) {
+	struct ext3_extent_idx		*idx;
+	struct ext3_extent_header	*header;
+	struct ext3_extent_header	*data_header;
+	struct ext3_extent 		*extent;
+	unsigned long long		i_size;
+	__u32				l_block,l_count,l_start,i;
+
+	header = (struct ext3_extent_header*) inode->i_block;
+	if (flag && buf){
+		data_header = (struct ext3_extent_header*) buf;
+		if (ext2fs_le32_to_cpu(header->eh_entries) >= ext2fs_le32_to_cpu(header->eh_max)){
+			fprintf(stderr," Error: can not add a extent to inode\n");
+			return 0;
+		}
+		idx = (struct ext3_extent_idx*) (header + (ext2fs_le16_to_cpu(header->eh_entries) + 1));
+
+		if (! header->eh_entries)
+			header->eh_depth = ext2fs_cpu_to_le16(ext2fs_le16_to_cpu(data_header->eh_depth) +1);
+		
+		idx->ei_leaf = ext2fs_cpu_to_le32(blk);
+		idx->ei_leaf_hi = 0;
+		idx->ei_unused = 0;
+		l_count = 0;
+		extent = (struct ext3_extent*)(data_header + 1);
+		l_start = ext2fs_le32_to_cpu(extent->ee_block);
+		for (i=1; i<=ext2fs_le16_to_cpu(data_header->eh_entries); i++){
+			l_count += ext2fs_le16_to_cpu(extent->ee_len);
+			l_block = ext2fs_le32_to_cpu(extent->ee_block) + ext2fs_le16_to_cpu(extent->ee_len) ;
+			extent++;
+		}
+
+		idx->ei_block = ext2fs_cpu_to_le32(l_start);
+		header->eh_entries = ext2fs_cpu_to_le16(ext2fs_le16_to_cpu(header->eh_entries) + 1 );
+//blockhex (stdout, (void*) inode->i_block, 0, 60);
+		i_size = (unsigned long long)(inode->i_size | ((unsigned long long)inode->i_size_high << 32));
+		i_size += (l_block * current_fs->blocksize);
+		inode->i_size = i_size & 0xffffffff ;
+		inode->i_size_high = i_size >> 32 ;
+		inode->i_blocks += ((l_count + 1) * (current_fs->blocksize / 512)) ;
+blockhex (stdout, (void*) inode, 0, 128);
+	}	
+
+return 1;
+}
+
+
+
+//search the last data block ext4-inode
+blk_t get_last_block_ext4(struct ext2_inode_large* inode){
+	blk_t				blk;
+	struct ext3_extent_idx		*idx;
+	struct ext3_extent_header	*header;
+	struct ext3_extent 		*extent;
+	unsigned char			*buf = NULL;
+
+	buf = malloc(current_fs->blocksize);
+	if (!buf) return 0;
+	
+	header = (struct ext3_extent_header*) inode->i_block;
+	while (ext2fs_le16_to_cpu(header->eh_depth)){
+		idx = (struct ext3_extent_idx*) (header + (ext2fs_le16_to_cpu(header->eh_entries)));
+		
+		if(io_channel_read_blk ( current_fs->io,ext2fs_le32_to_cpu(idx->ei_leaf), 1, buf )){
+			fprintf(stderr,"Error read block %lu\n",ext2fs_le32_to_cpu(idx->ei_leaf));
+			return 0;
+		}
+
+		header = (struct ext3_extent_header*) buf ;
+
+	}
+	extent = (struct ext3_extent*)(header + ext2fs_le16_to_cpu(header->eh_entries));
+
+	blk = ext2fs_le32_to_cpu(extent->ee_start) + ext2fs_le16_to_cpu(extent->ee_len);
+
+	if (buf) free(buf);
+return --blk;
+}
+
 
 
 //add a block to inode

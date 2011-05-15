@@ -158,7 +158,7 @@ static int file_data_correct_size(struct found_data_t* this, int size){
 		i_size -= (current_fs->blocksize - size);
 		this->inode->i_size = i_size & 0xffffffff ;
 		this->inode->i_size_high = i_size >> 32 ;
-		if (i_size <= (12 * current_fs->blocksize)){
+		if ((i_size <= (12 * current_fs->blocksize))&&(!(this->inode->i_flags & EXT4_EXTENTS_FL))) {
  			if(this->inode->i_block[EXT2_IND_BLOCK]){
 				this->inode->i_block[EXT2_IND_BLOCK] = 0;
 				this->inode->i_block[EXT2_DIND_BLOCK] = 0;
@@ -326,14 +326,13 @@ static int check_meta4_block(unsigned char *block_buf, blk_t blk, __u32 size){
 
 	if(!((block_buf[0] == 0x0a) && (block_buf[1] == (unsigned char)0xf3)))
 		return 0;
-	p_h16 = (__u16*)block_buf+2;
+	p_h16 = (__u16*)(block_buf+2);
 	h16 = ext2fs_le16_to_cpu(*p_h16);
-	p_h16 = (__u16*)block_buf+4;
+	p_h16 = (__u16*)(block_buf+4);
 	if (ext2fs_le16_to_cpu(*p_h16) != (__u16)((current_fs->blocksize -12)/ 12))
 		return 0;
 	if ((!h16) || (h16 > ext2fs_le16_to_cpu(*p_h16)))
 		return 0;
-	
 	return 1 ;
 }
 
@@ -390,6 +389,14 @@ static int check_acl_block(unsigned char *block_buf, blk_t blk, __u32 size){
 	return (size > (current_fs->blocksize-32)) ? 1 : 0;
 }
 
+
+
+static int add_ext4_extent_idx_data(struct found_data_t* this, void *buf, blk_t blk){
+	int ret;
+	ret = inode_add_extent(this->inode ,blk, buf, 1);
+	this->last = get_last_block_ext4(this->inode);
+	return ret;
+}
 
 
 
@@ -1016,3 +1023,112 @@ if (cookie) magic_close(cookie);
 if (cookie_f) magic_close(cookie_f);
 } //end
 
+
+
+//FIXME   NEW ---------------------------------------------------------------------------------------------------------
+//main of the magic_scan_engine for ext4
+int magic_block_scan4(char* des_dir, __u32 t_after){
+magic_t 					cookie = 0;
+magic_t						cookie_f = 0;
+struct ext3_extent_header			*p_extent_header;
+struct ext3_extent				*p_extent;
+struct ext3_extent_idx				*p_extent_idx;
+struct 	ext2fs_struct_loc_generic_bitmap 	*ds_bmap;
+struct found_data_t				*file_data = NULL;
+blk_t						blk[2] ;
+blk_t						first_b;
+blk_t						last_rec;
+unsigned char					*v_buf = NULL;
+unsigned char 					*buf ;
+char						*magic_buf = NULL;
+unsigned char					*tmp_buf = NULL;
+int						blocksize, ds_retval,count,i,ret;
+__u32						scan,follow;//, size;
+
+
+printf("MAGIC-3 : start ext4-magic-scan search. Experimental in develop \n");
+blocksize = current_fs->blocksize ;
+count = 0;
+blk[0] = 0;
+cookie = magic_open(MAGIC_MIME | MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF );
+cookie_f = magic_open(MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF | MAGIC_RAW );
+if ((! cookie) ||  magic_load(cookie, NULL) || (! cookie_f) || magic_load(cookie_f, NULL)){
+	fprintf(stderr,"ERROR: can't find libmagic\n");
+	goto errout;
+}
+v_buf = malloc(blocksize * (MAX_RANGE+1));
+buf = v_buf + blocksize ; 
+tmp_buf = malloc(blocksize);
+magic_buf = malloc(100);
+if ((! v_buf) || (! magic_buf) || (! tmp_buf)){
+	fprintf(stderr,"ERROR: can't allocate memory\n");
+	goto errout;
+}
+
+ds_retval = init_block_bitmap_list(&d_bmap, t_after);
+while (ds_retval){
+	ds_retval = next_block_bitmap(d_bmap);
+	if (ds_retval == 2 ) 
+		continue;
+	if (d_bmap && ds_retval ){
+		ds_bmap = (struct ext2fs_struct_loc_generic_bitmap *) d_bmap;
+	
+	count = 0;
+	blk[0] = 0;
+	follow = 0;	
+	count = get_range(blk ,ds_bmap, buf);
+
+	while (count){
+#ifdef  DEBUG_MAGIC_SCAN
+		printf(" %lu    %lu    %d\n", blk[0],blk[1],count);
+#endif
+		for (i=0 ; i< count; i++){
+//			printf(">>>>> %lu \n",blk[0]+i);	
+		
+			if ((check_dir_block(buf +(i*blocksize), blk[0]+i,1)) ||
+				(check_acl_block(buf+(i*blocksize), blk[0]+i,1))){
+				ext2fs_mark_generic_bitmap(bmap, blk[0]+i);
+//				printf ("<<> %lu    DIR-BLOCK \n",blk[0]+i);
+				continue;
+			}
+			if (check_meta4_block(buf+(i*blocksize), blk[0]+i,1)){
+//				printf ("<<> %lu    IDX  \n",blk[0]+i);	
+				p_extent_header=(struct ext3_extent_header*)(buf+(i*blocksize));
+				if (! ext2fs_le16_to_cpu(p_extent_header->eh_depth)){ //FIXME   Indextiefe
+					p_extent=(struct ext3_extent*)(p_extent_header +1) ;
+					if (! ext2fs_le32_to_cpu(p_extent->ee_block)) { //FIXME   Fileanfang
+						first_b = ext2fs_le32_to_cpu(p_extent->ee_start);
+						if(( ext2fs_test_block_bitmap( bmap,first_b)) || 
+							(io_channel_read_blk (current_fs->io,first_b,1,tmp_buf ))){
+								fprintf(stderr,"ERROR: while read block %10lu\n",first_b);
+						}
+						else{
+							scan = magic_check_block(tmp_buf, cookie, cookie_f , magic_buf , blocksize ,first_b, 1);
+							file_data = new_file_data(first_b,scan,magic_buf,tmp_buf,&follow);
+							if ((file_data) && 
+								(add_ext4_extent_idx_data(file_data, (void*) p_extent_header, blk[0]+i))){
+								io_channel_read_blk (current_fs->io, file_data->last,  1, tmp_buf);
+								file_data = soft_border(des_dir, tmp_buf, file_data, &follow, 0 ,&last_rec, 0x7);
+							}
+						}
+					}
+				}
+			blk[0] = blk[0] - count + i;
+			i = count;		
+			} //ext4meta
+
+		} //for i
+		blk[0] += (i)?i:1;
+		count = get_range(blk ,ds_bmap,buf);
+	} //count
+	} //ds_bmap
+}//ds_retval
+
+errout:
+if (v_buf) free(v_buf);
+if (tmp_buf) free(tmp_buf);
+if (magic_buf) free(magic_buf);
+if (cookie) magic_close(cookie); 
+if (cookie_f) magic_close(cookie_f);
+}//funcion
+//--------END----------

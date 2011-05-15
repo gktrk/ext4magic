@@ -1004,8 +1004,11 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 						imap = NULL;
 						if (bmap && (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS))) 
 							magic_block_scan3(des_dir, t_after);
-						else
+						else{
 							if (bmap) printf("The MAGIC Funktion is currently only for ext3 filesystems available\n");
+//							magic_block_scan4(des_dir,t_after);
+
+						}
 					}
 					clear_dir_list(dir);
 				}
