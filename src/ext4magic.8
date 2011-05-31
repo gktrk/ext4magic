@@ -1,4 +1,4 @@
-.TH ext4magic 8 "Apr 2011" "version 0.2.1" "Administrations Tool"
+.TH ext4magic 8 "Jun 2011" "version 0.2.2" "Administrations Tool"
 .SH NAME
 ext4magic \- allows to recover deleted files on ext3/4 filesystems
 .SH SYNOPSIS
@@ -35,7 +35,11 @@ Magic Options:
 (third step currently only available for ext3.)
 
 Umount the file system directly after an accidentally destroy and use these options with the umount file system or with a copy of this file system. 
-The program automatically determines the correct time options. 
+The program automatically determines the correct time options if the deletion has only worked a short time (< 5 min) .  For very large deletions, you must use the "
+.B
+after time
+"
+
 In the first and second step files restored by copies of inodes.
 The third step is trying to restore the remaining files without inode copies. This may take a long time 
 
@@ -234,7 +238,8 @@ Expert Options:
 "\-\-enable\-expert\-mode" 
 by configure. This makes it possible to open and recover front corrupted file systems. 
 In the current version it is possible to address backup superblocks 
-and the attempt to recover of the Journal address from the data of the super block.
+and the attempt to recover of the Journal address from the data of the super block, and recover all undamaged files
+after the filesytem was partially damaged or overwritten. 
 
 .TP
 .B
@@ -246,7 +251,10 @@ can be 1024, 2048 or 4096.
 .B
 blocknumber 
 is the block number of the backup superblock this depends on the block size. Use the same values as with "fsck" or "debugfs"
-or use the output of "mkfs -n .." to determine the correct value. 
+or use the output of 
+.B
+"mkfs -n .." 
+to determine the correct value. 
 
 Use the options necessarily in the order
 .B
@@ -257,6 +265,50 @@ Use the options necessarily in the order
 \-c 
 This will attempt to find the journal using the data of the superblock.
 Can help if the first inode blocks of the file system are damaged. 
+
+.TP
+.B
+\-D 
+trying a restore of all files from a badly damaged file system. The combination of all these Expert Options try a file system restore if the superblock broken and the beginning of the file system is corrupted or overwritten.
+This can only work if 
+.B
+e2fsck 
+has not yet changed the faulty file system.
+
+Example : the first few megabytes of the file system are overwritten. The following tries a copy of all undamaged files of the filesystem. Target directory is "/tmp/recoverdir"
+
+.B
+# ext4magic /dev/sda1 \-s 4096 \-n 32768 \-c \-D \-d /tmp/recoverdir
+
+
+.TP
+.B
+\-Q
+This is a optional high quality Option for recover and only impact with "
+.B
+\-r
+" and "
+.B
+\-R
+". Without this option, any valid file name restored from the directories and you can set the "
+.B
+before
+" time stamp to a time in which all files are deleted. So you will find the maximum possible number of files.
+It need not necessarily be found old directory data blocks in the Journal. 
+However, there are some files found too much. In this mode, re-used file name and reused Inode can not be noticed. As a result some file will be created with the extension "
+.B
+"#"
+or some files created with wrong content. You have to check the files and find bad files and delete itself.
+
+With option "
+.B
+\-Q
+" works ext4magic more accurately, and can avoid such false and duplicate files. This requires old data blocks of the directories in the Journal. You will not find of all directories those old blocks in the Journal. Only directories in which files have been previously created or deleted, but not of directories in which no change has been a long time. You should set the time stamp "
+.B
+before
+" immediately before destruction time of the files. Are not sufficient directory data available, may be, ext4magic can't found deleted files or entire directory content. This option should be used very carefully and will achieve good results only in a few directories.
+
+
 
 
 
@@ -312,6 +364,8 @@ you can find the transaction numbers with the option
 or in the print of the Inode content.
 
  
+
+
 .PP
 .B
 File\-, IN\- and OUT\-Options:
@@ -472,32 +526,6 @@ In completely deleted directories the behavior "
 You can also restore individual files with time options or a transaction number.
 
 
-.TP
-.B
-\-Q
-This is a optional high quality Option for recover and only impact with "
-.B
-\-r
-" and "
-.B
-\-R
-". Without this option, any valid file name restored from the directories and you can set the "
-.B
-before
-" time stamp to a time in which all files are deleted. So you will find the maximum possible number of files.
-It need not necessarily be found old directory data blocks in the Journal. 
-However, there are some files found too much. In this mode, re-used file name and reused Inode can not be noticed. As a result some file will be created with the extension "
-.B
-"#"
-or some files created with wrong content. You have to check the files and find bad files and delete itself.
-
-With option "
-.B
-\-Q
-" works ext4magic more accurately, and can avoid such false and duplicate files. This requires old data blocks of the directories in the Journal. You will not find of all directories those old blocks in the Journal. Only directories in which files have been previously created or deleted, but not of directories in which no change has been a long time. You should set the time stamp "
-.B
-before
-" immediately before destruction time of the files. Are not sufficient directory data available, may be, ext4magic can't found deleted files or entire directory content. This option should be used carefully.
 
 .PP
 .B
@@ -554,9 +582,26 @@ If can not found the old directory blocks in Journal, the directory content woul
 Examples of simple Recover
 
 .B
+ # ext4magic /dev/sda3 \-r \-f user1/picture/cim01234.jpg -d /tmp
+
+Recover the file "/home/user1/picture/cim01234.jpg" which has just been deleted. The file system is mounted normally under "/home". 
+Note the file path is specified from the root directory of the file system and not from the root of the entire Linux system. Whenever possible, umount the file system for the recover.  The file will be written as  "/tmp/user1/picture/cim01234.jpg"
+
+
+
+.B
  # ext4magic /dev/sda3 \-r
 
-try to restore all files deleted last 24 hours. Write in directory "./RECOVERDIR/"
+try to restore all files deleted last 24 hours. Write to directory "./RECOVERDIR/"
+
+
+
+.B
+ # ext4magic /dev/sda3 \-R \-a $(date -d "\-5day" +%s)
+
+Attempts to recover all files, even if they are already partially overwritten, recover also all not deleted files.
+The erase time is 4 days ago.
+
 
 
 .B
@@ -565,18 +610,26 @@ try to restore all files deleted last 24 hours. Write in directory "./RECOVERDIR
 try multi-stage recover of all files after the filesystem is deleted with a "rm -rf *" . Write the files to "/home/recover". (on ext4 : in this version skipped the last step.) 
 
 
+
 .B
  # ext4magic /dev/sda3 \-RQ \-f user1/Dokuments \-a 1274210280 \-b 1274211280 \-d /mnt/testrecover
 
-try to restore the directory tree "user1/Dokuments/". The "-b" timestamp you must set just before deleting files, the "-a" timestamp prevents found old file versions. This will only work well, if you've there created or deleted files bevor the "-b" timestamp. Write in directory "/mnt/testrecover/"
+try to restore the directory tree "user1/Dokuments/". The "-b" timestamp you must set just before deleting files, the "-a" timestamp prevents found old file versions. This will only work well, if you've there created or deleted files bevor the "-b" timestamp. Write to the directory "/mnt/testrecover/". If only a few files recovers, attempts the same without the option
+.B
+-Q
+
+
+
 
 
 .B
  # ext4magic /home/filesystem.iso \-Lx  \-f user1 | grep "jpg" > ./tmpfile
+
 .B
  # ext4magic /home/filesystem.iso \-i ./tmpfile \-r \-d /mnt/testrecover
 
 try to restore only all deleted files from directory tree "user1/", and have "jpg" in filename. (last 24 hour) and write to "/mnt/testrecover" - use a temporary file "./tmpfile" for a list of filenames.
+
 
 
 .SH BUGS
@@ -590,5 +643,10 @@ Should it be necessary to use a mounted file system, create a copy of the file s
 Roberto Maar
 
 .SH SEE ALSO
-debugfs(8)
+.B
+debugfs
+(8) , 
+.B
+e2fsck
+(8)
 

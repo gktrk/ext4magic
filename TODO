@@ -5,7 +5,4 @@ Currently known issues
   real libfunction for read the inode.
   The modified version to read the Journal inode works. BUG:#017304 ; #017304
 
-- on ext4  possible small memory leak (must be tested)
-
-- There are too many recovers files, because reused Inode
  

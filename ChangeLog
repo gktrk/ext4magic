@@ -1,9 +1,11 @@
 
-
-
-
-		new : Option -D (Disaster recovery) recover data from severely damaged file systems (Expert-Mode)
-		the option -Q has been moved to the expert mode(too much confusion for normal users)
+0.2.2		new : Option -D (Disaster recovery) recover data from severely damaged file systems (Expert-Mode)
+		move : option -Q has been moved to the expert mode(too much confusion for normal users)
+		BUG : Memory leak fixed (ext4 inode extents)
+		BUG : #018106 ext4 extents are displayed partly false
+		change : improved evaluation of directory data blocks
+			 this eliminate some errors in directories with HTREE
+		
 
 0.2.1		new : optional Expert-Mode (activate at configure) new Options "-s blocksize" ; "-n blockcount" ; "-c"
 		change : activate magic level 1 and 2 for recover from the root inode
