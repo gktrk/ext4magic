@@ -352,15 +352,16 @@ In the combination of all these options, you can try a file system restore if th
 and the beginning of the file system is corrupted or overwritten.
 
 Repair with e2fsck is often possible, but risky for large damage, ext4magic here often has better
-chances of success. In the comparison the two commands:
+chances of success. But, this can only work before a repair was attempted with e2fsck.
 
 
+In the comparison the two commands:
 # repair an ext3 file systems with broken superblock
 
  fsck.ext3 -B 4096 -b 32768 -y -f /dev/sda1
 
 
-# ext4magic file system restore, write to /tmp/recover
+# ext4magic file system restore, write to /tmp/recover 
 
  ext4magic /dev/sda1 -s 4096 -n 32768 -c -D -d /tmp/recover
 
