@@ -404,8 +404,9 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 //symbolic link	
 		case LINUX_S_IFLNK :
 			  if (ext2fs_inode_data_blocks(current_fs,inode)){
-				buf = malloc(current_fs->blocksize); 
+				buf = malloc(current_fs->blocksize + 1); 
 				if (buf) {
+					memset(buf,0,current_fs->blocksize + 1);
 					priv.buf = buf;
 					priv.error = 0;
 					
@@ -422,7 +423,7 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 			else {
 				int i;
 			
-				if(! inode->i_size || (inode->i_size >= 60)) 
+				if((! inode->i_size) || (inode->i_size >= 60)) 
 					goto errout; 
 				buf = malloc(inode->i_size + 1);
 				linkname = (char*) &(inode->i_block[0]);
