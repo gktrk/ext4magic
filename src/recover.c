@@ -154,7 +154,7 @@ return ;
                   blk_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
 {
 //FIXME: 
-	if (*blocknr > fs->super->s_blocks_count)
+	if (*blocknr >= fs->super->s_blocks_count)
 		return BLOCK_ERROR;
 	struct alloc_stat *stat = priv;
         if ( ext2fs_test_block_bitmap ( fs->block_map, *blocknr ))
@@ -175,6 +175,9 @@ static int read_syslink_block ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t bloc
 	__u32 nbytes;
 	errcode_t retval;
 	int blocksize = fs->blocksize;
+
+	if (*blocknr >= fs->super->s_blocks_count)
+		return BLOCK_ERROR;
 
 	if (((struct privat*)priv)->flag){
         	int allocated = ext2fs_test_block_bitmap ( fs->block_map, *blocknr );
@@ -205,6 +208,8 @@ static int write_block ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
 	errcode_t retval;
 	int blocksize = fs->blocksize;
 
+	if (*blocknr >= fs->super->s_blocks_count)
+		return BLOCK_ERROR;
 #ifdef DEBUG
 	printf("%c",(ext2fs_test_block_bitmap ( fs->block_map, *blocknr ))? 'X' : 'O');
 #endif

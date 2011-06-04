@@ -830,10 +830,11 @@ if ((recovermodus & (LIST_ALL | LIST_STATUS)) && format)
 	void *block_buf;
 	int allocated;
 	block_buf = malloc(EXT2_BLOCK_SIZE(current_fs->super ));
-	read_block ( current_fs , &block_nr , block_buf );
-	allocated = ext2fs_test_block_bitmap ( current_fs->block_map, block_nr );
-	fprintf(stdout,"Dump Filesystemblock %10lu   Status : %s\n",block_nr,(allocated) ? "Block is Allocated" : "Block is Unallocated");
-	blockhex ( stdout , block_buf , format , EXT2_BLOCK_SIZE(current_fs->super ));
+	if(!read_block ( current_fs , &block_nr , block_buf )){
+		allocated = ext2fs_test_block_bitmap ( current_fs->block_map, block_nr );
+		fprintf(stdout,"Dump Filesystemblock %10lu   Status : %s\n",block_nr,(allocated) ? "Block is Allocated" : "Block is Unallocated");
+		blockhex ( stdout , block_buf , format , EXT2_BLOCK_SIZE(current_fs->super ));
+	}
 	free(block_buf);
     }
 
