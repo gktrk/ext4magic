@@ -179,7 +179,6 @@ with this feature. Remember, for ext4magic the file system is frozen at the time
 which the journal copy created. Any subsequent changes will not recognize by ext4magic.
 This works only correct for a limited time if you continue to write into the file system.
 
-
 --------------------------------------------------------------------------------------------------
 
 
@@ -374,7 +373,7 @@ _________________________________________________________________________
 # Help-Script for ext4magic (needed is dump2fs >= 1.41.9)
 # to identify options for the backup superblocks
 # to restore of a partially damaged filesystem with ext4magic
-# Autor robi@users.berlios.de (Version 1.0 vom 30.04.2011)
+# Autor robi@users.berlios.de (Version 1.1 vom 03.06.2011)
 
 if [ -b "$1" -o -f "$1" ]
 then
@@ -388,7 +387,7 @@ then
          if [ $BLK_SZ -eq 1024 ]
            then BLK="$BLK"+1
          fi
-         dumpe2fs -h  -o blocksize="$BLK_SZ"  -o superblock="$BLK" "$1"  &>/dev/null && echo "ext4magic "$1" -s $BLK_SZ -n $BLK -c -D"
+         dumpe2fs -h -o blocksize="$BLK_SZ" -o superblock="$BLK" "$1" 2>/dev/null | grep UUID &>/dev/null && echo "ext4magic "$1" -s $BLK_SZ -n $BLK -c -D"
       done
    done
 else
@@ -459,6 +458,8 @@ available only if enabled by configure
 Allow access to damaged file systems, backup superblocks, ....
 
 ---------------------------------------------------------------------------------------------
+
+
 
 
 
