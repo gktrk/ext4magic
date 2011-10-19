@@ -69,11 +69,30 @@
 #define  M_DIR		0x10000000
 #define  M_IS_META	0xF0000000
 
+#define FORCE_RECOVER 	0x1000
+
+#define DATA_X64		0x8000
+#define DATA_BIG_END		0x4000
+#define	DATA_FLAG		0x2000
+#define H_F_Carving		0x1000
+#define DATA_CARVING		0x0100
+#define DATA_LENGTH		0x0200
+#define DATA_MIN_LENGTH		0x0204
+
+#define DATA_NO_FOOT		0x0020
+#define DATA_METABLOCK		0x0010
+#define DATA_ELEMENT		0x0008	
+#define DATA_MINIMUM		0x0004
+#define DATA_BREAK		0x0002
+#define DATA_READY		0x0001
+
+//#define RESERVE_FILETYPE    0xF0000000
+
 
 /* Definitions to allow ext4magic compilation with old e2fsprogs */
-#ifndef EXT4_EXTENTS_FL
-#define EXT4_EXTENTS_FL                 0x00080000 /* Inode uses extents */
-#endif
+//#ifndef EXT4_EXTENTS_FL
+//#define EXT4_EXTENTS_FL                 0x00080000 /* Inode uses extents */
+//#endif
 
 
 #include "ring_buf.h"
@@ -124,15 +143,20 @@ struct ext2fs_struct_loc_generic_bitmap {
 struct found_data_t{
 blk_t				first;
 blk_t				last;
-blk_t				leng;
+__u32				buf_length;
+__u32				next_offset;
+__u32				last_match_blk;
+int				scantype;
 __u32				size;
 __u32				h_size;
+__u16				priv_len;
 int (*func)(unsigned char*, int*, __u32, int, struct found_data_t*);
 __u32				scan;
 __u32				type;
 char				*scan_result;
 char				*name;
 struct ext2_inode_large		*inode;
+void				*priv;
 };
 
 
@@ -152,7 +176,7 @@ char *time_to_string(__u32);
 int check_fs_open(char*);
 void reset_getopt(void);
 unsigned long parse_ulong(const char* , const char* , const char* , int* );
-
+int zero_space(unsigned char*, __u32 ); 
 
 // public functions lookup_local.c
 void list_dir(ext2_ino_t inode); //list dir (using normal functions from ext2fs)
@@ -178,6 +202,8 @@ int check_find_dir(char*, ext2_ino_t, char*, char*); //check if the directory al
 
 
 //public function file_type.c
+//none   #do not recover this
+int file_none(unsigned char*, int*, __u32, int, struct found_data_t*); //do not recover this
 int ident_file(struct found_data_t*, __u32*, char*, char*); // index of the files corresponding magic result strings
 void get_file_property(struct found_data_t*); //set the file properties and the extension
 

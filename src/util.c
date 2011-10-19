@@ -651,3 +651,12 @@ int get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p
 return ret;
 }
 
+
+int zero_space(unsigned char *buf, __u32 offset){
+	__u32	i=offset;// +1;
+	__u32 	end = (i)?((i + (current_fs->blocksize-1)) & ~(current_fs->blocksize-1)) : (i+current_fs->blocksize) ;
+	
+	while ((i<end) && (!buf[i]))
+		i++;
+	return (i == end ) ? 1 : 0 ;
+}	

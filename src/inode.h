@@ -26,6 +26,7 @@
 #include "ext4magic.h"
 #include "journal.h"
 #include "ring_buf.h" 
+#include "extent_db.h"
 
 #define DUMP_LEAF_EXTENTS       0x01
 #define DUMP_NODE_EXTENTS       0x02
@@ -46,6 +47,16 @@ struct list_blocks_struct {
 };
 
 
+/*
+struct extent_area {
+	blk_t		blocknr;
+	__u16		depth;
+	blk_t		l_start;
+	blk_t		l_end;
+	blk_t		start_b;
+	blk_t		end_b;
+};
+*/
 
 //private an helper functions
 static void dump_xattr_string(FILE*, const char*, int);//subfunction for dump_inode_extra
@@ -72,11 +83,11 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block*, ext2_ino_t);//fill a
 
 //functions for the magic scanner
 struct ext2_inode_large* new_inode(); //create a new inode
-int inode_add_block(struct ext2_inode_large* , blk_t , __u32); //add a block to inode
+int inode_add_block(struct ext2_inode_large* , blk_t); //add a block to inode
 int inode_add_meta_block(struct ext2_inode_large*, blk_t, blk_t*, blk_t*,unsigned char* ); //add the ext3  indirect Blocks to the inode
 
 //functions in develop
-int inode_add_extent(struct ext2_inode_large*, blk_t, void*, int);    //add extent to inode
-blk_t get_last_block_ext4(struct ext2_inode_large*); //search the last data block ext4-inode
+int inode_add_extent(struct ext2_inode_large*, struct extent_area*, __u32*, int );
+//blk_t get_last_block_ext4(struct ext2_inode_large*); //search the last data block ext4-inode
 
 #endif
