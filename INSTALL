@@ -17,6 +17,9 @@ Furthermore, there are dependencies to following libraries:
  
  libmagic
  libext2fs
+Versions >= 0.3.0
+ libz
+ libbz2
 
 These libraries are present on any Linux, but you need actual versions.
 Check the version with the following commands:
@@ -37,7 +40,8 @@ libext2fs-devel                 e2fslibs-dev        e2fsprogs-devel
 libuuid-devel                   uuid-dev            libuuid-devel 
 libblkid-devel                  libblkid-dev        libblkid-devel 
 file-devel			libmagic-dev	    file-devel
-
+zlib-devel			?		    ?
+libbz2-devel			?		    ?
 
 unzip the archive and cd into the directory
 
@@ -176,8 +180,8 @@ libblkid-devel                  libblkid-dev        libblkid-devel
 
 
 then compile ext4magic
- # tar -xzf ext4magic-0.1.4.tar.gz
- # cd ext4magic-0.1.4
+ # tar -xzf ext4magic-0.3.0.tar.gz
+ # cd ext4magic-0.3.0
  # ./configure
  # make
  # su 
@@ -200,8 +204,8 @@ save the actual directory path of lib/ in a variable for future use in configure
 # EXT2LIB="$(pwd)/lib"
 
 After this, change into the code directory of ext4magic
- # tar -xzf ext4magic-0.1.4.tar.gz
- # cd ext4magic-0.1.4
+ # tar -xzf ext4magic-0.3.0.tar.gz
+ # cd ext4magic-0.3.0
  # ./configure CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread"
  # make
  # su

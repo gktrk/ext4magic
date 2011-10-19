@@ -51,7 +51,7 @@ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man8dir)"
 PROGRAMS = $(sbin_PROGRAMS)
 am_ext4magic_OBJECTS = ext4magic-block.$(OBJEXT) \
 	ext4magic-dir_list.$(OBJEXT) ext4magic-ext4magic.$(OBJEXT) \
-	ext4magic-file_type.$(OBJEXT) \
+	ext4magic-extent_db.$(OBJEXT) ext4magic-file_type.$(OBJEXT) \
 	ext4magic-hard_link_stack.$(OBJEXT) \
 	ext4magic-imap_search.$(OBJEXT) ext4magic-inode.$(OBJEXT) \
 	ext4magic-journal.$(OBJEXT) ext4magic-lookup_local.$(OBJEXT) \
@@ -216,7 +216,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-ext4magic_SOURCES = block.c dir_list.c ext4magic.c file_type.c \
+ext4magic_SOURCES = block.c dir_list.c ext4magic.c extent_db.c file_type.c \
 	hard_link_stack.c imap_search.c inode.c journal.c lookup_local.c magic_block_scan.c \
 	recover.c ring_buf.c util.c
 
@@ -227,10 +227,10 @@ man_MANS = ext4magic.8
 
 # the library search path.
 ext4magic_CFLAGS = -O2 -g -D_FILE_OFFSET_BITS=64
-ext4magic_LDFLAGS = -lext2fs -le2p -luuid -lblkid -lmagic
+ext4magic_LDFLAGS = -lext2fs -le2p -luuid -lblkid -lmagic -lz -lbz2
 noinst_HEADERS = block.h dir_list.h ext2fsP.h ext4magic.8 ext4magic.h \
-	hard_link_stack.h inode.h jfs_compat.h jfs_user.h journal.h kernel-jbd.h kernel-list.h \
-	magic.h ring_buf.h util.h
+	extent_db.h hard_link_stack.h inode.h jfs_compat.h jfs_user.h journal.h \
+	kernel-jbd.h kernel-list.h magic.h ring_buf.h util.h
 
 all: all-am
 
@@ -322,6 +322,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-block.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-dir_list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-ext4magic.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-extent_db.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-file_type.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-hard_link_stack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ext4magic-imap_search.Po@am__quote@
@@ -395,6 +396,20 @@ ext4magic-ext4magic.obj: ext4magic.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ext4magic.c' object='ext4magic-ext4magic.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-ext4magic.obj `if test -f 'ext4magic.c'; then $(CYGPATH_W) 'ext4magic.c'; else $(CYGPATH_W) '$(srcdir)/ext4magic.c'; fi`
+
+ext4magic-extent_db.o: extent_db.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-extent_db.o -MD -MP -MF $(DEPDIR)/ext4magic-extent_db.Tpo -c -o ext4magic-extent_db.o `test -f 'extent_db.c' || echo '$(srcdir)/'`extent_db.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ext4magic-extent_db.Tpo $(DEPDIR)/ext4magic-extent_db.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='extent_db.c' object='ext4magic-extent_db.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-extent_db.o `test -f 'extent_db.c' || echo '$(srcdir)/'`extent_db.c
+
+ext4magic-extent_db.obj: extent_db.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-extent_db.obj -MD -MP -MF $(DEPDIR)/ext4magic-extent_db.Tpo -c -o ext4magic-extent_db.obj `if test -f 'extent_db.c'; then $(CYGPATH_W) 'extent_db.c'; else $(CYGPATH_W) '$(srcdir)/extent_db.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ext4magic-extent_db.Tpo $(DEPDIR)/ext4magic-extent_db.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='extent_db.c' object='ext4magic-extent_db.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -c -o ext4magic-extent_db.obj `if test -f 'extent_db.c'; then $(CYGPATH_W) 'extent_db.c'; else $(CYGPATH_W) '$(srcdir)/extent_db.c'; fi`
 
 ext4magic-file_type.o: file_type.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ext4magic_CFLAGS) $(CFLAGS) -MT ext4magic-file_type.o -MD -MP -MF $(DEPDIR)/ext4magic-file_type.Tpo -c -o ext4magic-file_type.o `test -f 'file_type.c' || echo '$(srcdir)/'`file_type.c

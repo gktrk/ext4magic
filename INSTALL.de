@@ -25,6 +25,9 @@ Desweiteren sind Abhängigkeiten zu folgenden Libraries zu beachten.
 
  libmagic
  libext2fs
+neu bei Versionen >= 0.3.0
+ libz
+ libbz2
 
 Diese Libraries sind zwar auf jedem Linux vorhanden, doch es werden aktuelle Versionen für ext4magic benötigt.
 Überprüfe die Versionen mit den folgenden Kommandos:
@@ -45,7 +48,8 @@ libext2fs-devel                 e2fslibs-dev        e2fsprogs-devel
 libuuid-devel                   uuid-dev            libuuid-devel 
 libblkid-devel                  libblkid-dev        libblkid-devel 
 file-devel			libmagic-dev	    file-devel
-
+zlib-devel			?		    ?
+libbz2-devel			?		    ?
 
 Entpacke das Archive und mit cd in das Verzeichnis wechseln
 
@@ -201,8 +205,8 @@ libblkid-devel                  libblkid-dev        libblkid-devel
 
 Das ext4magic Archiv downloaden und entpacken und in das so entstehende Verzeichnis wechseln
 
- # tar -xzf ext4magic-0.1.4.tar.gz 
- # cd ext4magic-0.1.4
+ # tar -xzf ext4magic-0.3.0.tar.gz 
+ # cd ext4magic-0.3.0
 
 Das Paket wird jetzt kompiliert.
 
@@ -255,8 +259,8 @@ ext4magic angelegt wird. Jetzt die gleiche Shell benutzen in der die EXT2LIB Var
 
  wie folgt compilieren
 
- # tar -xzf ext4magic-0.1.4.tar.gz 
- # cd ext4magic-0.1.4
+ # tar -xzf ext4magic-0.3.0.tar.gz 
+ # cd ext4magic-0.3.0
  # ./configure CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread"
  # make
 
@@ -271,7 +275,7 @@ Ausgabe folgender Befehle erkannt werden:
  
 
   # ext4magic -V x
-  ext4magic  version : 0.1.4
+  ext4magic  version : 0.3.0
   libext2fs version : 1.41.11
   CPU is little endian.
   #
