@@ -1,8 +1,7 @@
 AC_INIT(configure.in)
 
 AM_CONFIG_HEADER(config.h)
-
-AM_INIT_AUTOMAKE(ext4magic, 0.3.0-pv0)
+AM_INIT_AUTOMAKE(ext4magic, 0.2.3)
 
 AC_LANG_C
 AC_PROG_CC
@@ -16,11 +15,6 @@ AC_CHECK_HEADER([uuid/uuid.h],[],[fail=1])
 test $fail = 1 &&
 AC_MSG_ERROR([You must install the develop packages "ext2fs , blkid , e2p , uuid" to build ext4magic])
 
-fail=0
-AC_CHECK_HEADER([zlib.h],[],[fail=1])
-AC_CHECK_HEADER([bzlib.h],[],[fail=1])
-test $fail = 1 &&
-AC_MSG_ERROR([You must install the packages "zlib-devel and libbz2-devel" to build this version]) 
 
 fail=0
 AC_SEARCH_LIBS([ext2fs_test_inode_bitmap_range], [ext2fs], [], [fail=1])

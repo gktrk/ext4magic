@@ -1,11 +1,6 @@
 
-
-0.3.0-pv0	new : the first experimental version of the magic-functions for ext4
-		disabled : the magic-function for ext3 is switched off in this version
-		
-		change : Most functions in file_type.c are strongly modified, or completely new;
-			 Many functions in magic_block_scan.c been enhanced for the properties of ext4
-		new dependencies: zlib ; bzlib 
+0.2.3           BUG : 018244
+		change : filetype sorted file names with file extension in the directory MAGIC-2
 
 
 0.2.2		new : Option -D (Disaster recovery) recover data from severely damaged file systems (Expert-Mode)
@@ -15,7 +10,6 @@
 		change : improved evaluation of directory data blocks
 			 this eliminate some errors in directories with HTREE
 		
-
 
 0.2.1		new : optional Expert-Mode (activate at configure) new Options "-s blocksize" ; "-n blockcount" ; "-c"
 		change : activate magic level 1 and 2 for recover from the root inode
