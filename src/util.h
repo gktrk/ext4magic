@@ -210,6 +210,7 @@ void get_file_property(struct found_data_t*); //set the file properties and the 
 
 
 //public functions magic_block_scan.c
+struct found_data_t* free_file_data(struct found_data_t*); //clear + free found_data
 int magic_block_scan3(char*, __u32);//main of the magic_scan_engine for ext3
 
 //functions in develop

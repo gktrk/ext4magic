@@ -47,13 +47,13 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 //Please do not modify the following lines.
 //they are used for indices to the filestypes
 	char	typestr[] ="application/ audio/ image/ message/ model/ text/ video/ ";
-	char	imagestr[] ="gif jp2 jpeg png svg+xml tiff vnd.adobe.photoshop vnd.djvu x-coreldraw x-cpi x-ico x-ms-bmp x-niff x-portable-bitmap x-portable-greymap x-portable-pixmap x-psion-sketch x-quicktime x-unknown x-xcursor x-xpmi x-tga ";
+	char	imagestr[] ="gif jp2 jpeg png svg+xml tiff vnd.adobe.photoshop vnd.djvu x-coreldraw x-cpi x-ico x-ms-bmp x-niff x-portable-bitmap x-portable-greymap x-portable-pixmap x-psion-sketch x-quicktime x-unknown x-xcursor x-xpmi x-tga x-xcf ";
 	char	videostr[] ="3gpp h264 mp2p mp2t mp4 mp4v-es mpeg mpv quicktime x-flc x-fli x-flv x-jng x-mng x-msvideo x-sgi-movie x-unknown x-ms-asf x-matroska webm ";
 	char	audiostr[] ="basic midi mp4 mpeg x-adpcm x-aiff x-dec-basic x-flac x-hx-aac-adif x-hx-aac-adts x-mod x-mp4a-latm x-pn-realaudio x-unknown x-wav ";
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf x-7z-compressed ";
-	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm x-python text ";
+	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm x-python x-java text ";
 //Files not found as mime-type
 	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS ";
 //-----------------------------------------------------------------------------------
@@ -6458,7 +6458,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0104     :               //octet-stream
 	//              this->func = file_octet-stream;
-		strncat(this->name,".unknow",7);
+		strncat(this->name,".unknown",8);
 		break;
 	
 		case 0x0105     :               //ogg
@@ -6528,7 +6528,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0112     :               //vnd.ms-tnef
 	              this->func = file_none ;
-	//              strncat(this->name,".vnd.ms-tnef",7);
+	              strncat(this->name,".dat",7);
 		break;
 	
 		case 0x0113     :               //vnd.oasis.opendocument.
@@ -6558,12 +6558,12 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0115     :               //vnd.symbian.install
 	//              this->func = file_vnd.symbian.install ;
-	//              strncat(this->name,".vnd.symbian.install",7);
+	              strncat(this->name,".sis",7);
 		break;
 	
 		case 0x0116     :               //x-123
 	//              this->func = file_x-123 ;
-	//              strncat(this->name,".x-123",7);
+	              strncat(this->name,".123",7);
 		break;
 	
 		case 0x0117     :               //x-adrift
@@ -6578,7 +6578,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0119     :               //x-arc   deaktiv
 	//              this->func = file_x-arc ;
-	//              strncat(this->name,".x-arc",7);
+	              strncat(this->name,".arc",7);
 		break;
 	
 		case 0x011a     :               //x-arj
@@ -6613,17 +6613,17 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0120     :               //x-dbf
 	//              this->func = file_x-dbf ;
-	//              strncat(this->name,".x-dbf",7);
+	              strncat(this->name,".dbf",7);
 		break;
 	
 		case 0x0121     :               //x-dbm
 	//              this->func = file_x-dbm ;
-	//              strncat(this->name,".x-dbm",7);
+	              strncat(this->name,".dbm",7);
 		break;
 	
 		case 0x0122     :               //x-debian-package
 	//              this->func = file_x-debian-package ;
-	//              strncat(this->name,".x-debian-package",7);
+	              strncat(this->name,".deb",7);
 		break;
 	
 		case 0x0123     :               //x-dosexec
@@ -6638,12 +6638,12 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0125     :               //x-eet
 	//              this->func = file_x-eet ;
-	//              strncat(this->name,".x-eet",7);
+	              strncat(this->name,".eet",7);
 		break;
 	
 		case 0x0126     :               //x-elc
 	//              this->func = file_x-elc ;
-	//              strncat(this->name,".x-elc",7);
+	              strncat(this->name,".elc",7);
 		break;
 	
 		case 0x0127     :               //x-executable
@@ -6653,22 +6653,22 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0128     :               //x-gdbm
 	//              this->func = file_x-gdbm ;
-	//              strncat(this->name,".x-gdbm",7);
+	              strncat(this->name,".dbm",7);
 		break;
 	
 		case 0x0129     :               //x-gnucash
-	//              this->func = file_x-gnucash ;
-	//              strncat(this->name,".x-gnucash",7);
+	              this->func = file_txt ;
+	              strncat(this->name,".xml",7);
 		break;
 	
 		case 0x012a     :               //x-gnumeric
 	//              this->func = file_x-gnumeric ;
-	//              strncat(this->name,".x-gnumeric",7);
+	              strncat(this->name,".gnm",7);
 		break;
 	
 		case 0x012b     :               //x-gnupg-keyring   deaktiv
 	//              this->func = file_x-gnupg-keyring ;
-	//              strncat(this->name,".x-gnupg-keyring",7);
+	              strncat(this->name,".key",7);
 		break;
 	
 		case 0x012c     :               //x-gzip
@@ -6683,22 +6683,22 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x012e     :               //x-hwp
 	//              this->func = file_x-hwp ;
-	//              strncat(this->name,".x-hwp",7);
+	              strncat(this->name,".hwp",7);
 		break;
 	
 		case 0x012f     :               //x-ichitaro4
 	//              this->func = file_x-ichitaro4 ;
-	//              strncat(this->name,".x-ichitaro4",7);
+	              strncat(this->name,".JDT",7);
 		break;
 	
 		case 0x0130     :               //x-ichitaro5
 	//              this->func = file_x-ichitaro5 ;
-	//              strncat(this->name,".x-ichitaro5",7);
+	              strncat(this->name,".JDT",7);
 		break;
 	
 		case 0x0131     :               //x-ichitaro6
 	//              this->func = file_x-ichitaro6 ;
-	//              strncat(this->name,".x-ichitaro6",7);
+	              strncat(this->name,".JDT",7);
 		break;
 	
 		case 0x0132     :               //x-iso9660-image
@@ -6708,7 +6708,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0133     :               //x-java-applet
 	//              this->func = file_x-java-applet ;
-		strncat(this->name,".java",7);
+		strncat(this->name,".jar",7);
 		break;
 	
 		case 0x0134     :               //x-java-jce-keystore
@@ -6738,12 +6738,12 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0139     :               //x-lharc
 	//              this->func = file_x-lharc ;
-	//              strncat(this->name,".x-lharc",7);
+	              strncat(this->name,".lzs",7);
 		break;
 	
 		case 0x013a     :               //x-lzip
 	//              this->func = file_x-lzip ;
-	//              strncat(this->name,".x-lzip",7);
+	              strncat(this->name,".lz",7);
 		break;
 	
 		case 0x013b     :               //x-mif
@@ -6783,7 +6783,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0142     :               //x-quark-xpress-3
 	//              this->func = file_x-quark-xpress-3 ; 
-	//              strncat(this->name,".x-quark-xpress-3",7);
+	              strncat(this->name,".qxp",7);
 		break;
 	
 		case 0x0143     :               //x-quicktime-player
@@ -6803,7 +6803,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0146     :               //x-sc
 	//              this->func = file_x-sc ;
-	//              strncat(this->name,".x-sc",7);
+	              strncat(this->name,".sc",7);
 		break;
 	
 		case 0x0147     :               //x-setupscript
@@ -6868,7 +6868,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0153     :               //x-zoo
 	//              this->func = file_x-zoo ;
-	//              strncat(this->name,".x-zoo",7);
+	              strncat(this->name,".zoo",7);
 		break;
 	
 		case 0x0154     :               //zip
@@ -6992,7 +6992,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0306     :               //tiff
 	              this->func = file_tiff ;
-		strncat(this->name,".tiff",7);
+		strncat(this->name,".tif",7);
 		break;
 	
 		case 0x0307     :               //vnd.adobe.photoshop
@@ -7012,7 +7012,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x030a     :               //x-cpi
 	//              this->func = file_x-cpi ;
-	//              strncat(this->name,".x-cpi",7);
+	              strncat(this->name,".cpi",7);
 		break;
 	
 		case 0x030b     :               //x-ico
@@ -7057,7 +7057,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0313     :               //x-unknown
 	//              this->func = file_x-unknown ;
-	//              strncat(this->name,".x-unknown",7);
+	              strncat(this->name,".x-unknown",7);
 		break;
 	
 		case 0x0314     :               //x-xcursor
@@ -7074,7 +7074,12 @@ void get_file_property(struct found_data_t* this){
 	              this->func = file_tga ;
 	              strncat(this->name,".tga",7);
 		break;
-	
+
+		case 0x0317     :               //x-xcf
+	//              this->func = file_x-xcf;
+	              strncat(this->name,".xcf",7);
+		break;
+
 	
 	//----------------------------------------------------------------
 	//Messages
@@ -7111,7 +7116,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0602     :               //PGP
 		this->func = file_txt ;
-	//              strncat(this->name,".PGP",7);
+	              strncat(this->name,".pgp",7);
 		break;
 	
 		case 0x0603     :               //rtf
@@ -7121,7 +7126,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0604     :               //texmacs
 	//              this->func = file_texmacs ;
-	//              strncat(this->name,".texmacs",7);
+	              strncat(this->name,".tm",7);
 		break;
 	
 		case 0x0605     :               //troff
@@ -7131,7 +7136,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0606     :               //vnd.graphviz
 	//              this->func = file_vnd.graphviz ;
-	//              strncat(this->name,".vnd.graphviz",7);
+	              strncat(this->name,".gv",7);
 		break;
 	
 		case 0x0607     :               //x-awk
@@ -7166,7 +7171,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x060d     :               //x-lua
 	//              this->func = file_x-lua ;
-	//              strncat(this->name,".x-lua",7);
+	              strncat(this->name,".lua",7);
 		break;
 	
 		case 0x060e     :               //x-msdos-batch
@@ -7254,10 +7259,14 @@ void get_file_property(struct found_data_t* this){
 	              strncat(this->name,".py",7);
 		break;
 		
-
-		case 0x061f     :               //text (for all unknown)
+		case 0x061f     :               //x-java
 	              this->func = file_txt ;
-	//              strncat(this->name,".txt",7);
+	              strncat(this->name,".jar",7);
+		break;
+
+		case 0x0620     :               //text (for all unknown)
+	              this->func = file_txt ;
+	              strncat(this->name,".txt",7);
 		break;
 	
 	//----------------------------------------------------------------
@@ -7344,7 +7353,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0711     :               //x-unknown
 	//              this->func = file_x-unknown ;
-	//              strncat(this->name,".x-unknown",7);
+	              strncat(this->name,".unknown",7);
 		break;
 
 		case 0x0712     :               //x-ms-asf
@@ -7409,21 +7418,6 @@ void get_file_property(struct found_data_t* this){
 		strncat(this->name,".iso",7);
 		break;
 	
-/*		case 0x080a     :               //Linux
-	//              this->func = file_Linux ;
-	//              strncat(this->name,".Linux",7);
-		break;
-	
-		case 0x080b     :               //filesystem
-	//              this->func = file_filesystem ;
-		strncat(this->name,".iso",7);
-		break;
-	
-		case 0x080c     :               //x86
-	//              this->func = file_x86 ;
-		strncat(this->name,".iso",7);
-		break;*/
-	
 		case 0x080a	:		//ext2
 		    this->func = file_ext2fs ;
 		    strncat(this->name,".ext2",7);
@@ -7446,7 +7440,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x080e     :               //CDF
 	              this->func = file_CDF ;
-	//              strncat(this->name,".doc",7);
+	              strncat(this->name,".doc",7);
 		break;
 
 		case 0x080f     :               //SQLite
@@ -7461,7 +7455,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0811     :               //Microsoft
 	              this->func = file_CDF ;
-	//              strncat(this->name,".doc",7);
+	              strncat(this->name,".doc",7);
 		break;
 		
 		case 0x0812     :               //VMWare3
@@ -7538,21 +7532,6 @@ void get_file_property(struct found_data_t* this){
 		    strncat(this->name,".mp4",7);
 		break;
 
-/*		case 0x0821	:		//ext2
-		    this->func = file_ext2fs ;
-		    strncat(this->name,".ext2",7);
-		break;
-
-		case 0x0822	:		//ext3
-		    this->func = file_ext2fs ;
-		    strncat(this->name,".ext3",7);
-		break;
-
-		case 0x0823	:		//ext4
-		    this->func = file_ext2fs ;
-		    strncat(this->name,".ext4",7);
-		break;*/
-		
 		case 0x0821     :               //Linux
 	//              this->func = file_Linux ;
 	//              strncat(this->name,".Linux",7);

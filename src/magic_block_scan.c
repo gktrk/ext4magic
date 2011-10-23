@@ -48,7 +48,7 @@ static __u32 get_block_len(unsigned char *buf){
 
 
 
-static struct found_data_t* free_file_data(struct found_data_t* old){
+struct found_data_t* free_file_data(struct found_data_t* old){
 	int tmp;
 
 	if(old->inode) free(old->inode);
