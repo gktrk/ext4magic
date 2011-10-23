@@ -357,7 +357,7 @@ return retval;
 //2 step search for journalinode, will find some lost directory and files 
 void imap_search(char* des_dir, __u32 t_after, __u32 t_before , int disaster ){
 	printf("MAGIC-1 : start lost directory search\n"); 
-//	search_imap_inode(des_dir, t_after, t_before, 1 | disaster ); //search for lost fragments of directorys
+	search_imap_inode(des_dir, t_after, t_before, 1 | disaster ); //search for lost fragments of directorys
 	printf("MAGIC-2 : start lost file search\n");
 	search_imap_inode(des_dir, t_after, t_before, 0 | disaster ); //search for lost files
 return;

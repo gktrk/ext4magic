@@ -637,7 +637,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                 }
         }
 
-//	if (getuid()) mode = 0;
+	if (getuid()) mode = 0;
         if (optind < argc)
                 open_filesystem(argv[optind], open_flags,superblock, blocksize, magicscan, data_filename);
 
@@ -994,7 +994,7 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 
 				dir = get_dir3(NULL,0, inode_nr , "",pathname, t_after,t_before, recoverquality );
 				if (dir) {
-//					lookup_local(des_dir, dir,t_after,t_before, recoverquality | recovermodus );
+					lookup_local(des_dir, dir,t_after,t_before, recoverquality | recovermodus );
 					if (recovermodus & HIST_DIR )
 						print_coll_list(t_after, t_before, format);
 //Magic step 1 + 2 +3
