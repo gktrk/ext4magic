@@ -7057,7 +7057,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0313     :               //x-unknown
 	//              this->func = file_x-unknown ;
-	              strncat(this->name,".x-unknown",7);
+	              strncat(this->name,".unknown",8);
 		break;
 	
 		case 0x0314     :               //x-xcursor
@@ -7353,7 +7353,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0711     :               //x-unknown
 	//              this->func = file_x-unknown ;
-	              strncat(this->name,".unknown",7);
+	              strncat(this->name,".unknown",8);
 		break;
 
 		case 0x0712     :               //x-ms-asf

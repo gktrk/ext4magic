@@ -1,4 +1,4 @@
-.TH ext4magic 8 "Jun 2011" "version 0.2.2" "Administrations Tool"
+.TH ext4magic 8 "Oct 2011" "version 0.2.3" "Administrations Tool"
 .SH NAME
 ext4magic \- allows to recover deleted files on ext3/4 filesystems
 .SH SYNOPSIS
@@ -32,7 +32,7 @@ extensive information about the filesytem Journal.
 .B
 Magic Options: 
 (new in version 0.2.0) These options are for a mulit-stage recover especially for file restore after a recursiv deletion of parts or the whole file system. 
-(third step currently only available for ext3.)
+(third step currently available for ext3 by versions 0.2.x ; a new experimental function for ext4 is included in version 0.3.0-pv0.)
 
 Umount the file system directly after an accidentally destroy and use these options with the umount file system or with a copy of this file system. 
 The program automatically determines the correct time options if the deletion has only worked a short time (< 5 min) .  For very large deletions, you must use the "

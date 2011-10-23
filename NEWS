@@ -1,9 +1,9 @@
 
 
 ext4magic 0.3.0 pv0	Contains the first experimental version of the magic function for ext4
-			The magic function for ext4 in this version can restore deleted files which
+			The magic function for ext4 can restore deleted files which
 			consisted of more than 4 extents (includes extra large and sparse files)
-			and also files that are unfragmented. (most small and medium-sized files
+			and files that are unfragmented. (most small and medium-sized files
 			and many large files, are often unfragmented)
 
 			This version can not recover files with 2 to 4 extents. But it's prepared and
@@ -13,16 +13,23 @@ ext4magic 0.3.0 pv0	Contains the first experimental version of the magic functio
 			For most file types specific functions have been developed. 
 
 			Supported the most important file formats for:
-			file archivs, compressed file, a lot off video-, audio- and picture formats,
+			file archivs, compressed files, a lot off video-, audio- and picture formats,
 			ELF-binary format, Mail, PDF, a lot of text-based file formats, and much more.
 			
 			Tested are more than 50 file formats and if available, also possible
 			variants and subtypes. 
-			Possible, this version will work well for you, possible also, it does not work.
-			There is a lot of new and experimental code.
+			Possible, this version will work well for you, possible, it does not work.
+			This version includes a lot of new and experimental code.
 
 			The magic-function for ext3 is switched off in this version. For ext3 use
-			ext4magic 0.2.2
+			ext4magic 0.2.3
+
+
+
+
+ext4magic 0.2.3		This version is separated from the main development branch.
+			Version 0.2.3 contains the old version of Magic function only for ext3
+			with some new features and bug fixes.
 
 
 

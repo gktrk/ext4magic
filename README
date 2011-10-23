@@ -202,8 +202,8 @@ This works only correct for a limited time if you continue to write into the fil
       These magic functions are still under development, the support depends on the ext4magic version
 	
        Version 		0.2.x only ext3 
-       Version 		0.3.0 only ext4 
-       Versions >= 	0.4.0 will support ext3 and ext4
+       Version 		0.3.x only ext4 
+       Versions >= 	0.4.x will support ext3 and ext4
  
 
 
