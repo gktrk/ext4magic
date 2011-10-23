@@ -48,7 +48,7 @@ static __u32 get_block_len(unsigned char *buf){
 
 
 
-static struct found_data_t* free_file_data(struct found_data_t* old){
+struct found_data_t* free_file_data(struct found_data_t* old){
 	if(old->inode) free(old->inode);
 	if(old->scan_result) free(old->scan_result);
 	if(old->name)  free(old->name);
@@ -1029,9 +1029,9 @@ if (cookie_f) magic_close(cookie_f);
 
 
 
-//FIXME   NEW ---------------------------------------------------------------------------------------------------------
+// obsolete and no activ in this version  ---------------------------------------------------------------------------------
 //main of the magic_scan_engine for ext4
-int magic_block_scan4(char* des_dir, __u32 t_after){
+/*int magic_block_scan4(char* des_dir, __u32 t_after){
 magic_t 					cookie = 0;
 magic_t						cookie_f = 0;
 struct ext3_extent_header			*p_extent_header;
@@ -1134,5 +1134,5 @@ if (tmp_buf) free(tmp_buf);
 if (magic_buf) free(magic_buf);
 if (cookie) magic_close(cookie); 
 if (cookie_f) magic_close(cookie_f);
-}//funcion
+}//funcion*/
 //--------END----------

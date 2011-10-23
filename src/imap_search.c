@@ -27,8 +27,119 @@
 #include "inode.h"
 #include <sys/stat.h> 
 #include <errno.h>
+#include "magic.h"
 
 extern ext2_filsys current_fs;
+
+struct privat {
+	int 		count;
+	int 		error;
+	unsigned char*	buf;
+	char 		flag; 
+};
+
+
+//Subfunction for  "local_block_iterate3()" for load the first blocks to identify filetype 
+int first_blocks ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
+                  blk_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
+{
+        char *charbuf = NULL;
+  			((struct privat*)priv)->buf;
+	__u32 nbytes;
+	errcode_t retval;
+	int blocksize = fs->blocksize;
+
+	if ((blockcnt >= 12) || ((struct privat*)priv)->count >=12)
+		return BLOCK_ABORT;
+	charbuf = ((struct privat*)priv)->buf + (blocksize * blockcnt);
+
+	if (((struct privat*)priv)->flag){
+        	int allocated = ext2fs_test_block_bitmap ( fs->block_map, *blocknr );
+        	if ( allocated ){
+			((struct privat*)priv)->error = BLOCK_ABORT | BLOCK_ERROR ;
+                	return (BLOCK_ABORT | BLOCK_ERROR);
+		}
+	}
+
+	retval = io_channel_read_blk ( fs->io,  *blocknr,  1,  charbuf );
+	((struct privat*)priv)->count = blockcnt;
+	if (retval){
+		 ((struct privat*)priv)->error = BLOCK_ERROR ;
+		 return (BLOCK_ERROR);
+	}
+return retval;
+}
+
+
+static char* get_pathname(blk_t inode_nr, char* i_pathname, char *magic_buf, unsigned char* buf){
+	struct found_data_t 		*help_data = NULL;
+	int				str_len;
+	__u32				name_len;
+	char				*c;
+	int				def_len = 22;
+	char				name_str[22];
+	__u32				scan = 0;
+
+	help_data = malloc(sizeof(struct found_data_t));
+	if (!help_data) return NULL;
+	memset (help_data,0, sizeof(struct found_data_t));
+
+	if ( ident_file(help_data,&scan,magic_buf,buf)){
+	help_data->type = scan;
+	str_len = strlen(magic_buf) + 1;
+	c = strpbrk(magic_buf,";:, ");
+	if (c){	
+		*c = 0;
+		name_len = c - magic_buf + def_len;
+	} 
+	else
+		name_len = str_len + def_len;
+	
+	help_data->scan_result = malloc(str_len);
+	help_data->name	 = malloc(name_len);
+	if((!help_data->name) || (!help_data->scan_result)){
+		free_file_data( help_data );
+		fprintf(stderr,"ERROR: allocate memory\n");
+	}
+	else{
+		strcpy(help_data->scan_result,magic_buf);
+		strncpy(help_data->name, magic_buf , name_len - def_len+1);
+		sprintf(name_str,"/I_%010lu",inode_nr);
+		strcat(help_data->name,name_str);
+		get_file_property(help_data);
+	}
+	i_pathname = malloc(name_len);
+	if (i_pathname)
+		strncpy (i_pathname,help_data->name,name_len); 
+	}
+	free_file_data(help_data);
+return i_pathname;
+}
+
+
+static magic_t 		cookie = 0;
+
+
+char* identify_filename(char* i_pathname, unsigned char *tmp_buf, struct ext2_inode* inode, blk_t inode_nr){
+	struct privat 	priv ;
+	char 		magic_buf[100];
+	int		retval= 0;
+	
+	priv.count = priv.error = priv.flag = 0;
+	priv.buf = tmp_buf;
+	memset(magic_buf,0,100);
+	if ((inode->i_mode  & LINUX_S_IFMT) == LINUX_S_IFREG){
+		memset(tmp_buf,0,12 * current_fs->blocksize);
+		// iterate first 12 Data Blocks
+		retval = local_block_iterate3 ( current_fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, first_blocks, &priv );
+		if (priv.count <12){
+			strncpy(magic_buf, magic_buffer(cookie , tmp_buf,
+				((inode->i_size < 12 * current_fs->blocksize) ?  inode->i_size : (12 * current_fs->blocksize))), 60);
+			i_pathname = get_pathname(inode_nr, i_pathname, magic_buf, tmp_buf);
+		}
+	}
+	return i_pathname;
+}
 
 
 // search inode by use imap (step1: flag 1 = only directory ; step2: flag 0 = only file)
@@ -41,7 +152,9 @@ struct ring_buf* 			i_list = NULL;
 r_item*					item = NULL;
 int  					zero_flag, retval, load, x ,i ;
 char 					*pathname = NULL;
+char					*i_pathname = NULL;
 char 					*buf= NULL;
+unsigned char				*tmp_buf = NULL;
 __u32 					blocksize, inodesize, inode_max, inode_per_group, block_count;
 __u16 					inode_per_block , inode_block_group, group;
 blk_t 					block_nr;
@@ -55,6 +168,16 @@ inodesize = current_fs->super->s_inode_size;
 inode_max = current_fs->super->s_inodes_count;
 inode_per_group = current_fs->super->s_inodes_per_group;
 buf = malloc(blocksize);
+if (! (flag & 0x01) ){
+	tmp_buf = malloc (12 * blocksize);
+	if (!tmp_buf)
+		goto errout;
+	cookie = magic_open(MAGIC_MIME | MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF | MAGIC_CONTINUE);
+	if ((! cookie) ||  magic_load(cookie, NULL)){
+		fprintf(stderr,"ERROR: can't find libmagic\n");
+		goto errout;
+	}
+}
 
 inode_per_block = blocksize / inodesize;
 inode_block_group = inode_per_group / inode_per_block;
@@ -115,7 +238,7 @@ for (group = 0 ; group < current_fs->group_desc_count ; group++){
 						}
 					}
 // 1. magical step 
-					if (LINUX_S_ISDIR(mode) && ( flag & 0x01) ){ 
+					if (LINUX_S_ISDIR(mode) && ( flag & 0x01) && (pathname)){ 
 						sprintf(pathname,"<%lu>",inode_nr);
 
 	
@@ -132,7 +255,7 @@ for (group = 0 ; group < current_fs->group_desc_count ; group++){
 						else{   //search for all 
 							dir = get_dir3(NULL,0, inode_nr , "MAGIC-1",pathname, t_after,t_before, DELETED_OPT);
 							if (dir) {
-								lookup_local(des_dir, dir,t_after,t_before, DELETED_OPT | RECOV_ALL | LOST_DIR_SEARCH );
+								lookup_local(des_dir,dir,t_after,t_before,DELETED_OPT|RECOV_ALL|LOST_DIR_SEARCH);
 								clear_dir_list(dir);
 							}
 						}
@@ -148,8 +271,15 @@ for (group = 0 ; group < current_fs->group_desc_count ; group++){
 
 						if (item) {
 							if (! LINUX_S_ISDIR(item->inode->i_mode) ) {
+								i_pathname = identify_filename(i_pathname, tmp_buf,
+										(struct ext2_inode*)item->inode, inode_nr);
 								sprintf(pathname,"<%lu>",inode_nr);
-								recover_file(des_dir,"MAGIC-2", pathname, (struct ext2_inode*)item->inode, inode_nr, 0);
+								recover_file(des_dir,"MAGIC-2", ((i_pathname)?i_pathname : pathname),
+									     (struct ext2_inode*)item->inode, inode_nr, 0);
+								if(i_pathname){
+									free(i_pathname);
+									i_pathname = NULL;
+								}
 							}
 						}
 						if (i_list) ring_del(i_list);
@@ -159,12 +289,22 @@ for (group = 0 ; group < current_fs->group_desc_count ; group++){
 		}
 	}
 }
+errout:
 	if (pathname)
 		 free(pathname);
 
 	if(buf) {
 		free(buf);
 		buf = NULL;
+	}
+
+	if (tmp_buf){
+		free(tmp_buf);
+		tmp_buf = NULL;
+	}
+	if (cookie){
+		magic_close(cookie);
+		cookie = 0;
 	}
 return;
 } 
@@ -196,7 +336,7 @@ if (recovername && dirname){
 		}
 		else{	
 			if(check_dir(dirname)){
-					fprintf(stderr,"Unknown error at target directory by file: %s\ntrying to continue normal\n", dirname);
+				fprintf(stderr,"Unknown error at target directory by file: %s\ntrying to continue normal\n", dirname);
 			}else{
 				retval = rename(recovername, dirname);
 				rename_hardlink_path(recovername, dirname);
