@@ -1,4 +1,7 @@
-
+		new : function for RPM and XCF(Gimp) 
+		change : DEB; ZIP; TTF; some Perl and Python files
+			 Optimization for text based files (not completed yet)
+		
 
 0.3.0-pv0	new : the first experimental version of the magic-functions for ext4
 		disabled : the magic-function for ext3 is switched off in this version

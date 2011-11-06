@@ -177,6 +177,7 @@ int check_fs_open(char*);
 void reset_getopt(void);
 unsigned long parse_ulong(const char* , const char* , const char* , int* );
 int zero_space(unsigned char*, __u32 ); 
+int is_unicode( unsigned char* );
 
 // public functions lookup_local.c
 void list_dir(ext2_ino_t inode); //list dir (using normal functions from ext2fs)

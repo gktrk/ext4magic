@@ -660,3 +660,25 @@ int zero_space(unsigned char *buf, __u32 offset){
 		i++;
 	return (i == end ) ? 1 : 0 ;
 }	
+
+int is_unicode( unsigned char* buf){
+	int 	ret = 0;
+	unsigned char	*p = buf;
+	unsigned char	*p1 = buf +1;
+	if ((*p > 0xc1) && (*p < 0xf5) && (*p1 > 0x7f) && (*p1 < 0xc0)){
+		if (!(*p & 0x20))
+			ret = 2;
+		else{
+			p1++;
+			if ((!(*p & 0x10)) && (*p1 > 0x7f) && (*p1 < 0xc0)) 
+				ret = 3 ;
+			else{
+ 				p1++;
+				if ((!(*p & 0x08)) && (*p1 > 0x7f) && (*p1 < 0xc0)) 
+					ret = 4 ;
+			}
+		}
+	}
+	return ret;
+}
+

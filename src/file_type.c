@@ -53,9 +53,9 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 	char	messagestr[] ="news rfc822 ";
 	char	modelstr[] ="vrml x3d ";
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf x-7z-compressed ";
-	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm x-python x-java text ";
+	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm x-python x-java PEM SGML libtool M3U tcl POD PPD configure ruby sed expect ssh text ";
 //Files not found as mime-type
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS ";
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS python ";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -161,7 +161,7 @@ static int analysis_ret1(char* typename, struct found_data_t* f_data, int ret , 
 		break;
 		case 2 :
 			f_data->scantype |= DATA_READY;
-			(f_data->buf_length)++;
+			if(offset % current_fs->blocksize)(f_data->buf_length)++;
 		break;
 		case 3 :
 			f_data->scantype = 0;
@@ -521,7 +521,11 @@ int file_bin_txt(unsigned char *buf, int *size, __u32 scan , int flag, struct fo
 }
 
 
-static int follow_zip(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32 *last_match,  int flag){
+struct zip_priv_t{
+	int	 	flag;
+	__u32		count;};
+
+static int follow_zip(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32 *last_match,  struct zip_priv_t * priv){
 #define ZIP_CENTRAL_DIR         0x02014B50
 #define ZIP_FILE_ENTRY          0x04034B50
 #define ZIP_SIGNATURE           0x05054B50
@@ -534,63 +538,91 @@ static int follow_zip(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 	__u32		i=*offset;
 	int 		ret = 1;
 	__u32		header; 
+	__u32		end = (blockcount * current_fs->blocksize)-30;
 	__u16		*p_16;
 	__u32		*p_32;
 	
-	while ((ret == 1 )&& ( i < (blockcount * current_fs->blocksize)-30)){
-		header = ext2fs_le32_to_cpu(*(__u32*)(buf+i));
-		switch (header){
-		case ZIP_CENTRAL_DIR		:
-			*last_match = i +1;
-			p_16 = (__u16*)(buf+i+28);
-			i += ext2fs_le16_to_cpu(*p_16);
-			p_16++;
-			i += ext2fs_le16_to_cpu(*p_16) + 46;
-			p_16++;
-			i += ext2fs_le16_to_cpu(*p_16);	
-		break;
-		case ZIP_FILE_ENTRY		:
-			*last_match = i+1;
-			p_32 = (__u32*)(buf+i+18);
-			if (! ext2fs_le32_to_cpu(*p_32)){
-				ret = 3;
-				break;
+	while ((ret == 1 )&& ( i < end )){
+		if (priv->flag){
+			while ((i < end) && (!((buf[i] == 0x50) && (buf[i+1] ==0x4B) && (buf[i+2] ==0x07)&& (buf[i+3] ==0x08)))){
+				(priv->count)++;
+				i++;
+				if (priv->count > 4194304){ // only 4MB then we give up
+					ret = 3;
+					break;
+				}
 			}
-			p_16 = (__u16*)(buf+i+26);
-			i += ext2fs_le32_to_cpu(*p_32) + ext2fs_le16_to_cpu(*p_16);
-			p_16++;
-			i += ext2fs_le16_to_cpu(*p_16) + 30;	
-		break;
-		case ZIP_SIGNATURE		:
-			*last_match = i +1;
-			p_16 = (__u16*)(buf+i+4);
-			i += ext2fs_le16_to_cpu(*p_16) + 6;
-		break;
-		case ZIP_END_CENTRAL_DIR	:
-			*last_match = i +1;
-			p_16 = (__u16*)(buf+i+20);
-			i += ext2fs_le16_to_cpu(*p_16) + 22;
-			ret = 2;
-		break;
-		
-		//I think the follow is never needed	
-		case ZIP_EXTRA_DATA		:
-		//	p_32 = (__u32*)(buf+i+4);
-		//	i += ext2fs_le32_to_cpu(*p_16) + 8;
-		//break;	
-		case ZIP_CENTRAL_DIR64		:
-		//	i + 12 ;
-		//	ret = 2 ;
-		//break;
-		case ZIP_END_CENTRAL_DIR64	:
-		case ZIP_DATA_DESCRIPTOR	:
-			*last_match = i +1;	
-			ret = 3;
-		break;
-		default				:
-			ret = 0 ; 
-		break;
-		}	
+			if ((i == end)||(ret == 3))
+				break;
+			p_32 = 	(__u32*)(buf+i+8);
+			if (ext2fs_le32_to_cpu(*p_32) == priv->count){
+				priv->flag = 0;
+				*last_match = i+1;
+			}
+			else{
+				ret = 0;
+				break;
+			}	
+		}
+		else{
+			header = ext2fs_le32_to_cpu(*(__u32*)(buf+i));
+			switch (header){
+			case ZIP_CENTRAL_DIR		:
+				*last_match = i +1;
+				p_16 = (__u16*)(buf+i+28);
+				i += ext2fs_le16_to_cpu(*p_16);
+				p_16++;
+				i += ext2fs_le16_to_cpu(*p_16) + 46;
+				p_16++;
+				i += ext2fs_le16_to_cpu(*p_16);	
+			break;
+			case ZIP_FILE_ENTRY		:
+				*last_match = i+1;
+				p_32 = (__u32*)(buf+i+18);
+				if (! ext2fs_le32_to_cpu(*p_32)){
+					if ( (buf[i+6] & 0x08) ){
+						priv->flag = 1;
+						priv->count = 0;
+					}
+				}
+				p_16 = (__u16*)(buf+i+26);
+				i += ext2fs_le32_to_cpu(*p_32) + ext2fs_le16_to_cpu(*p_16);
+				p_16++;
+				i += ext2fs_le16_to_cpu(*p_16) + 30;	
+			break;
+			case ZIP_SIGNATURE		:
+				*last_match = i +1;
+				p_16 = (__u16*)(buf+i+4);
+				i += ext2fs_le16_to_cpu(*p_16) + 6;
+			break;
+			case ZIP_END_CENTRAL_DIR	:
+				*last_match = i +1;
+				p_16 = (__u16*)(buf+i+20);
+				i += ext2fs_le16_to_cpu(*p_16) + 22;
+				ret = 2;
+			break;
+			
+			//I think the follow is never needed	
+			case ZIP_EXTRA_DATA		:
+			//	p_32 = (__u32*)(buf+i+4);
+			//	i += ext2fs_le32_to_cpu(*p_16) + 8;
+			//break;	
+			case ZIP_CENTRAL_DIR64		:
+			//	i + 12 ;
+			//	ret = 2 ;
+			//break;
+			case ZIP_END_CENTRAL_DIR64	:
+			case ZIP_DATA_DESCRIPTOR	:
+				*last_match = i +1;
+				i+=16;
+				if (buf[i] != 0x50)	
+					ret = 3;
+			break;
+			default				:
+				ret = 0 ; 
+			break;
+			}	
+		}
 	}
 	*offset = i;
 return ret;
@@ -645,6 +677,7 @@ static int init_priv_bzlib(struct found_data_t* f_data){
 	f_data->priv = private;
 return 0;
 }
+
 
 
 static int follow_zlib(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32 *last_match,  struct priv_zlib_t *priv){
@@ -921,24 +954,21 @@ int file_bzip2(unsigned char *buf, int *size, __u32 scan , int flag, struct foun
 
 //zip
 int file_zip(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	int		ret = 0;
-	int		j,i, b_count;
+	int			ret = 0;
+	int			j,i, b_count;
 	unsigned char		token[5];
-	__u32	last_match = 0;
-	__u32	offset;
+	__u32			last_match = 0;
+	struct zip_priv_t	*z_priv = NULL;
+	__u32			offset;
 	
 	sprintf(token,"%c%c%c%c",0x50,0x4b,0x05,0x06);
 
 	switch (flag){
 		case 0 :if(f_data->scantype & DATA_READY){
-				*size = (f_data->next_offset)?f_data->next_offset : *size;
+				*size = (f_data->next_offset)?f_data->next_offset : current_fs->blocksize ;
 				ret = 1;
 			}
 			else{
-				//if((!(f_data->inode->i_flags & EXT4_EXTENTS_FL))&&(f_data->size < (12 * current_fs->blocksize))){
-				//	f_data->inode->i_size = (f_data->size + current_fs->blocksize -1) & ~(current_fs->blocksize-1);
-				//	*size = f_data->size % current_fs->blocksize;
-				//}
 				if((*size) > 22){
 					j = strlen(token) -1;
 					i = (*size -12);
@@ -954,8 +984,10 @@ int file_zip(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 						ret =1;
 					} 	
 				}
-				else
+				else{	
+					*size += 4;
 					ret = 2;
+				}
 			}
 			break;
 		case 1 :
@@ -963,14 +995,26 @@ int file_zip(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			break;
 		case 2 :
 			offset = 0;
+			z_priv = malloc(sizeof(struct zip_priv_t));
+			if (!z_priv){
+				f_data->first = 0;
+				return 0;
+			}
+			z_priv->flag = 0;
+			z_priv->count = 0;
+			f_data->priv = z_priv;
 			b_count = (f_data->buf_length > 12) ? 12 : f_data->buf_length ;
-			ret = follow_zip(buf, b_count, &offset, &last_match,0);
+			ret = follow_zip(buf, b_count, &offset, &last_match,f_data->priv);
 			ret = analysis_ret1("ZIP", f_data, ret , b_count, offset, last_match);
 			break;
 		case 3 :
 			offset = f_data->next_offset ;
-			ret = follow_zip(buf, f_data->buf_length, &offset, &last_match,0);
+			ret = follow_zip(buf, f_data->buf_length, &offset, &last_match,f_data->priv);
 			ret = analysis_ret2("ZIP", f_data, ret, offset, last_match);
+		break;
+		case 4 :
+			if (f_data->priv)
+				free(f_data->priv);
 		break;
 	}
 	return ret;
@@ -1008,13 +1052,146 @@ int file_lzw(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	return ret;
 }
 
+//rpm
+int file_rpm(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+#define GZ_FTEXT        1
+#define GZ_FHCRC        2
+#define GZ_FEXTRA       4
+#define GZ_FNAME        8
+#define GZ_FCOMMENT     0x10
+
+	int			i, z_flags, b_count, ret = 0;
+	__u32			offset;
+	__u32			last_match = 0;
+	struct priv_zlib_t 	*priv = NULL;
+	__u32			h_count,h_size;
+	__u32			p_size = 0;
+	
+
+	switch (flag){
+		case 0 :
+			if(f_data->scantype & DATA_READY){
+				*size = (f_data->next_offset)?f_data->next_offset : *size;
+				ret = 1;
+			}
+			else{
+				if (f_data->scantype & DATA_LENGTH)  {
+					if (f_data->inode->i_size < f_data->size)
+						ret = 0;
+					else{
+						p_size = ((f_data->size-1) % current_fs->blocksize)+1;
+						 if (*size < p_size) 
+							*size = p_size;
+						ret = 1;
+					}
+				}
+				else{
+					if(*size < (current_fs->blocksize -8)) 
+						ret = 1 ;
+					else {
+						if(*size < (current_fs->blocksize -4))
+							ret = 2 ;
+					}
+					*size += 2;
+				}
+			}
+			break;
+		case 1 :
+			return ((scan & (M_IS_META | M_CLASS_1 | M_BLANK | M_TXT))||(f_data->scantype & DATA_READY)) ? 0 :1 ;
+			break;
+		case 2 :
+			if (!((buf[0]==0xed)&&(buf[1]==0xab)&&(buf[2]==0xee)&&(buf[3]==0xdb)&&(buf[4]==0x03))){
+				f_data->func = file_default ;
+				return 0;
+			}
+			if (buf[7] == 1){
+				f_data->name[strlen(f_data->name)-3] = 0 ;
+				strncat(f_data->name,"srpm",6);
+			}
+			offset=96;
+			if ((buf[offset]== 0x8e)&&(buf[offset+1]== 0xad)&&(buf[offset+2]== 0xe8)) {
+				h_count=((buf[offset+8]<<24)|(buf[offset+9]<<16)|(buf[offset+10]<<8)|(buf[offset+11]));
+				h_size=((buf[offset+12]<<24)|(buf[offset+13]<<16)|(buf[offset+14]<<8)|(buf[offset+15]));
+				for (i=0;i<h_count;i++){
+					if((buf[offset+18+(i*16)]==0x03) && (buf[offset+19+(i*16)]==0xe8) && (buf[offset+23+(i*16)]==0x04)){
+						p_size =((buf[offset+24+(i*16)]<<24)|(buf[offset+25+(i*16)]<<16)|
+							(buf[offset+26+(i*16)]<<8)|(buf[offset+27+(i*16)]))+1;
+						break;
+					}
+				}
+				offset += (++h_count * 16);
+				if (p_size)
+					p_size = (buf[offset+p_size-1]<<24)|(buf[offset+p_size]<<16)|
+						 (buf[offset+p_size+1]<<8)|(buf[offset+p_size+2]);
+				offset += ((h_size + 7) & ~7);
+				if (p_size)
+					p_size += offset;
+
+				if ((offset < 1024) && (buf[offset]== 0x8e)&&(buf[offset+1]== 0xad)&&(buf[offset+2]== 0xe8)) {
+					h_count=((buf[offset+8]<<24)|(buf[offset+9]<<16)|(buf[offset+10]<<8)|(buf[offset+11]));
+					h_size=((buf[offset+12]<<24)|(buf[offset+13]<<16)|(buf[offset+14]<<8)|(buf[offset+15]));
+					offset += ((++h_count * 16) + h_size);
+				}
+			}
+			b_count = (f_data->buf_length > 12) ? 12 : f_data->buf_length ;
+			if (((offset+12) > (b_count *current_fs->blocksize)) || (buf[offset]!=0x1F)||(buf[offset+1]!=0x8B)||
+			    (buf[offset+2]!=0x08)||((buf[offset+3]&0xe0)!=0) || (init_priv_zlib(f_data))){
+				f_data->size = p_size ;
+				f_data->scantype = DATA_LENGTH ;
+				ret = 1;
+				break;
+			}
+			else {
+				((struct priv_zlib_t*)(f_data->priv))->flag = 0xb;
+
+			 	if (!follow_zlib(NULL,0,NULL,NULL,(struct priv_zlib_t *)f_data->priv)){
+					z_flags=buf[offset+3];
+					offset += 10;
+					if((z_flags&GZ_FEXTRA)!=0){
+						offset += (buf[offset]|(buf[offset+1]<<8));
+						offset += 2;	
+					}
+					if((z_flags&GZ_FNAME)!=0){
+						while( (offset < 256) && (buf[offset++]!='\0')){
+						}
+					}
+					if((z_flags&GZ_FCOMMENT)!=0){
+						while((offset<1024) && (buf[offset++]!='\0')){
+						}
+					}
+					if((z_flags&GZ_FHCRC)!=0){
+						offset+=2;
+					}
+					ret = follow_zlib(buf, b_count, &offset, &last_match,(struct priv_zlib_t *)f_data->priv);
+					ret = analysis_ret1("RPM", f_data, ret , b_count, offset, last_match);
+				}
+				else
+					f_data->first = 0;
+			}
+		break;	
+		case 3 :
+			offset = f_data->next_offset ;
+			ret = follow_zlib(buf, f_data->buf_length, &offset, &last_match,(struct priv_zlib_t *)f_data->priv);
+			ret = analysis_ret2("RPM", f_data, ret, offset, last_match);
+		break;
+		case 4:
+			if (f_data->priv){
+				if (((struct priv_zlib_t*)(f_data->priv))->flag)
+					inflateEnd( &((struct priv_zlib_t*)(f_data->priv))->z_strm);
+				free(f_data->priv);
+			}
+		break;
+	}
+	return ret;
+}
 
 
 //ttf
 int file_ttf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	int		i,j,ret = 0;
+	__u32		table_id[9] = {0x70616d63,0x66796c67,0x64616568,0x61656868,0x78746d68,0x61636f6c,0x7078616d,0x656d616e,0x74736f70};
+	int		i,j,id_count,ret = 0;
 	__u16		tables, s_range, shift;
-	__u32		*p, tmp;
+	__u32		*p, id, tmp;
 	unsigned char	*c;
 
 	switch (flag){
@@ -1025,23 +1202,26 @@ int file_ttf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			}
 			else {
 				*size = ((*size ) + 3) & ~3 ;
-				ret = 4;
+				ret = 2;
 			}
 			break;
 		case 1 :return (scan & (M_IS_META | M_CLASS_1 | M_BLANK)) ? 0 :1 ;
 			break;
 		case 2 :
+			id_count = 0;
 			tables = (buf[4]<<8) + buf[5];
-			s_range = (buf[6]<<8) + buf[7];
-			shift = (buf[10]<<8) + buf[11];
-			if ((!tables) || (((tables * 16) - s_range) != shift)){
-				f_data->func = NULL;
-				return 0;
-			}
 			c = (unsigned char*) buf + 12;
 			for (i = 0; i< tables; i++){
+				p = (__u32*)c;
+				id = ext2fs_le32_to_cpu(*p);
+				for (j=0;j<9;j++){
+					if (id == table_id[j]){
+						id_count++;
+						break;
+					}
+				} 
 				for (j=0;j<4;j++){
-					if (( *c < 32) || (*c > 126)){
+					if (( *c < 32) || ((*c > 126) && (*c != 0xa9))){
 						f_data->func = NULL;
 						return 0;
 					}
@@ -1055,9 +1235,15 @@ int file_ttf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 					f_data->size = tmp;
 				c+=12;
 			}
-			f_data->size = (f_data->size +3) & ~3 ;
-			f_data->scantype = DATA_LENGTH ;
-			ret = 1;
+			if(id_count < 5){
+				f_data->func = NULL;
+				ret = 0;
+			}
+			else {
+				f_data->size = (f_data->size +3) & ~3 ;
+				f_data->scantype = DATA_LENGTH ;
+				ret = 1;
+			}
 		break;
 	}
 	return ret;
@@ -2747,7 +2933,33 @@ int file_binary(unsigned char *buf, int *size, __u32 scan , int flag, struct fou
 	return ret;
 }			 
 
-	
+
+
+//bin-raw
+int file_bin_raw(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int ret = 0;
+	switch (flag){
+		case 0 :
+			if(f_data->scantype & DATA_METABLOCK){
+				ret = 1;
+				break;
+			}
+			else{
+				if (*size < (current_fs->blocksize -8))
+					ret = 2;
+
+				if (*size < (current_fs->blocksize -16))
+					ret = 1;
+			}
+			break;
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
+			break;
+	}
+	return ret;
+}	
+
+
 
 int file_tfm(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 	i,ret = 0;
@@ -3243,7 +3455,7 @@ int file_gif(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				break;
 				case 2 :
 					f_data->scantype |= DATA_READY;
-					(f_data->buf_length)++;
+					if(offset % current_fs->blocksize)(f_data->buf_length)++;
 				break;
 			}
 	
@@ -3706,6 +3918,342 @@ struct pcx_header	*pcx;
 			offset = f_data->next_offset ;
 			ret = follow_pcx(buf, f_data->buf_length, &offset, &last_match,f_data->priv);
 			ret = analysis_ret2("PCX", f_data, ret, offset, last_match);
+		break;
+		case 4:
+			if (f_data->priv)
+				free(f_data->priv);
+		break;
+	}
+return ret;
+}
+
+
+struct xcf_priv_t {
+	int 		flag ;
+	__u32		width ;
+	__u32		height ;
+	int		byte_p_pix ;
+	int		s_count ;
+	int		compress;
+	__u32		b_stream ;
+	__u32		l_offset ;
+};
+
+static int follow_xcf(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32 *last_match,  void *priv){
+	int			i;
+	int 			ret = 1;
+	__u32			f_offset = *offset;
+	__u32			*p1, *p2;
+	__u32			type, pl, pointer;
+	__u32			end = (blockcount * current_fs->blocksize)-30;
+	struct xcf_priv_t 	*p_data = (struct xcf_priv_t*) priv;
+
+	while ( (ret == 1) && (f_offset < (end-1))){
+		switch (p_data->flag){
+			case 0://Master image structure
+				if ((!f_offset) &&(! p_data->b_stream)){
+					f_offset += 26;
+					p1 = (__u32*) (buf+14);
+					p_data->width = ext2fs_be32_to_cpu(*p1);
+					p1++;
+					p_data->height = ext2fs_be32_to_cpu(*p1);
+				}
+				do{ //Image properties
+					p1 = (__u32*) (buf+f_offset);
+					p2 = p1 +1;
+					type = ext2fs_be32_to_cpu(*p1);
+					pl = ext2fs_be32_to_cpu(*p2);
+					if ((type == 17) && (pl == 1))
+						p_data->compress = buf[f_offset+8];
+					if (type)
+						f_offset += (pl + 8);
+				}while(type && (type <28) && (f_offset < end));
+				if((!pl) && (!type)) {
+					f_offset += 8;
+					p_data->flag = 1;
+				}
+				if (type > 27)
+					ret = 0;
+			break;
+			case 1 : //Pointer to the layer structure 
+				do{
+					p1 = (__u32*) (buf+f_offset);
+					pointer = ext2fs_be32_to_cpu(*p1);
+					if (p_data->l_offset < pointer)
+						p_data->l_offset = pointer;
+					if((p_data->s_count)++ > 256)
+						ret = 0;
+					f_offset += 4;
+				}while (ret && pointer && (f_offset < end));
+				if(ret && (f_offset < end)){	
+					p_data->flag = 2; 
+					p_data->s_count = 0;
+				}
+			break;
+			case 2 : //Pointer to the channel structure 
+				do{
+					p1 = (__u32*) (buf+f_offset);
+					pointer = ext2fs_be32_to_cpu(*p1);
+					if (p_data->l_offset < pointer){
+						p_data->l_offset = pointer;
+						p_data->flag = 5; //FIXME
+					}
+					if((p_data->s_count)++ > 64)
+						ret = 0;
+					f_offset += 4;
+				}while (ret && pointer && (f_offset < end));
+				if(ret && (f_offset < end)){	
+					(p_data->flag)++;   //FIXME
+					f_offset = (p_data->l_offset - (p_data->b_stream - *offset));
+				} 
+			break;
+			case 3 : //Layer structure
+				p1 = (__u32*) (buf+f_offset);
+				p_data->width = ext2fs_be32_to_cpu(*p1);
+				p1++;
+				p_data->height = ext2fs_be32_to_cpu(*p1);
+				p1++;
+				switch (ext2fs_be32_to_cpu(*p1)){
+					case 0 : p_data->byte_p_pix = 3 ; break;
+					case 1 : p_data->byte_p_pix = 4 ; break;
+					case 2 :
+					case 4 : p_data->byte_p_pix = 1 ; break;
+					case 3 :
+					case 5 : p_data->byte_p_pix = 2 ; break;
+					default : p_data->byte_p_pix = 0;
+				}
+				if (p_data->width && p_data->height && p_data->byte_p_pix){
+					p1++; //Layer name
+					pl = ext2fs_be32_to_cpu(*p1);
+					if ((f_offset + 20 + pl) <  end){
+						f_offset += 16;
+						if (pl){
+							for  (i=0; i < (pl-1); i++){
+								if (! isprint(buf[f_offset+i])){
+									if (! is_unicode(buf+f_offset+i))
+										ret = 0;
+									break;
+								}
+							}
+						}
+						if (ret && (!buf[f_offset + pl -1])){
+							*last_match = f_offset;
+							f_offset += pl;
+							p_data->flag = 4;
+						}
+					}
+					else {
+						end = f_offset;
+						break;
+					}
+				}
+				if (p_data->flag != 4)
+					ret = 0;
+			break;
+			case 7 : //Channel or Mask properties 
+			case 4 : //Layer properties
+				do{
+					p1 = (__u32*) (buf+f_offset);
+					p2 = p1 +1;
+					type = ext2fs_be32_to_cpu(*p1);
+					pl = ext2fs_be32_to_cpu(*p2);
+					if (type)
+						f_offset += (pl + 8);
+				}while(type && (type <28) && (f_offset < end));
+				if((!pl) && (!type)) {
+					f_offset += 8;
+					(p_data->flag)++;
+				}
+				if (type > 27)
+					ret = 0;
+			break;
+			case 5 : //Pointer to the hierarchy structure 
+				p1 = (__u32*) (buf+f_offset);
+				pointer = ext2fs_be32_to_cpu(*p1);
+				if (p_data->l_offset < pointer){
+					p_data->l_offset = pointer;
+					p_data->flag = 9;
+				}
+				p1++; //Pointer to the layer mask (a channel structure)
+				pointer = ext2fs_be32_to_cpu(*p1);
+				if (pointer &&(p_data->l_offset < pointer)){
+					p_data->l_offset = pointer;
+					p_data->flag = 6;
+				}
+				f_offset += 8;
+				if (p_data->flag == 5)
+					ret = 0;
+				else {
+					*last_match = f_offset;
+					if (p_data->l_offset < ((p_data->b_stream - *offset) + f_offset)){
+						ret = 3;
+						break;
+					}
+					else 
+						f_offset = (p_data->l_offset - (p_data->b_stream - *offset));
+				}
+			break;
+			case 6 : //Channel structure (layer masks or from the master image structure)
+				p1 = (__u32*) (buf+f_offset);
+				p2 = p1 +1;
+				if ((p_data->width == ext2fs_be32_to_cpu(*p1)) && (p_data->height == ext2fs_be32_to_cpu(*p2))){
+					p2++; //Channel or Mask name
+					pl = ext2fs_be32_to_cpu(*p2);
+					if ((f_offset + 20 + pl) <  end){
+						f_offset += 12;
+						if (pl){
+							for  (i=0; i < (pl-1); i++){
+								if (! isprint(buf[f_offset +i])){
+									if (! is_unicode(buf+f_offset+i))
+										ret = 0;
+									break;
+								}
+							}
+						}
+						if (ret && (!buf[f_offset + pl -1])){
+							*last_match = f_offset;
+							f_offset += pl;
+							p_data->flag = 7;
+						}
+					}
+					else {
+						end = f_offset;
+						break;
+					}
+				}
+				if (p_data->flag == 6)
+					ret = 0;
+				else {
+					*last_match = f_offset;
+				}
+			break;
+			case 8 : //Pointer to the hierarchy structure
+				p1 = (__u32*) (buf+f_offset);
+				pointer = ext2fs_be32_to_cpu(*p1);
+				if (p_data->l_offset < pointer){
+					p_data->l_offset = pointer;
+					p_data->flag = 9;
+				}
+				f_offset += 4;
+				if (p_data->flag == 8)
+					ret = 0;
+				else {
+					*last_match = f_offset;
+					if (p_data->l_offset < ((p_data->b_stream - *offset) + f_offset)){
+						ret = 3;
+						break;
+					}
+					else 
+						f_offset = (p_data->l_offset - (p_data->b_stream - *offset));
+				}
+			break;
+			case 9 : //hierarchy structure
+				p1 = (__u32*) (buf+f_offset);
+				p2 = p1 +1;
+				if ((p_data->width == ext2fs_be32_to_cpu(*p1)) && (p_data->height == ext2fs_be32_to_cpu(*p2))){
+					p2 += 3;
+					p_data->l_offset = ext2fs_be32_to_cpu(*p2);
+					if ((p_data->l_offset)&& (p_data->l_offset > ((p_data->b_stream - *offset) + f_offset))){
+						*last_match = f_offset;
+						f_offset = (p_data->l_offset - (p_data->b_stream - *offset));
+						p_data->flag = 10;
+					}
+					else{ 
+						ret = 3;
+						break;
+					}
+				}
+				if (p_data->flag == 9)
+					ret = 0;
+			break;
+			case 10 ://Pointer to unused level structure 
+				if (f_offset < (end -120)){
+				do {
+					p1 = (__u32*) (buf+f_offset);
+					p2 = p1 +1;
+					p_data->width >>= 1;
+					p_data->height >>= 1;
+					if (!((p_data->width == ext2fs_be32_to_cpu(*p1)) && (p_data->height == ext2fs_be32_to_cpu(*p2)))){
+						ret = 0;
+					}
+					else {
+						f_offset += 12;		
+					}
+				}while ((p_data->width > 64) || (p_data->height > 64));
+				if (ret)
+					ret = 2;
+				}
+				else
+					end = f_offset;
+			break;
+		}
+	}
+	p_data->b_stream += (f_offset - *offset);
+	*offset = f_offset;
+	
+return ret;
+}
+
+
+//xcf
+int file_xcf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 			i,ret = 0;
+	struct xcf_priv_t  	*priv;
+	__u32			offset;
+	__u32			last_match = 0;
+	__u32			b_count;
+
+
+	switch (flag){
+		case 0 :
+			if(f_data->scantype & DATA_READY){
+				*size = (f_data->next_offset)?f_data->next_offset : *size;
+				ret = 1 ;
+			}
+			else {
+				__u32	*p1;
+				__u32	e[4];
+				if (*size > 16){
+					p1 = (__u32*) (buf + *size -4);
+					for (i = 0; i<4; i++){
+						e[i] = ext2fs_be32_to_cpu(*p1);
+						p1--;
+					}
+					if((e[0]<65) && ((!e[1])||(!e[2])) && ((e[3] & ~1) == (e[0]<<1))){
+						ret = 1;
+						*size += 4;
+						break;
+					}
+				} 
+				if (*size < (current_fs->blocksize - 8))
+					ret = 2;
+				if (*size < (current_fs->blocksize - 12))
+					ret = 1;
+				*size += 4;
+			}
+			break;
+		case 1 :return ((scan & (M_IS_META | M_CLASS_1 | M_BLANK ))||(f_data->scantype & DATA_READY)) ? 0 :1 ;
+			break;
+		case 2 :
+			if ((buf[8]==0x20) && (!buf[13]) && (!buf[22]) && (!buf[23]) && (!buf[24]) && (buf[25]<4) 
+				 && (f_data->priv = malloc(sizeof(struct xcf_priv_t)))){
+	
+				f_data->priv_len = sizeof(struct xcf_priv_t);
+				memset(f_data->priv,0,sizeof(struct xcf_priv_t));
+				f_data->last_match_blk =1;
+			} else{
+				f_data->first = 0;
+				return 0;
+			}
+			offset = 0;
+			b_count = (f_data->buf_length > 12) ? 12 : f_data->buf_length ;
+			ret = follow_xcf(buf,b_count, &offset, &last_match,f_data->priv);
+			ret = analysis_ret1("XCF", f_data, ret , b_count, offset, last_match);
+	  	break;
+		case 3 :
+			offset = f_data->next_offset ;
+			ret = follow_xcf(buf, f_data->buf_length, &offset, &last_match,f_data->priv);
+			ret = analysis_ret2("XCF", f_data, ret, offset, last_match);
 		break;
 		case 4:
 			if (f_data->priv)
@@ -4750,7 +5298,7 @@ static const unsigned char	token1[4]= {0x00,0x00,0x01,0xb7};
 				break;
 				case 2 :
 					f_data->scantype |= DATA_READY;
-					(f_data->buf_length)++;
+					if(offset % current_fs->blocksize)(f_data->buf_length)++;
 				break;
 				case 3:
 //					fprintf(stderr,"MPEG-CHECK: mpeg-sequence found, H_F-Carving on\n");
@@ -6364,7 +6912,7 @@ switch (flag){
 		case 2 :
 			if (offset){
 				f_data->scantype |= DATA_READY;
-				(f_data->buf_length)++;
+				if(offset % current_fs->blocksize)(f_data->buf_length)++;
 			}
 			else {
 				f_data->func = NULL;
@@ -6612,7 +7160,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0120     :               //x-dbf
-	//              this->func = file_x-dbf ;
+//FIXME	              this->func = file_dbf ;
 	              strncat(this->name,".dbf",7);
 		break;
 	
@@ -6622,7 +7170,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0122     :               //x-debian-package
-	//              this->func = file_x-debian-package ;
+	              this->func =  file_archive;
 	              strncat(this->name,".deb",7);
 		break;
 	
@@ -6797,7 +7345,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0145     :               //x-rpm
-	//              this->func = file_x-rpm ;
+	              this->func = file_rpm ;
 		strncat(this->name,".rpm",7);
 		break;
 	
@@ -7076,7 +7624,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 
 		case 0x0317     :               //x-xcf
-	//              this->func = file_x-xcf;
+	              this->func = file_xcf;
 	              strncat(this->name,".xcf",7);
 		break;
 
@@ -7226,7 +7774,7 @@ void get_file_property(struct found_data_t* this){
 
 		case 0x0618     :               //x-pascal (often c files)
 	              this->func = file_txt ;
-	              strncat(this->name,".c",7);
+	              strncat(this->name,".pas",7);
 		break;
 
 		case 0x0619     :               //c++
@@ -7264,7 +7812,67 @@ void get_file_property(struct found_data_t* this){
 	              strncat(this->name,".jar",7);
 		break;
 
-		case 0x0620     :               //text (for all unknown)
+		case 0x0620     :               //PEM
+	              this->func = file_txt ;
+	              strncat(this->name,".pem",7);
+		break;
+
+		case 0x0621     :               //SGML
+	              this->func = file_txt ;
+	              strncat(this->name,".rc",7);
+		break;
+
+		case 0x0622     :               //libtool
+	              this->func = file_txt ;
+	              strncat(this->name,".la",7);
+		break;
+
+		case 0x0623     :               //M3U
+	              this->func = file_txt ;
+	              strncat(this->name,".m3u",7);
+		break;
+
+		case 0x0624     :               //tcl
+	              this->func = file_txt ;
+	              strncat(this->name,".tcl",7);
+		break;
+
+		case 0x0625     :               //POD
+	              this->func = file_txt ;
+	              strncat(this->name,".pod",7);
+		break;
+
+		case 0x0626     :               //PPD
+	              this->func = file_txt ;
+	              strncat(this->name,".ppd",7);
+		break;
+
+		case 0x0627     :               //configure
+	              this->func = file_txt ;
+	              strncat(this->name,".conf",7);
+		break;
+
+		case 0x0628     :               //ruby
+	              this->func = file_txt ;
+	              strncat(this->name,".rb",7);
+		break;
+
+		case 0x0629     :               //sed
+	              this->func = file_txt ;
+	              strncat(this->name,".sed",7);
+		break;
+
+		case 0x062a     :               //expect
+	              this->func = file_txt ;
+//	              strncat(this->name,".expect",8);
+		break;
+
+		case 0x062b     :               //ssh
+	              this->func = file_txt ;
+	              strncat(this->name,".key",7);
+		break;
+
+		case 0x062c     :               //text (for all unknown)
 	              this->func = file_txt ;
 	              strncat(this->name,".txt",7);
 		break;
@@ -7550,6 +8158,11 @@ void get_file_property(struct found_data_t* this){
 		case 0x0824     :               //LUKS
 	              this->func = file_luks ;
 		strncat(this->name,".luks",7);
+		break;
+
+		case 0x0825     :               //python (binary)
+	              this->func = file_bin_raw ;
+		strncat(this->name,".pyc",7);
 		break;
 
 	//----------------------------------------------------------------

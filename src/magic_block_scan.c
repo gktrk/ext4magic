@@ -554,8 +554,11 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 		if (deep && count && (count > 60))// current_fs->blocksize))
 			strncpy(magic_buf, magic_buffer(cookie , buf , count-1),60);
 	}
-
+//loop:
 	if ((strstr(magic_buf,"text/plain"))||(strstr(magic_buf,"text/html"))){
+		char 	*type;
+		char	searchstr[] = "bin/perl python PEM SGML OpenSSH libtool M3U Tcl=script Perl=POD module=source PPD make=config bin/make awk bin/ruby bin/sed bin/expect bash ";
+		char	searchtype[] = "text/x-perl text/x-python text/PEM text/SGML text/ssh text/libtool text/M3U text/tcl text/POD text/x-perl text/PPD text/configure text/x-makefile text/x-awk text/ruby text/sed text/expect text/x-shellscript ";
 		if (deep  && (count > 250) && (!strncmp(buf,"From ",5))){
 			p_search = buf + 6;
 			for (len = 0; (len < (count -7)) ; len++){
@@ -573,17 +576,52 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 			}
 		} 
 		if(!(strstr(magic_buf,"text/html"))){
-			if(deep && (count < (current_fs->blocksize -2))) {
-				p_search = buf + 6;
-				for (len = 0; len < 15 ; len++)
-					if( *(p_search++) == 0x20)
-						break;
-				if (len < 15){
-					retval = M_TXT | M_CLASS_2 ;
-					goto out;
+			if (deep){
+//FIXME
+				p_search = searchstr;
+				type = searchtype;
+				while (*p_search){
+					len=0;
+					while((*p_search) != 0x20){
+						token[len] = ((*p_search)==0x3d)? 0x20 : (*p_search);
+						p_search++;
+						len++;
+					}
+					token[len] = 0;
+					if (strstr(text,token)){
+						len = 0;
+						while (type[len] != 0x20){
+							magic_buf[len] = type[len];
+							len++;
+						}
+						magic_buf[len] = 0;
+						retval = (M_TXT | M_CLASS_1);
+						goto out;
+					}
+					p_search++;
+					while (type[0] != 0x20)
+						type++;
+					if (*type)
+						type++;
+				}		
+
+				if((count < (current_fs->blocksize -2)) || (!buf[-1])){
+					p_search = buf + 6;
+					for (len = 0; len < 20 ; len++){
+						if((*p_search ==0x0a) || (*(p_search++) == 0x20))
+							break;
+					}
+					if (len < 20){
+						for (len = 6; len < 80 ; len++)
+							if( buf[len] == 0x0a)
+								break;
+						if (len <80){
+							retval = M_TXT | M_CLASS_2 ;
+							goto out;
+						}
+					}
 				}
 			}
-//FIXME 
 			retval |= (M_DATA | M_TXT) ;
 			goto out;
 		}
@@ -653,7 +691,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	}
 
 	if (strstr(magic_buf,"application/octet-stream")){
-		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker matroska LZMA Audio=Visual Sample=Vision ISO=Media ext2 ext3 ext4 LUKS ";
+		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker matroska LZMA Audio=Visual Sample=Vision ISO=Media ext2 ext3 ext4 LUKS python ";
 		p_search = searchstr;
 		while (*p_search){
 			len=0;
