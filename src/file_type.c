@@ -55,7 +55,7 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf x-7z-compressed ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm x-python x-java PEM SGML libtool M3U tcl POD PPD configure ruby sed expect ssh text ";
 //Files not found as mime-type
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image CDF SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS python ";
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image Composite SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS python ESRI=Shape CDF ";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -1298,6 +1298,16 @@ int file_iso9660(unsigned char *buf, int *size, __u32 scan , int flag , struct f
 			break;
 	}
 	return ret;
+}
+
+
+//gnumeric    only switch to gzip or xml
+int file_gnumeric(unsigned char *buf, int *size, __u32 scan , int flag , struct found_data_t* f_data){ 
+	if ((buf[0]==0x1F)&&(buf[1]==0x8B)&&(buf[2]==0x08)&&((buf[3]&0xe0)==0))
+		f_data->func = file_gzip;
+	else	
+		f_data->func = file_txt;
+	return f_data->func(buf, size,scan,flag,f_data);
 }
 
 
@@ -5806,24 +5816,389 @@ int file_mod(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	return ret;
 }
 
+//---CDF-------------------------------------------------------
+struct OLE_HDR{
+	char		magic[8];		// 0
+	char		clsid[16];		// 8
+	__u16		uMinorVersion;		// 24
+	__u16		uDllVersion;		// 26
+	__u16		uByteOrder;		// 28
+	__u16		uSectorShift;		// 30
+	__u16		uMiniSectorShift;	// 32
+	__u16		reserved;		// 34
+	__u32		reserved1;		// 36
+	__u32		reserved2;		// 40
+	__u32		num_FAT_blocks;		// 44
+	__u32		root_start_block;	// 48
+	__u32		dfsignature;		// 52
+	__u32		miniSectorCutoff;	// 56
+	__u32		dir_flag;		// 60 first sec in the mini fat chain
+	__u32		csectMiniFat;		// 64 number of sectors in the  minifat
+	__u32		FAT_next_block;		// 68
+	__u32		num_extra_FAT_blocks;	// 72
+        // FAT block list starts here !! first 109 entries
+};
 
-//CDF    FIXME ????????????????
+struct OLE_DIR {
+	char		name[64];       // 0
+	__u16		namsize;         // 64
+	char		type;           // 66
+	char		bflags;         // 67: 0 or 1
+	__u32		prev_dirent;    // 68
+	__u32		next_dirent;    // 72
+	__u32		sidChild;       // 76
+	char		clsid[16];      // 80
+	__u32		userFlags;      // 96
+	int		secs1;          // 100
+	int		days1;          // 104
+	int		secs2;          // 108
+	int		days2;          // 112
+	__u32		start_block;    // 116 starting SECT of stream
+	__u32		size;           // 120
+	__u16		reserved;       // 124 must be 0
+	__u16		padding;        // 126 must be 0
+};
+
+
+struct priv_cdf_t{
+	__u32		flag;
+	__u32		shift;
+	__u32		FAT_blocks;
+	__u32		s_offset;
+	__u32		extra_FAT_blocks;
+	__u32		FAT_next_block;
+	__u32		root_start_block;
+	__u32		max;
+	__u32		d0;
+	__u32		d1;
+	__u32		type;
+	__u32		p[5];
+};
+
+
+static int read_dirname(char *buf, int len){
+	int ret = 0;
+	if (len > 63) 
+		return ret;
+	if(!(memcmp(buf, "R\0o\0o\0t\0 \0E\0n\0t\0r\0y\0",20)))
+		return 0;
+	if(!(memcmp(buf, "W\0o\0r\0d\0D\0o\0c\0u\0m\0e\0n\0t\0",24)))
+		return 1; // doc
+	if(!(memcmp(buf, "W\0o\0r\0k\0b\0o\0o\0k\0",16)))
+        	return 2; // xls
+	if(!(memcmp(buf,"S\0f\0x\0D\0o\0c\0u\0m\0e\0n\0t\0",22)))
+		return 3; // sdw
+	if(!(memcmp(buf,"S\0t\0a\0r\0D\0r\0a\0w\0",16)))
+		return 4; // sda
+	if(!(memcmp(buf,"S\0t\0a\0r\0C\0a\0l\0c\0",16)))
+		return 5; // sdc
+	if(!(memcmp(buf,"W\0k\0s\0S\0S\0W\0o\0r\0k\0B\0o\0o\0k\0",26)))
+		return 6; // xlr
+	if(!(memcmp(buf,"I\0m\0a\0g\0e\0s\0S\0t\0o\0r\0e\0",22)))
+		return 7; // albm
+	if(!(memcmp(buf,"J\0N\0B\0V\0e\0r\0s\0i\0o\0n\0", 20)))
+		return 8; // jnb
+	if(!(memcmp(buf,"P\0o\0w\0e\0r\0P\0o\0i\0n\0t\0",20)))
+		return 9; // ppt
+	if(!(memcmp(buf,"C\0O\0N\0T\0E\0N\0T\0S\0",16))) 
+		return 10; //wps
+	if(!(memcmp(buf,"_\0_\0n\0a\0m\0e\0i\0d\0_\0v\0e\0r\0s\0i\0o\0n\0001\0.\0000\0",38)))
+		return 11; // msg
+	if(!(memcmp(buf,"L\0i\0c\0o\0m\0",10))) 
+		return 12; //amb
+	if(!(memcmp(buf,"V\0i\0s\0i\0o\0D\0o\0c\0u\0m\0e\0n\0t\0",26)))
+		return 13; // vsd
+	if(!(memcmp(buf,"s\0w\0X\0m\0l\0C\0o\0n\0t\0e\0n\0t\0s\0",26)))
+		return 14; // sld
+	if(!(memcmp(buf,"N\0a\0t\0i\0v\0e\0C\0o\0n\0t\0e\0n\0t\0_\0M\0A\0I\0N\0", 36)))
+		return 15; // qpw
+	if(!(memcmp(buf,"D\0g\0n", 6)))
+		return 16; // dgn
+	if(!(memcmp(buf,"P\0i\0c\0t\0u\0r\0e\0s\0",16)))
+		return 17; // pps
+	if(!(memcmp(buf,"p\0e\0r\0s\0i\0s\0t\0 \0e\0l\0e\0m\0e\0n\0t\0s\0",32)))
+		return 50; // ??? sdw
+	if(!(memcmp(buf,"1\0\0\0", 4)))
+		return 100; // db
+	if(!(memcmp(buf,"1\0\0\0", 4)))
+		return 100; // db
+	return ret;
+}
+
+
+static int follow_cdf(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32 *last_match, struct priv_cdf_t*  priv){
+	int		i,j,flag;
+	int		ret = 1;
+	__u32 		f_offset = *offset;
+	__u32		len = (1<<priv->shift);
+	__u32		count = len / 4;
+	__u32		end = (blockcount * current_fs->blocksize) - ((priv->flag & 0x80)? 0 : len);
+	__u32		*p_32;
+	struct OLE_DIR	*o_dir;
+	
+	while ((ret == 1) && (f_offset <= ((priv->flag & 0x10)?(blockcount * current_fs->blocksize): end))){
+		switch (priv->flag & 0x1f){
+			case 0 :
+				if (priv->root_start_block < priv->max){
+					priv->p[0] = priv->root_start_block;
+					priv->flag |= 0x100;
+				}
+				else{
+					ret = 0;
+					break;
+				}
+				*last_match = f_offset;
+				if ((f_offset == 76) && (priv->FAT_blocks < 110)){
+					f_offset += (priv->FAT_blocks -1)*4;
+					p_32 = (__u32*) (buf+f_offset);
+					priv->p[3] = ext2fs_le32_to_cpu(*p_32);
+					priv->flag |= 0x800;
+					if (priv->FAT_blocks >1){
+						p_32--;
+						if (ext2fs_le32_to_cpu(*p_32) < priv->max){
+							priv->p[2] = ext2fs_le32_to_cpu(*p_32);
+							priv->flag |= 0x400;
+						}
+					}
+				}
+				else {
+					if (f_offset == 76){
+						priv->p[1] = priv->FAT_next_block;
+						priv->flag |= 0x200;
+						
+					}else 
+						ret = 0;
+				}
+			break;
+			case 0x1 :
+				o_dir = (struct OLE_DIR*) (buf+f_offset);
+				for (i=0;((i< 4) && (o_dir->type));i++){
+					if (/*(o_dir->reserved) || o_dir->padding ||*/ (o_dir->bflags >1) || (o_dir->type > 5) || (!o_dir->namsize) || (o_dir->namsize > 63) || (o_dir->name[1] && o_dir->name[2])){
+						ret = 0;
+						break;
+					}
+#ifdef DEBUG_MAGIC_SCAN
+					for (j=0;j<o_dir->namsize;j++){
+						if(o_dir->name[j])
+							printf("%c",o_dir->name[j]);
+					}
+					printf("\t\t\t type : %u \t sector %u (%u bytes)\n", o_dir->type, o_dir->start_block, o_dir->size);
+#endif
+				
+					if ((!priv->type) || (priv->type <50)){
+						flag = read_dirname(o_dir->name,o_dir->namsize);
+						if (flag)
+							priv->type = flag;
+					}
+					o_dir++;
+				}
+				*last_match = f_offset;		
+				priv->flag &= (~0x100);
+			break;
+			case 0x2 :
+				*last_match = f_offset+1;
+				if (priv->extra_FAT_blocks >1){
+					p_32 = (__u32*) (buf+f_offset + len -4);
+					if ((ext2fs_le32_to_cpu(*p_32) > priv->p[1]) && (ext2fs_le32_to_cpu(*p_32) < priv->max)){
+						priv->p[1] = ext2fs_le32_to_cpu(*p_32);
+						(priv->extra_FAT_blocks)--;
+					}
+					else{
+						printf("ERROR CDF Extra FAT:  %lu \n",priv-> s_offset);
+						ret = 0;
+					}
+					break;
+				}
+				i = (priv->FAT_blocks -109) % (count-1);
+				p_32 = (__u32*) (buf+f_offset);
+				p_32 += (i-1);
+				priv->flag &= (~0x200);
+				if ((ext2fs_le32_to_cpu(*p_32) > priv->p[1]) && (ext2fs_le32_to_cpu(*p_32) < priv->max)){
+					priv->p[3] = ext2fs_le32_to_cpu(*p_32);
+					priv->flag |= 0x800;
+					if (i > 1){
+						p_32--;
+						if ((ext2fs_le32_to_cpu(*p_32) > priv->p[1]) && (ext2fs_le32_to_cpu(*p_32) < priv->max)){
+							priv->p[2] = ext2fs_le32_to_cpu(*p_32);
+							priv->flag |= 0x400;
+						}
+					}
+				}
+				else {
+					printf("ERROR CDF Extra FAT:  %lu \n",priv-> s_offset);
+					ret = 0;
+				}
+			break;
+			case 0x4 :
+			case 0x8 :
+				j=0;
+				flag = 0;
+				p_32 = (__u32*) (buf+f_offset + (len-4));
+				for (i=0;i < count; i++, p_32--){
+					if((!flag) && (*p_32 == 0xffffffff)){
+						j++;
+						continue;
+					}
+					if ((ext2fs_le32_to_cpu(*p_32) > priv->max) && (ext2fs_le32_to_cpu(*p_32) < 0xfffffffd)){
+						ret = 0;
+						break;
+					}
+					else 
+						flag++;
+				}
+				*last_match = f_offset+1;
+				if ((priv->flag & 0x1f) == 0x4){
+					priv->d0 = j;
+					priv->flag &= (~0x400);
+				}
+				else{
+					priv->d1 = j;
+					priv->flag &= (~0x800);
+					if (j < count)
+						priv->flag &= (~0x400);
+				}
+				if(!(priv->flag & 0xc00)){
+					priv->p[4] = priv->max - ((priv->d1 < count) ? priv->d1 : (priv->d1 + priv->d0));
+					priv->flag |= 0x1000;
+				}
+			break;
+			case 0x10 :
+				if (zero_space(buf, f_offset)){
+					printf("Ende:  %lu \n",priv-> s_offset);
+					ret = 2;
+				}
+				else{
+					if (!(f_offset % current_fs->blocksize)){
+						ret = 2;
+					}
+					else{
+						printf("CDF ERROR Ende:  %lu \n",priv-> s_offset);
+						ret = 0;
+					}
+				}
+			break;
+		}
+		if (ret == 1){
+			priv->flag &= 0x1f00;
+			flag = 0;
+			for (i=0;i<5;i++){
+				if( priv->flag & (1<<(i+8))){
+					flag = i+1;
+					for(j=i+1;j<5;j++){
+						if(( priv->flag & (1<<(j+8))) && (priv->p[i] > priv->p[j])){
+							flag = j+1;
+							break;
+						}
+					}
+					if(j==5)
+						break;
+				}
+			}
+			if (flag){
+				flag--;
+				f_offset = ((priv->p[flag] << priv->shift) + 512) - (priv->s_offset - *offset) ;
+				priv->flag |= (1<<(flag));
+			}
+			else {
+					ret = 0;
+			}
+		}
+	}
+	priv->s_offset = (priv->s_offset - *offset) + f_offset;
+	*offset = f_offset;
+	return ret;
+}
+
+
+//CDF
 int file_CDF(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	int 		ret = 0;
+	char cdf_ext[19][4]={{'d','o','c','\0'},
+	{'d','o','c','\0'},{'x','l','s','\0'},{'s','d','w','\0'},{'s','d','a','\0'},{'s','d','c','\0'},{'x','l','r','\0'},
+	{'a','l','b','\0'},{'j','n','b','\0'},{'p','p','t','\0'},{'w','p','s','\0'},{'m','s','g','\0'},{'a','m','b','\0'},
+	{'v','s','d','\0'},{'s','l','d','\0'},{'q','p','w','\0'},{'d','g','n','\0'},{'p','p','s','\0'},{'d','b','\0','\0'}};
+
+	int 			b_count, ret = 0;
+	struct OLE_HDR		*head;
+	struct priv_cdf_t	*priv = NULL;
+	__u32			FAT_blocks,extra_FAT_blocks;
+	__u32			last_match = 0;
+	__u16			shift;
+	__u32			offset,last_match_blk = 0;
 
 	switch (flag){
 		case 0 :
-			if (*size < (current_fs->blocksize -7) && ((*size ) && buf[(*size)-1] == (unsigned char)0xff )){
-			*size = ((*size) +8) ;
-			ret = 2;
+			if (f_data->scantype & DATA_READY){
+				if (f_data->priv){
+					priv = f_data->priv;
+					if (priv->type == 50)
+						priv->type = 3;
+					if (priv->type == 100)
+						priv->type = 18;
+					if (priv->type > 18)
+						priv->type = 0;
+					f_data->name[strlen(f_data->name)-3] = 0 ;
+					strncat(f_data->name,cdf_ext[priv->type],4);
+				}
+				*size = (f_data->next_offset)?f_data->next_offset : current_fs->blocksize;
+				ret =1;
+			}
+			else {
+				if ((f_data->scantype & DATA_METABLOCK) || (*size < (current_fs->blocksize - 64))){
+				*size = (((*size) +127) & ~127);
+				ret = 1;
+			}
 		}
 			break;
-		case 1:
+		case 1 :
 			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
+		case 2 :
+			head =(struct OLE_HDR*)buf;
+			FAT_blocks = ext2fs_le32_to_cpu(head->num_FAT_blocks);
+			extra_FAT_blocks = ext2fs_le32_to_cpu(head->num_extra_FAT_blocks);
+			shift = ext2fs_le16_to_cpu(head->uSectorShift);
+			priv = malloc(sizeof(struct priv_cdf_t));
+			if ((!((buf[0]==0xd0)&&(buf[1]==0xcf)&&(buf[2]==0x11)&&(buf[3]==0xe0)&&(buf[4]==0xa1)
+				&&(buf[5]==0xb1)&&(buf[6]==0x1a)&&(buf[7]==0xe1) && (buf[28]==0xfe))) 
+				|| (!FAT_blocks) || (extra_FAT_blocks > 50) || (FAT_blocks > ((extra_FAT_blocks * (((1<<shift)/4)-1)) +109))
+				|| (shift < 6) || (shift > 11) || (! priv))   {
+				f_data->first = 0;
+				if( priv)
+					free(priv);
+				break;
+			}
+			offset = 76;
+			memset(priv,0,sizeof(struct priv_cdf_t));
+			priv->s_offset = offset;
+			priv->FAT_blocks = FAT_blocks;
+			priv->extra_FAT_blocks = extra_FAT_blocks;
+			priv->shift = shift;
+			priv->root_start_block = ext2fs_le32_to_cpu(head->root_start_block);
+			priv->FAT_next_block = ext2fs_le32_to_cpu(head->FAT_next_block);
+			f_data->priv = priv;
+			f_data->last_match_blk = 1;
+			priv->max = FAT_blocks * ((1<<shift)/4);
+			b_count = (f_data->buf_length > 12) ? 12 : f_data->buf_length ;
+			ret = follow_cdf(buf,b_count, &offset, &last_match,f_data->priv);
+			ret = analysis_ret1("CDF", f_data, ret , b_count, offset, last_match);
+			f_data->scantype |= DATA_NO_FOOT;
+			break;
+		case 3 :
+			offset = f_data->next_offset ;
+			ret = follow_cdf(buf, f_data->buf_length, &offset, &last_match,f_data->priv);
+			ret = analysis_ret2("CDF", f_data, ret, offset, last_match);
+		break;
+		case 4 :
+				if (f_data->priv)
+					free(f_data->priv);
+				ret = 1;
+		break;
+			
 	}
 	return ret;
 }
+//----END CDF--------------------------------------------------------------------
+
 
 
 //vmware    FIXME ????????????????
@@ -5961,6 +6336,107 @@ int file_luks(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 	return ret;
 }
 
+
+//dbf
+int file_dbf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 			ret = 0;
+	__u32			ssize;
+	__u32			b_size;
+	__u16			head,count;
+	__u32			*p32;
+	__u16			*p16;
+
+	switch (flag){
+		case 0 :
+			if ((f_data->size ) && (f_data->inode->i_size >= f_data->size)){
+				ssize = ((f_data->size-1) % current_fs->blocksize)+1;
+				if (f_data->inode->i_size > (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			else{
+				if (*size < (current_fs->blocksize -128)){
+					*size += 4;
+					ret = 4;
+				}
+			}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_TXT)) ? 0 :1 ;
+			break;
+		
+		case 2:
+			p32 = (__u32*) (buf +4);
+			p16 = (__u16*) (buf +8);
+			b_size = ext2fs_le32_to_cpu(*p32);
+			head = ext2fs_le16_to_cpu(*p16);
+			p16++;
+			count = ext2fs_le16_to_cpu(*p16);
+			//FIXME for DB7 http://www.dbase.com/KnowledgeBase/int/db7_file_fmt.htm
+			if( (buf[1]<100)|| (buf[1]>130)|| (!buf[2]) || (!buf[3]) || (buf[2]>12) || (buf[3] >31) || (!b_size) ||
+			   (head < 65) || (head & 0x1e) || (!count) || (b_size > 0x8000) || buf[12] || buf[13] || buf[30] || buf[31]){
+				f_data->first = 0;
+				break;
+			} 
+			else{
+				f_data->size = (count * b_size) + head + 1;
+				f_data->scantype = DATA_LENGTH;
+				ret = 1;
+			}
+			break;
+	}
+	return ret;
+}
+
+
+//ESRI
+int file_esri(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 			ret = 0;
+	__u32			ssize;
+	__u32			head;
+	int			i;
+	__u32			*p32;
+
+	switch (flag){
+		case 0 :
+			if ((f_data->size ) && (f_data->inode->i_size >= f_data->size)){
+				ssize = ((f_data->size-1) % current_fs->blocksize)+1;
+				if (f_data->inode->i_size > (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			else{
+				if (*size < (current_fs->blocksize -128)){
+					*size += 4;
+					ret = 4;
+				}
+			}
+			break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_TXT)) ? 0 :1 ;
+			break;
+		
+		case 2:
+			p32 = (__u32*) buf;
+			head = ext2fs_be32_to_cpu(*p32);
+			for (i=4;i<24;i++)
+				if (buf[i]) break;
+			if( (i<24) || (head != 9994)){
+				f_data->first = 0;
+				break;
+			} 
+			else{	
+				p32 = (__u32*) (buf +24);
+				f_data->size = 2 * ext2fs_be32_to_cpu(*p32);
+				f_data->scantype = DATA_LENGTH;
+				ret = 1;
+			}
+			break;
+	}
+	return ret;
+}
 
 
 //SQLite
@@ -6195,6 +6671,7 @@ static const unsigned char rm_header[9]  = { '.', 'R', 'M', 'F', 0x00, 0x00, 0x0
 					return 1;  //V3
 				if(buf[4]==0x00 && buf[5]==0x04 && buf[9]=='r' && buf[10]=='a' && buf[11]=='4'){  //V4
 					f_data->size = (buf[12]<<24) + (buf[13]<<16) + (buf[14]<<8) + buf[15] + 40;
+					f_data->scantype = DATA_LENGTH;
 					return 1;
 				}
 			}
@@ -7000,7 +7477,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0103     :               //msword
-	//              this->func = file_msword ;
+	              this->func = file_CDF ;
 		strncat(this->name,".doc",7);
 		break;
 	
@@ -7210,7 +7687,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x012a     :               //x-gnumeric
-	//              this->func = file_x-gnumeric ;
+	              this->func = file_gnumeric ;
 	              strncat(this->name,".gnm",7);
 		break;
 	
@@ -7550,7 +8027,7 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0308     :               //vnd.djvu
 	//              this->func = file_vnd.djvu ;
-	              strncat(this->name,".djv",7);
+	              strncat(this->name,".djvu",7);
 		break;
 	
 		case 0x0309     :               //x-coreldraw
@@ -8046,7 +8523,7 @@ void get_file_property(struct found_data_t* this){
 	//              strncat(this->name,".Image",7);
 		break;
 	
-		case 0x080e     :               //CDF
+		case 0x080e     :               //Composite
 	              this->func = file_CDF ;
 	              strncat(this->name,".doc",7);
 		break;
@@ -8165,6 +8642,15 @@ void get_file_property(struct found_data_t* this){
 		strncat(this->name,".pyc",7);
 		break;
 
+		case 0x0826     :               //ESRI Shapefile
+	              this->func = file_esri ;
+		strncat(this->name,".shp",7);
+		break;
+
+		case 0x0827     :               //CDF
+	              this->func = file_CDF ;
+	              strncat(this->name,".doc",7);
+		break;
 	//----------------------------------------------------------------
 		default:
 			this->func = file_default ;

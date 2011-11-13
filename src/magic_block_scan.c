@@ -529,7 +529,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 
 	if (size > current_fs->blocksize){
 		strncpy(text,magic_buffer(cookie_f, buf, 512),60);
-		if ((!strncmp(text,"data",4))|| (!strncmp(buf,"ID3",3))){	
+		if ((!strncmp(text,"data",4))|| (!strncmp(buf,"ID3",3))){
 			strncpy(text,magic_buffer(cookie_f,buf , size),60);
 			strncpy(magic_buf, magic_buffer(cookie , buf , size),60);
 		}
@@ -691,7 +691,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	}
 
 	if (strstr(magic_buf,"application/octet-stream")){
-		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker matroska LZMA Audio=Visual Sample=Vision ISO=Media ext2 ext3 ext4 LUKS python ";
+		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker matroska LZMA Audio=Visual Sample=Vision ISO=Media ext2 ext3 ext4 LUKS python ESRI=Shape ";
 		p_search = searchstr;
 		while (*p_search){
 			len=0;
@@ -769,7 +769,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 								goto out;
 							}
 							else{
-								if (strstr(magic_buf,"CDF V2 Document")){
+								if (strstr(magic_buf," V2 Document")){
 									retval |= (M_APPLI | M_ARCHIV | M_CLASS_1 );
 									goto out;
 								}
