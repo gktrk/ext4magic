@@ -2497,7 +2497,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=ext4magic
- VERSION=0.3.0-pv0
+ VERSION=0.3.0-pv1
 
 
 cat >>confdefs.h <<_ACEOF
