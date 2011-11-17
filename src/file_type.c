@@ -3782,6 +3782,45 @@ int file_iff(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 return ret;
 }
 
+//DjVu
+int file_djvu(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		i,ret = 0;
+	__u32		ssize;
+	char 		token[5];	
+	char type[] = "DJVU DJVM DJVI THUM ";
+
+	switch (flag){
+		case 0 : 
+			if ((f_data->size) && (f_data->inode->i_size >= f_data->size)) {
+				ssize = ((f_data->size-1) % current_fs->blocksize) +1;
+				if (f_data->inode->i_size > (f_data->size - ssize)){
+					*size = ssize;
+					ret =1;
+				}
+			}
+			break;
+		case 1 :
+			return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
+			break;
+
+		case 2 : 
+		if ((buf[0]==0x41) && (buf[1]==0x54) && (buf[2] ==0x26) && (buf[3]==0x54)
+			&& (buf[4]==0x46) && (buf[5]==0x4f) && (buf[6] ==0x52) && (buf[7]==0x4d)){
+			for (i=0;i<4;i++)
+				token[i]=buf[i+12];
+			token[i] = 0;
+			if(strstr(type,token)){
+				f_data->size = (buf[8]<<24) + (buf[9]<<16) + (buf[10]<<8) + buf[11] + 12;
+				f_data->scantype = DATA_LENGTH ;
+				ret =1;
+			}
+		}
+		break;
+	}
+return ret;
+}
+
+
 struct pcx_priv_t {
 	__u16 	width;
 	__u16	height;
@@ -6004,7 +6043,7 @@ static int follow_cdf(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 						(priv->extra_FAT_blocks)--;
 					}
 					else{
-						printf("ERROR CDF Extra FAT:  %lu \n",priv-> s_offset);
+//						printf("ERROR CDF Extra FAT:  %lu \n",priv-> s_offset);
 						ret = 0;
 					}
 					break;
@@ -6025,7 +6064,7 @@ static int follow_cdf(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 					}
 				}
 				else {
-					printf("ERROR CDF Extra FAT:  %lu \n",priv-> s_offset);
+//					printf("ERROR CDF Extra FAT:  %lu \n",priv-> s_offset);
 					ret = 0;
 				}
 			break;
@@ -6064,7 +6103,6 @@ static int follow_cdf(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 			break;
 			case 0x10 :
 				if (zero_space(buf, f_offset)){
-					printf("Ende:  %lu \n",priv-> s_offset);
 					ret = 2;
 				}
 				else{
@@ -6072,7 +6110,7 @@ static int follow_cdf(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 						ret = 2;
 					}
 					else{
-						printf("CDF ERROR Ende:  %lu \n",priv-> s_offset);
+//						printf("ERROR CDF EOF:  %lu \n",priv-> s_offset);
 						ret = 0;
 					}
 				}
@@ -7637,7 +7675,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0120     :               //x-dbf
-//FIXME	              this->func = file_dbf ;
+	              this->func = file_dbf ;
 	              strncat(this->name,".dbf",7);
 		break;
 	
@@ -8026,7 +8064,7 @@ void get_file_property(struct found_data_t* this){
 		break;
 	
 		case 0x0308     :               //vnd.djvu
-	//              this->func = file_vnd.djvu ;
+	              this->func = file_djvu ;
 	              strncat(this->name,".djvu",7);
 		break;
 	

@@ -1,4 +1,5 @@
-		new : functions for RPM; DBF; XCF(Gimp); ESRI and CDF 
+
+0.3.0.pv1	new : functions for RPM; DBF; XCF(Gimp); ESRI; DjVu and CDF 
 		change : DEB; ZIP; TTF; Gnumeric; some Perl and Python files
 			 Optimization for text based files (not completed yet)
 		

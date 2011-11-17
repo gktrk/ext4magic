@@ -1,4 +1,4 @@
-README for ext4magic V-0.2.2
+README for ext4magic V-0.3.x
 =============================
 
 1.0	Accidentally deleted files
@@ -224,7 +224,7 @@ This works only correct for a limited time if you continue to write into the fil
 
  Extensive testing has confirmed that magic-scan-functions are now stable with libmagic.so >= version 5.04.
  Good support exists for: many text file types, a lot of image formats, 
- often-used video and audio file types, Open Office documents,
+ often-used video and audio file types, Office documents,
  PDF, RAR, TAR, CPIO, BZ2, ZIP, GZIP, 7Z ...
  
  Many other file types are also found and restored with default function, but without examining
