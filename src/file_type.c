@@ -542,6 +542,8 @@ static int follow_zip(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 	__u16		*p_16;
 	__u32		*p_32;
 	
+	if (i == end)
+		end++;
 	while ((ret == 1 )&& ( i < end )){
 		if (priv->flag){
 			while ((i < end) && (!((buf[i] == 0x50) && (buf[i+1] ==0x4B) && (buf[i+2] ==0x07)&& (buf[i+3] ==0x08)))){
@@ -2229,7 +2231,8 @@ static int follow_smtp(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 	int		tmp_slot,slot = 0;
 	__u16		tmp_flag,crc,crc_d ;
 		
-
+	if (end == f_offset)
+		end++;
 	while ((ret ==1) && (f_offset < end)){
 		switch (priv->flag & 0x07){
 			case 0 :  //header

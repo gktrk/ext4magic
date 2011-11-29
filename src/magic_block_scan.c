@@ -759,7 +759,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 					}
 					else {
 						if (strstr(magic_buf,"message/")){
-							retval |= ( M_MESSAGE | M_CLASS_2);
+							retval |= ( M_MESSAGE | M_CLASS_1);
 							goto out;
 						}
 						else{
@@ -1255,7 +1255,7 @@ static int check_extent_len(struct ext3_extent_header *header, struct extent_are
 					continue;
 				}
 				for (i = 0; ((! ret) && (i< ext2fs_le16_to_cpu(extent->ee_len))); i++){
-					if (ext2fs_test_block_bitmap( bmap,ext2fs_le32_to_cpu(extent->ee_start) + i ))
+					if (ext2fs_test_block_bitmap(bmap,ext2fs_le32_to_cpu(extent->ee_start)+i)&&(!(d_bmap,ext2fs_le32_to_cpu(extent->ee_start)+i)))
 						ret = 4;
 				}
 				if (!ret){
@@ -1405,7 +1405,7 @@ while (ds_retval){
 							first_b = ea->start_b;
 							if(( ext2fs_test_block_bitmap( bmap,first_b)) || 
 								(io_channel_read_blk (current_fs->io,first_b - 1,9,tmp_buf ))){
-								fprintf(stderr,"!ERROR: while read block %10lu\n",first_b);
+								fprintf(stderr,"Warning: block %10lu can not read or is allocated\n",first_b);
 //FIXME ERROR goto ?
 							}
 							else{
@@ -1453,7 +1453,7 @@ while (ds_retval){
 				first_b = ea->start_b;
 				if(( ext2fs_test_block_bitmap( bmap,first_b)) || 
 					(io_channel_read_blk (current_fs->io,first_b-1 ,9,tmp_buf ))){
-					fprintf(stderr,"!ERROR: while read block %10lu\n",first_b);
+					fprintf(stderr,"Warning: block %10lu can not read or is allocated\n",first_b);
 //FIXME ERROR goto ?
 				}
 				else{
@@ -1530,11 +1530,11 @@ newloop:
 							add_file_data(file_data, blk[0]+i+j, scan ,&follow);
 							(ea->len)++;
 					}
-					blk[0] += i+j;
+					blk[0] += i+j; 
 					count = get_range(blk ,ds_bmap,buf, &border);
 					ret = 1;
 					while (ret && (!(file_data->scantype & (DATA_READY | DATA_BREAK)))){	
-						file_data->buf_length = count;
+						file_data->buf_length = (!follow) ? (count+1) : count;
 						ret = file_data->func(buf, &size ,scan ,3 , file_data);
 						if (ret){
 							if (((!file_data->buf_length)&& (!(file_data->scantype & (DATA_READY))))|| ((ret == 3) && (file_data->scantype & H_F_Carving))){ 
