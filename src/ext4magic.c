@@ -1003,13 +1003,15 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 						// we use imap as a flag for the disaster mode
 						ext2fs_free_inode_bitmap(imap);
 						imap = NULL;
-						if (bmap && (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS))){ 
-							printf("MAGIC function for ext3 not available, use ext4magic 0.2.2 instead\n");
-//							magic_block_scan3(des_dir, t_after);
-						}
-						else{
-							//if (bmap) printf("The MAGIC Function is currently only for ext3 filesystems available\n");
-							magic_block_scan4(des_dir,t_after);
+						if (bmap){
+							if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)){ 
+								printf("MAGIC function for ext3 not available, use ext4magic 0.2.2 instead\n");
+//								magic_block_scan3(des_dir, t_after);
+							}
+							else{
+								//if (bmap) printf("The MAGIC Function is currently only for ext3 filesystems available\n");
+								magic_block_scan4(des_dir,t_after);
+							}
 						}
 					}
 					clear_dir_list(dir);
