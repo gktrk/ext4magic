@@ -510,7 +510,7 @@ blk_t get_inode_pos(struct ext2_super_block *es ,struct inode_pos_struct *pos, e
 
 
 // get journalinode from transactionnumber 
-int get_transaction_inode(ext2_ino_t inode_nr, int transaction_nr, struct ext2_inode_large *inode){
+int get_transaction_inode(ext2_ino_t inode_nr, __u32 transaction_nr, struct ext2_inode_large *inode){
 	struct inode_pos_struct pos;
 	__u32 journal_block;
 	blk_t	block_nr;
@@ -522,7 +522,7 @@ int get_transaction_inode(ext2_ino_t inode_nr, int transaction_nr, struct ext2_i
 	block_nr = get_inode_pos(current_fs->super, &pos , inode_nr, 0);
 	journal_block = get_journal_blocknr(block_nr, transaction_nr);
 	if (! journal_block){
-		fprintf(stdout,"No journalblock found for inode %u by transaction %u\n",inode_nr,transaction_nr);
+		fprintf(stdout,"No journalblock found for inode %lu by transaction %lu\n",inode_nr,transaction_nr);
 		retval = -1;
 	}
 	else {

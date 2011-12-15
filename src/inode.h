@@ -74,7 +74,7 @@ r_item* get_undel_inode(struct ring_buf*, __u32, __u32);// return the last undel
 r_item* get_last_undel_inode(struct ring_buf* );// return the last undeleted inode in journal
 blk_t  get_inode_pos(struct ext2_super_block* , struct inode_pos_struct*, ext2_ino_t, int);//calculate the position of inode in FS
 void print_j_inode(struct ext2_inode_large* , ext2_ino_t , __u32, int );//function for dump_inode_list
-int get_transaction_inode(ext2_ino_t, int, struct ext2_inode_large*);// get journalinode from transactionnumber 
+int get_transaction_inode(ext2_ino_t, __u32, struct ext2_inode_large*);// get journalinode from transactionnumber 
 void dump_inode_list(struct ring_buf* , int);//print the contents of all copy of inode in the journal
 void dump_inode(FILE*, const char*, ext2_ino_t, struct ext2_inode*,int);//print the contents of inode
 int read_journal_inode( ext2_ino_t, struct ext2_inode*, __u32);// get the first Journal Inode by transaction
