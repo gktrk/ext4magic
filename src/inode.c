@@ -666,6 +666,7 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 	journal_descriptor_tag_t *block_list;
 	__u32 ctime = 1;
 	__u32 same_size = 1;
+	__u32 same_block_count = 0;
 	__u16 same_link_count = 0;
 
 	if ((inode_nr > es->s_inodes_count) || (inode_nr == 0))
@@ -734,11 +735,12 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 #endif
 			continue;
 		}
-//inode with the same ctime and the same size an links, skipped
+//inode with the same ctime + the same size and links and <= block_count, skipped
  		if (ext2fs_le32_to_cpu(inode_pointer->i_ctime) == ctime){
-			if (item) {
+			if (item) {  
 				if ((ext2fs_le32_to_cpu(inode_pointer->i_size) == same_size) &&
-					(ext2fs_le16_to_cpu(inode_pointer->i_links_count) == same_link_count)){
+					(ext2fs_le16_to_cpu(inode_pointer->i_links_count) == same_link_count) &&
+					(ext2fs_le32_to_cpu(inode_pointer->i_blocks) <= same_block_count)){
 					item->transaction.end = block_list->transaction;
 #ifdef DEBUG
 					fprintf(stdout,"-;");
@@ -779,6 +781,7 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 		item->transaction.end = block_list->transaction;
 		ctime = item->inode->i_ctime;
 		same_size = item->inode->i_size; 
+		same_block_count = item->inode->i_blocks;
 		same_link_count = item->inode->i_links_count;
 	  }
 
