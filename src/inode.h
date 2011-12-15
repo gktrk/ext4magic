@@ -26,7 +26,6 @@
 #include "ext4magic.h"
 #include "journal.h"
 #include "ring_buf.h" 
-#include "extent_db.h"
 
 #define DUMP_LEAF_EXTENTS       0x01
 #define DUMP_NODE_EXTENTS       0x02
@@ -47,16 +46,6 @@ struct list_blocks_struct {
 };
 
 
-/*
-struct extent_area {
-	blk_t		blocknr;
-	__u16		depth;
-	blk_t		l_start;
-	blk_t		l_end;
-	blk_t		start_b;
-	blk_t		end_b;
-};
-*/
 
 //private an helper functions
 static void dump_xattr_string(FILE*, const char*, int);//subfunction for dump_inode_extra
@@ -74,7 +63,7 @@ r_item* get_undel_inode(struct ring_buf*, __u32, __u32);// return the last undel
 r_item* get_last_undel_inode(struct ring_buf* );// return the last undeleted inode in journal
 blk_t  get_inode_pos(struct ext2_super_block* , struct inode_pos_struct*, ext2_ino_t, int);//calculate the position of inode in FS
 void print_j_inode(struct ext2_inode_large* , ext2_ino_t , __u32, int );//function for dump_inode_list
-int get_transaction_inode(ext2_ino_t, int, struct ext2_inode_large*);// get journalinode from transactionnumber 
+int get_transaction_inode(ext2_ino_t, __u32, struct ext2_inode_large*);// get journalinode from transactionnumber 
 void dump_inode_list(struct ring_buf* , int);//print the contents of all copy of inode in the journal
 void dump_inode(FILE*, const char*, ext2_ino_t, struct ext2_inode*,int);//print the contents of inode
 int read_journal_inode( ext2_ino_t, struct ext2_inode*, __u32);// get the first Journal Inode by transaction
@@ -83,11 +72,11 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block*, ext2_ino_t);//fill a
 
 //functions for the magic scanner
 struct ext2_inode_large* new_inode(); //create a new inode
-int inode_add_block(struct ext2_inode_large* , blk_t); //add a block to inode
+int inode_add_block(struct ext2_inode_large* , blk_t , __u32); //add a block to inode
 int inode_add_meta_block(struct ext2_inode_large*, blk_t, blk_t*, blk_t*,unsigned char* ); //add the ext3  indirect Blocks to the inode
 
 //functions in develop
-int inode_add_extent(struct ext2_inode_large*, struct extent_area*, __u32*, int );
-//blk_t get_last_block_ext4(struct ext2_inode_large*); //search the last data block ext4-inode
+int inode_add_extent(struct ext2_inode_large*, blk_t, void*, int);    //add extent to inode
+blk_t get_last_block_ext4(struct ext2_inode_large*); //search the last data block ext4-inode
 
 #endif

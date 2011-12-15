@@ -109,7 +109,7 @@ struct ext2_group_desc *gdp;
 char 	*buf= NULL;
 int 	x, j, cm, zero_flag, retval;
 __u32 	blocksize , inodesize , inode_max , inode_per_group, block_count;
-__u16 	inode_per_block , inode_block_group, group;
+__u32 	inode_per_block , inode_block_group, group;
 blk_t 	block_nr;
 __u32 	i, c_time, d_time, cr_time;
 struct 	ext2_inode_large *inode;
@@ -272,7 +272,7 @@ struct ext2_group_desc		*gdp;
 char 				*buf= NULL;
 int 				zero_flag, x , retval;
 __u32 				blocksize , inodesize , inode_max , inode_per_group, block_count;
-__u16 				inode_per_block , inode_block_group, group;
+__u32 				inode_per_block , inode_block_group, group;
 blk_t 				block_nr;
 __u32 				i, c_time, d_time;
 __u32				last = 0;
@@ -651,12 +651,3 @@ int get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p
 return ret;
 }
 
-
-int zero_space(unsigned char *buf, __u32 offset){
-	__u32	i=offset;// +1;
-	__u32 	end = (i)?((i + (current_fs->blocksize-1)) & ~(current_fs->blocksize-1)) : (i+current_fs->blocksize) ;
-	
-	while ((i<end) && (!buf[i]))
-		i++;
-	return (i == end ) ? 1 : 0 ;
-}	

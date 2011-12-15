@@ -156,7 +156,7 @@ char					*i_pathname = NULL;
 char 					*buf= NULL;
 unsigned char				*tmp_buf = NULL;
 __u32 					blocksize, inodesize, inode_max, inode_per_group, block_count;
-__u16 					inode_per_block , inode_block_group, group;
+__u32 					inode_per_block , inode_block_group, group;
 blk_t 					block_nr;
 __u32   				c_time, d_time, mode;
 ext2_ino_t 				first_block_inode_nr , inode_nr;

@@ -278,7 +278,7 @@ char            *des_dir = NULL;
 char 		*input_filename = NULL;
 blk_t           superblock = 0;
 blk_t           blocksize = 0;
-int		transaction_nr = 0;
+__u32		transaction_nr = 0;
 int             magicscan = 0;
 char            *data_filename = 0;
 int             mode = 0;
@@ -434,7 +434,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 			}
                         mode |= COMMAND_INODE ;
                         errno = 0;
-                        inode_nr = strtol ( optarg, NULL, 10 );
+                        inode_nr = strtoul ( optarg, NULL, 10 );
                         if ( errno )
                             {
                               fprintf(stderr,"Error: Invalid parameter: -I  %s \n", optarg );
@@ -444,7 +444,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         if ( inode_nr < 1 )
                             {
                               fprintf(stderr,"Error: %s -I: inodeNR \n", progname);
-                              fprintf(stderr,"%d is out of range\n", inode_nr);
+                              fprintf(stderr,"%lu is out of range\n", inode_nr);
 			      exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
@@ -453,7 +453,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                   case 'B':
                         mode |= COMMAND_BLOCK ;
                         errno = 0;
-                        block_nr = strtol ( optarg, NULL, 10 );
+                        block_nr = strtoul ( optarg, NULL, 10 );
                         if ( errno )
                             {
                               fprintf(stderr,"Error: Invalid parameter: -B  %s \n", optarg );
@@ -463,7 +463,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         if ( block_nr < 1 )
                             {
                               fprintf(stderr,"Error: %s -B: blockNR \n", progname);
-                              fprintf(stderr,"%d is out of range\n", block_nr);
+                              fprintf(stderr,"%lu is out of range\n", block_nr);
                               exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
@@ -473,7 +473,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         mode |= PRINT_TRANSACTION ;
 			mode |= READ_JOURNAL;
                         errno = 0;
-                        transaction_nr = strtol ( optarg, NULL, 10 );
+                        transaction_nr = strtoul ( optarg, NULL, 10 );
                         if ( errno )
                             {
                               fprintf(stderr,"Error: Invalid parameter: -t  %s \n", optarg );
@@ -483,7 +483,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         if ( transaction_nr < 1 )
                             {
                               fprintf(stderr,"Error: %s -t: transactionNR \n", progname);
-                              fprintf(stderr,"%d is out of range\n", transaction_nr);
+                              fprintf(stderr,"%lu is out of range\n", transaction_nr);
                               exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
@@ -581,7 +581,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 
 		case 'b':
                         errno = 0;
-                        t_before = strtol ( optarg, NULL, 10 );
+                        t_before = strtoul ( optarg, NULL, 10 );
                         if ( errno )
                             {
                               fprintf(stderr,"Error: Invalid parameter: -b  %s \n", optarg );
@@ -591,7 +591,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         if ( t_before < 1 )
                             {
                               fprintf(stderr,"Error: %s -b: time \n", progname);
-                              fprintf(stderr,"%d is out of range\n", inode_nr);
+                              fprintf(stderr,"%lu is out of range\n", inode_nr);
                               exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
@@ -600,7 +600,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 
 		case 'a':
                         errno = 0;
-                        t_after = strtol ( optarg, NULL, 10 );
+                        t_after = strtoul ( optarg, NULL, 10 );
                         if ( errno )
                             {
                               fprintf(stderr,"Error: Invalid parameter: -a  %s \n", optarg );
