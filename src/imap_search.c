@@ -40,8 +40,8 @@ struct privat {
 
 
 //Subfunction for  "local_block_iterate3()" for load the first blocks to identify filetype 
-int first_blocks ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
-                  blk_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
+int first_blocks ( ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
+                  blk64_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
 {
         char *charbuf = NULL;
   			((struct privat*)priv)->buf;
@@ -183,7 +183,11 @@ inode_per_block = blocksize / inodesize;
 inode_block_group = inode_per_group / inode_per_block;
 
 for (group = 0 ; group < current_fs->group_desc_count ; group++){
+#ifdef EXT2_FLAG_64BITS
+	gdp = ext2fs_group_desc(current_fs, current_fs->group_desc, group);
+#else
 	gdp = &current_fs->group_desc[group];
+#endif
 	zero_flag = 0;
 
 	if (!(flag & 0x02)){ //skip this in disaster mode

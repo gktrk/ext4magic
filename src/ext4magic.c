@@ -74,7 +74,7 @@ void print_version ( void )
         printf("libext2fs version : %s\n",libver);
 
         int n = 1 ;
-        if ( * ( char * ) &n == 1 )  // True if the cpu is little endian.
+	if ( * ( char * ) &n == 1 )  // True if the cpu is little endian.
                 printf("CPU is little endian.\n");
         else
                 printf("CPU is big endian.\n");
@@ -85,6 +85,20 @@ void print_version ( void )
 
 
 //subfunction for show_super_stats()
+#ifdef EXT2_FLAG_64BITS
+static void print_bg_opts(ext2_filsys fs, dgrp_t group, int mask,
+                          const char *str, int *first, FILE *f)
+{
+        if (ext2fs_bg_flags_test(fs, group, mask)) {
+                if (*first) {
+                        fputs("           [", f);
+                        *first = 0;
+                } else
+                        fputs(", ", f);
+                fputs(str, f);
+        }
+}
+#else
 static void print_bg_opts(struct ext2_group_desc *gdp, int mask,
                           const char *str, int *first, FILE *f)
 {
@@ -97,10 +111,13 @@ static void print_bg_opts(struct ext2_group_desc *gdp, int mask,
                 fputs(str, f);
         }
 }
+#endif
+
 
 //print superblock
 void show_super_stats(int header_only)
 {
+	const char *units ="block";
         dgrp_t  i;
         FILE    *out;
         struct ext2_group_desc *gdp;
@@ -115,12 +132,55 @@ void show_super_stats(int header_only)
         }
 
         for (i=0; i < current_fs->group_desc_count; i++)
+#ifdef EXT2_FLAG_64BITS 
+		numdirs += ext2fs_bg_used_dirs_count(current_fs, i);
+#else
                 numdirs += current_fs->group_desc[i].bg_used_dirs_count;
+#endif
         fprintf(out, "Directories:              %d\n", numdirs);
 
 
         gdt_csum = EXT2_HAS_RO_COMPAT_FEATURE(current_fs->super,
                                               EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
+#ifdef EXT2_FLAG_64BITS
+	for (i = 0; i < current_fs->group_desc_count; i++) {
+                fprintf(out, " Group %2d: block bitmap at %llu, "
+                        "inode bitmap at %llu, "
+                        "inode table at %llu\n"
+                        "           %u free %s%s, "
+                        "%u free %s, "
+                        "%u used %s%s",
+                        i, ext2fs_block_bitmap_loc(current_fs, i),
+                        ext2fs_inode_bitmap_loc(current_fs, i),
+                        ext2fs_inode_table_loc(current_fs, i),
+                        ext2fs_bg_free_blocks_count(current_fs, i), units,
+                        ext2fs_bg_free_blocks_count(current_fs, i) != 1 ?
+                        "s" : "",
+                        ext2fs_bg_free_inodes_count(current_fs, i),
+                        ext2fs_bg_free_inodes_count(current_fs, i) != 1 ?
+                        "inodes" : "inode",
+                        ext2fs_bg_used_dirs_count(current_fs, i),
+                        ext2fs_bg_used_dirs_count(current_fs, i) != 1 ? "directories"
+                                : "directory", gdt_csum ? ", " : "\n");
+                if (gdt_csum)
+                        fprintf(out, "%u unused %s\n",
+                                ext2fs_bg_itable_unused(current_fs, i),
+                                ext2fs_bg_itable_unused(current_fs, i) != 1 ?
+                                "inodes" : "inode");
+                first = 1;
+                print_bg_opts(current_fs, i, EXT2_BG_INODE_UNINIT, "Inode not init",
+                              &first, out);
+                print_bg_opts(current_fs, i, EXT2_BG_BLOCK_UNINIT, "Block not init",
+                              &first, out);
+                if (gdt_csum) {
+                        fprintf(out, "%sChecksum 0x%04x",
+                                first ? "           [":", ", ext2fs_bg_checksum(current_fs, i));
+                        first = 0;
+                }
+                if (!first)
+                        fputs("]\n", out);
+        }
+#else
         gdp = &current_fs->group_desc[0];
         for (i = 0; i < current_fs->group_desc_count; i++, gdp++) {
                 fprintf(out, " Group %2d: block bitmap at %u, "
@@ -155,6 +215,7 @@ void show_super_stats(int header_only)
                 if (!first)
                         fputs("]\n", out);
         }
+#endif
         return;
 }
 
@@ -191,7 +252,7 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
         if (open_flags & EXT2_FLAG_RW) {
                 open_flags &= ~EXT2_FLAG_RW;
         }
-
+//	open_flags |= EXT2_FLAG_64BITS;
         retval = ext2fs_open(device, open_flags, superblock, blocksize,
                              unix_io_manager, &current_fs);
         if (retval) {
@@ -214,16 +275,27 @@ static void open_filesystem(char *device, int open_flags, blk_t superblock,
 
 	if (magicscan){	
 //		switch on magic scan function 
+#ifdef EXT2_FLAG_64BITS
+		if( ext2fs_copy_generic_bmap(current_fs->inode_map, &imap) || ext2fs_copy_generic_bmap(current_fs->block_map, &bmap)){
+#else
 		if( ext2fs_copy_bitmap(current_fs->inode_map, &imap) || ext2fs_copy_bitmap(current_fs->block_map, &bmap)){
+#endif
 			fprintf(stderr,"%s Error while copy bitmap\n",device );
 			imap = NULL;
 			bmap = NULL;
 		}else{
 			int i;
+#ifdef EXT2_FLAG_64BITS
+			ext2fs_clear_generic_bmap(imap);
+			for (i = 1; i < current_fs->super->s_first_ino; i++)//mark inode 1-8
+				ext2fs_mark_generic_bmap(imap,(blk64_t) i);
+			ext2fs_clear_generic_bmap(bmap);
+#else
 			ext2fs_clear_inode_bitmap(imap);
-			for (i = 1; i < current_fs->super->s_first_ino; i++)
-				ext2fs_mark_generic_bitmap(imap,i); //mark inode 1-8
+			for (i = 1; i < current_fs->super->s_first_ino; i++)//mark inode 1-8
+					ext2fs_mark_generic_bitmap(imap,i); 
 			ext2fs_clear_block_bitmap(bmap);
+#endif
 		}
 	}
 
@@ -912,9 +984,16 @@ if (mode & READ_JOURNAL){
 			imap = NULL;
 		}else{
 			int i;
-			ext2fs_clear_inode_bitmap(imap);
+#ifdef EXT2_FLAG_64BITS
+			ext2fs_clear_generic_bmap(imap);
 			for (i = 1; i < current_fs->super->s_first_ino; i++)
-				ext2fs_mark_generic_bitmap(imap,i); //mark inode 1-8
+				ext2fs_mark_generic_bmap(imap,(blk64_t) i); //mark inode 1-8
+
+#else
+			ext2fs_clear_inode_bitmap(imap);
+			for (i = 1; i < current_fs->super->s_first_ino; i++)//mark inode 1-8
+					ext2fs_mark_generic_bitmap(imap,i); 
+#endif
 		}
 	}
 

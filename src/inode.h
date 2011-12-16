@@ -52,7 +52,7 @@ static void dump_xattr_string(FILE*, const char*, int);//subfunction for dump_in
 static void local_dump_extents(FILE*, const char*, struct ext2_inode *,int , int, int );//print Blocks of inode (ext4)
 static void dump_inode_extra(FILE*, const char* , ext2_ino_t, struct ext2_inode_large*);//print extended attribute of Inode 
 static void finish_range(struct list_blocks_struct*);//subfunction for dump_blocks
-static int list_blocks_proc(ext2_filsys, blk_t* , e2_blkcnt_t,blk_t, int, void*);//subfunction for dump_blocks
+static int list_blocks_proc(ext2_filsys, blk64_t* , e2_blkcnt_t,blk64_t, int, void*);//subfunction for dump_blocks
 static void dump_blocks(FILE*, const char*, struct ext2_inode *);// print the  Datablocks from Inode (ext3)
 
 

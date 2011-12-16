@@ -71,7 +71,7 @@ int dump_journal_block( __u32 , int );
 void print_block_transaction(blk64_t,int);//print all transactions for a fs-block
 __u32 get_journal_blocknr(blk64_t, __u32);// get the last dir-block for transaction from journal or if not found the real block
 
-int get_last_block(char*,  blk_t*, __u32, __u32);// get the last dir-block for transaction from journal or if not, found the real block
+int get_last_block(char*,  blk64_t*, __u32, __u32);// get the last dir-block for transaction from journal or if not, found the real block
 int get_block_bitmap_list( journal_bitmap_tag_t**);//get a list of all copies of blockbitmap from journal
 int init_block_bitmap_list(ext2fs_block_bitmap* , __u32); //create and init the the journal block bitmap
 void clear_block_bitmap_list(ext2fs_block_bitmap); //destroy the journal block bitmap

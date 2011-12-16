@@ -406,7 +406,11 @@ static int block_is_inodetable(blk64_t block){
 	
 //FIXME for struct ext4_group_desc 48/64BIT
 	for (group = 0; group < current_fs->group_desc_count; group++){
-		gdp = &current_fs->group_desc[group];
+#ifdef EXT2_FLAG_64BITS
+	        gdp = ext2fs_group_desc(current_fs, current_fs->group_desc, group);
+#else
+        	gdp = &current_fs->group_desc[group];
+#endif
 		if (block >= (gdp->bg_inode_table + current_fs->inode_blocks_per_group)) 
 			continue;
 		if (block >= gdp->bg_inode_table){
@@ -546,7 +550,7 @@ return journal_nr;
 
 // get the last dir-block for transaction from journal or if not, found the real block
 //FIXME: blk64_t ????
-int get_last_block(char *buf,  blk_t *block, __u32 t_start, __u32 t_end){
+int get_last_block(char *buf,  blk64_t *block, __u32 t_start, __u32 t_end){
 	int	retval = 0;
 	int i , count , got;
 	char *journal_tag_buf = NULL;
@@ -884,14 +888,23 @@ int get_block_bitmap_list( journal_bitmap_tag_t **bitmap_list){
 	count = sum = 0;
 	for (i = 0; i < pt_count ; i++, list_pointer++ )
 		for (j = 0 ; j < current_fs->group_desc_count; j++ )
-			if (list_pointer->f_blocknr == (blk64_t) current_fs->group_desc[j].bg_block_bitmap) count++ ;
+#ifdef EXT2_FLAG_64BITS
+			if( list_pointer->f_blocknr == (blk64_t) ext2fs_block_bitmap_loc(current_fs, j))
+#else
+			if (list_pointer->f_blocknr == (blk64_t) current_fs->group_desc[j].bg_block_bitmap)
+#endif
+				 count++ ;
 
 	if (count && (tag_buf = malloc((sizeof(journal_bitmap_tag_t) * count)))){
 		fill_pointer = (journal_bitmap_tag_t*)tag_buf ;
 		list_pointer = pt_buff ;
 		for ( i = 0 ; (i < pt_count && sum < count); i++ , list_pointer++ ) 
 			for ( j = 0; j < current_fs->group_desc_count; j++ )
-				if (list_pointer->f_blocknr == (blk64_t) current_fs->group_desc[j].bg_block_bitmap) {
+#ifdef EXT2_FLAG_64BITS
+                        	if( list_pointer->f_blocknr == (blk64_t) ext2fs_block_bitmap_loc(current_fs, j)){
+#else
+                        	if (list_pointer->f_blocknr == (blk64_t) current_fs->group_desc[j].bg_block_bitmap){
+#endif
 					fill_pointer->blockgroup = (blk64_t) j;
 					fill_pointer->j_blocknr = list_pointer->j_blocknr;
 					fill_pointer->transaction = list_pointer->transaction;
