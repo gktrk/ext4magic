@@ -286,26 +286,27 @@ static void finish_range(struct list_blocks_struct *lb)
 
 //subfunction for dump_blocks
 static int list_blocks_proc(ext2_filsys fs EXT2FS_ATTR((unused)),
-                            blk_t *blocknr, e2_blkcnt_t blockcnt,
-                            blk_t ref_block EXT2FS_ATTR((unused)),
+                            blk64_t *block64nr, e2_blkcnt_t blockcnt,
+                            blk64_t ref_block EXT2FS_ATTR((unused)),
                             int ref_offset EXT2FS_ATTR((unused)),
                             void *private)
 {
+	blk_t blocknr = (blk_t) *block64nr;
         struct list_blocks_struct *lb = (struct list_blocks_struct *) private;
 
         lb->total++;
         if (blockcnt >= 0) {
 //* See if we can add on to the existing range (if it exists)
                 if (lb->first_block &&
-                    (lb->last_block+1 == *blocknr) &&
+                    (lb->last_block+1 == blocknr) &&
                     (lb->last_bcnt+1 == blockcnt)) {
-                        lb->last_block = *blocknr;
+                        lb->last_block = blocknr;
                         lb->last_bcnt = blockcnt;
                         return 0;
                 }
 //* Start a new range.
                 finish_range(lb);
-                lb->first_block = lb->last_block = *blocknr;
+                lb->first_block = lb->last_block = blocknr;
                 lb->first_bcnt = lb->last_bcnt = blockcnt;
                 return 0;
         }
@@ -316,11 +317,11 @@ static int list_blocks_proc(ext2_filsys fs EXT2FS_ATTR((unused)),
         else
                 fprintf(lb->f, ", ");
         if (blockcnt == -1)
-                fprintf(lb->f, "(IND):%u", *blocknr);
+                fprintf(lb->f, "(IND):%u", blocknr);
         else if (blockcnt == -2)
-                fprintf(lb->f, "(DIND):%u", *blocknr);
+                fprintf(lb->f, "(DIND):%u", blocknr);
         else if (blockcnt == -3)
-                fprintf(lb->f, "(TIND):%u", *blocknr);
+                fprintf(lb->f, "(TIND):%u", blocknr);
         return 0;
 }
 
@@ -488,7 +489,7 @@ void dump_inode(FILE *out, const char *prefix,
 
 //calculate the position of inode in FS
 blk_t get_inode_pos(struct ext2_super_block *es ,struct inode_pos_struct *pos, ext2_ino_t inode_nr,int flag){
-
+//FIXME blk64_t
 	__u32 inode_group, group_offset, inodes_per_block, inode_offset;
 	blk_t inode_block;
 		
@@ -496,8 +497,11 @@ blk_t get_inode_pos(struct ext2_super_block *es ,struct inode_pos_struct *pos, e
 		inode_group = ((inode_nr - 1) / es->s_inodes_per_group);
 		group_offset = ((inode_nr - 1) % es->s_inodes_per_group);
 		inodes_per_block = (current_fs->blocksize / pos->size );
-
+#ifdef EXT2_FLAG_64BITS
+		inode_block = (blk_t) ext2fs_inode_table_loc(current_fs,inode_group) + (group_offset / inodes_per_block);
+#else
 		inode_block = current_fs->group_desc[inode_group].bg_inode_table + (group_offset / inodes_per_block);
+#endif
 		inode_offset = ((group_offset % inodes_per_block) * pos->size );
 		if (flag)
 			printf("Inode %u is at group %u, block %u, offset %u\n", inode_nr, inode_group, inode_block, inode_offset);

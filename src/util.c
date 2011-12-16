@@ -135,7 +135,11 @@ inode_per_block = blocksize / inodesize;
 inode_block_group = inode_per_group / inode_per_block;
 
 for (group = 0 ; group < fs->group_desc_count ; group++){
-	gdp = &fs->group_desc[group];
+#ifdef EXT2_FLAG_64BITS
+        gdp = ext2fs_group_desc(current_fs, current_fs->group_desc, group);
+#else
+        gdp = &current_fs->group_desc[group];
+#endif
 	zero_flag = 0;
 
 	// NEXT GROUP IF INODE NOT INIT
@@ -292,7 +296,11 @@ inode_block_group = inode_per_group / inode_per_block;
 
 for (flag=0;flag<2;flag++){
 	for (group = 0 ; group < fs->group_desc_count ; group++){
-		gdp = &fs->group_desc[group];
+#ifdef EXT2_FLAG_64BITS
+        	gdp = ext2fs_group_desc(current_fs, current_fs->group_desc, group);
+#else
+	        gdp = &current_fs->group_desc[group];
+#endif
 		zero_flag = 0;
 	
 		// NEXT GROUP IF INODE NOT INIT

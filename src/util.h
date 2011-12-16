@@ -125,7 +125,21 @@ struct inode_nr_collect{
 };
 
 
-//struct for generic bitmap 
+//struct for generic bitmap
+/* 
+struct ext2fs_struct_loc64_generic_bitmap {
+        errcode_t               magic;
+        ext2_filsys             fs;
+        struct ext2_bitmap_ops  *bitmap_ops;
+        int                     flags;
+        __u64                   start, end;
+        __u64                   real_end;
+        int                     cluster_bits;
+        char                    *description;
+        void                    *private;
+        errcode_t               base_error_code;
+};*/
+
 struct ext2fs_struct_loc_generic_bitmap {
         errcode_t       magic;
         ext2_filsys     fs;

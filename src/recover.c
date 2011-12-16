@@ -150,8 +150,8 @@ return ;
 
 
 // Subfunction for "local_block_iterate3()" for check if the blocks allocated
- static int check_block(ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
-                  blk_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
+ static int check_block(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
+                  blk64_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
 {
 //FIXME: 
 	if (*blocknr >= fs->super->s_blocks_count)
@@ -168,8 +168,8 @@ return 0;
 
 
 //Subfunction for  "local_block_iterate3()" read a blocks of a long symlink 
-static int read_syslink_block ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
-                  blk_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
+static int read_syslink_block ( ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
+                  blk64_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
 {
 	char *charbuf =((struct privat*)priv)->buf;
 	__u32 nbytes;
@@ -199,8 +199,8 @@ return 0;
 
 
 //Subfunction for  "local_block_iterate3()" for recover the blocks of a real file 
-static int write_block ( ext2_filsys fs, blk_t *blocknr, e2_blkcnt_t blockcnt,
-                  blk_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
+static int write_block ( ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
+                  blk64_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
 {
 	int fd = ((struct privat*)priv)->fd;
         char *charbuf =((struct privat*)priv)->buf;
