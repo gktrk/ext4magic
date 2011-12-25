@@ -73,6 +73,11 @@ struct alloc_stat{
 	__u32 not_allocated;};
 
 
+struct alloc_recover_stat{
+	__u32 allocated;
+	__u32 recovered;};
+
+
 
 // recover files from a "double quotes" listfile
 void recover_list(char *des_dir, char *input_file,__u32 t_after, __u32 t_before, int flag){
@@ -147,6 +152,21 @@ errout:
 return ;
 }
 
+
+// Subfunction for "local_block_iterate3()" for check if blocks not allocated and not recovered
+ static int check_block_stat(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
+                  blk64_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
+{
+//FIXME: 
+	if (*blocknr >= fs->super->s_blocks_count)
+		return BLOCK_ERROR;
+	struct alloc_recover_stat *stat = priv;
+        if ( ext2fs_test_block_bitmap (fs->block_map, *blocknr ))
+		(stat->allocated)++ ;	
+	if ((bmap) && ( ext2fs_test_block_bitmap (bmap, *blocknr )))
+		(stat->recovered)++ ;
+return 0;
+}
 
 
 // Subfunction for "local_block_iterate3()" for check if the blocks allocated
@@ -543,6 +563,26 @@ return retval;
 }
 
 
+// check inode; return true if blocks not allocated and not recovered
+int check_file_stat(struct ext2_inode *inode){
+	int 				retval =-1;
+	struct alloc_recover_stat	stat;
+
+	if (!(inode->i_mode & LINUX_S_IFMT)) // no type flag
+		return 0;
+
+	stat.allocated = 0;
+	stat.recovered = 0;
+	if ((! inode->i_blocks) || (LINUX_S_ISLNK(inode->i_mode) && (inode->i_size < EXT2_N_BLOCKS*4)) ||
+		 ! (ext2fs_inode_data_blocks(current_fs,inode)))
+		retval = 1;
+	else{
+		retval = local_block_iterate3 ( current_fs, *inode, BLOCK_FLAG_DATA_ONLY, NULL, check_block_stat, &stat );
+		if ( retval ) return 0;
+		retval = ((! stat.allocated) && (! stat.recovered)) ? 1 : 0 ;
+	}
+return retval;
+}
 
 
 // check Datafile return the percentage of not allocated blocks

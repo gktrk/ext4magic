@@ -27,9 +27,13 @@
 #include "inode.h"
 #include <sys/stat.h> 
 #include <errno.h>
+#include <time.h>
 #include "magic.h"
+#include "journal.h"
 
-extern ext2_filsys current_fs;
+extern ext2_filsys 	current_fs;
+extern time_t		now_time ;
+
 
 struct privat {
 	int 		count;
@@ -358,12 +362,96 @@ return retval;
 }
 
 
+
+void search_journal_lost_inode(char* des_dir, __u32 t_after, __u32 t_before, int flag){
+
+struct 	ext2_inode	*p_inode;
+struct  ext2_inode	inode;
+int  			retval,i ;
+char 			*pathname = NULL;
+char			*i_pathname = NULL;
+char 			*buf= NULL;
+unsigned char		*tmp_buf = NULL;
+__u32 			blocksize, inodesize;
+__u32 			inode_per_block;
+ext2_ino_t 		inode_max, inode_nr;
+
+
+pathname = malloc(26);
+blocksize = current_fs->blocksize;
+inodesize = current_fs->super->s_inode_size;
+inode_max = current_fs->super->s_inodes_count;
+inode_per_block = blocksize / inodesize;
+inode_nr = inode_max ;
+
+buf = malloc(blocksize);
+if (! (flag & 0x01) ){
+	tmp_buf = malloc (12 * blocksize);
+	if (!tmp_buf)
+		goto errout;
+	cookie = magic_open(MAGIC_MIME | MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF | MAGIC_CONTINUE);
+	if ((! cookie) ||  magic_load(cookie, NULL)){
+		fprintf(stderr,"ERROR: can't find libmagic\n");
+		goto errout;
+	}
+}
+
+while ( get_pool_block(buf) ){
+	for (i=0 ;i < inode_per_block; i++){
+		inode_nr++;
+		p_inode = (struct ext2_inode*) (buf + (i * inodesize)); 
+
+                memset(&inode, 0, sizeof(struct  ext2_inode));
+#ifdef WORDS_BIGENDIAN
+	 	ext2fs_swap_inode(current_fs, &inode, p_inode, 0);
+#else
+		memcpy(&inode, p_inode,128);
+#endif
+		if((inode.i_dtime) || (!inode.i_size) || (!inode.i_blocks) || (!LINUX_S_ISREG(inode.i_mode)))
+			continue;
+		if (check_file_stat(&inode)){
+			i_pathname = identify_filename(i_pathname, tmp_buf, &inode, inode_nr);
+			sprintf(pathname,"<%lu>",inode_nr);
+			recover_file(des_dir,"MAGIC-2", ((i_pathname)?i_pathname : pathname), &inode, inode_nr, 1);
+		}
+		if(i_pathname){
+			free(i_pathname);
+			i_pathname = NULL;
+		}
+				
+	}
+}
+errout:
+	if (pathname)
+		 free(pathname);
+
+	if(buf) {
+		free(buf);
+		buf = NULL;
+	}
+
+	if (tmp_buf){
+		free(tmp_buf);
+		tmp_buf = NULL;
+	}
+	if (cookie){
+		magic_close(cookie);
+		cookie = 0;
+	}
+return;
+}
+
+
 //2 step search for journalinode, will find some lost directory and files 
 void imap_search(char* des_dir, __u32 t_after, __u32 t_before , int disaster ){
 	printf("MAGIC-1 : start lost directory search\n"); 
 	search_imap_inode(des_dir, t_after, t_before, 1 | disaster ); //search for lost fragments of directorys
 	printf("MAGIC-2 : start lost file search\n");
 	search_imap_inode(des_dir, t_after, t_before, 0 | disaster ); //search for lost files
+	if ((!disaster) && (t_before == (__u32)now_time)){
+		printf("MAGIC-2 : start lost in journal search\n");
+		search_journal_lost_inode(des_dir, t_after, t_before, 0);
+	}	
 return;
 }
 
