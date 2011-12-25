@@ -76,5 +76,5 @@ int get_block_bitmap_list( journal_bitmap_tag_t**);//get a list of all copies of
 int init_block_bitmap_list(ext2fs_block_bitmap* , __u32); //create and init the the journal block bitmap
 void clear_block_bitmap_list(ext2fs_block_bitmap); //destroy the journal block bitmap
 int next_block_bitmap(ext2fs_block_bitmap); //produces a differential block bitmap for a transaction from the Journal
-
+int get_pool_block(unsigned char*); 
 #endif

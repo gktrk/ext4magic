@@ -64,11 +64,14 @@ struct journal_source
 //static variable for work with journal
 struct journal_source 			journal_source;
 extern ext2_filsys     			current_fs ;
+extern time_t				now_time ;
 struct ext2_super_block 		*jsb_pointer;   //pointer for find & open journal
 char					jsb_buffer[1024];  //buffer for journal-superblock (be_to_CPU)
 void*					pt_buff;  /*pointer of the privat descriptor Table */
 journal_descriptor_tag_t		*pt;	/*pointer for descriptor Table*/
+__u32					*ptl;   /*reverse pointer for lost inodeblocks*/
 __u32					pt_count; /*counter for privat descriptor Table */
+__u32					ptl_count; /*counter for lost inodeblocks*/
 struct j_bitmap_list_t			jbbm  ;  /* for Block Bitmaps of Journal */
 
 
@@ -149,6 +152,7 @@ extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 	ext2_file_t 	journal_file;
 	
 	pt_buff = NULL;
+	ptl = NULL;
 	if (current_fs) jsb_pointer = current_fs->super;
 	else {
          fprintf(stderr,"No filesystem open, this must be a bug\n");
@@ -392,6 +396,43 @@ static const char *type_to_name(int btype)
 		return "revoke table";
 	}
 	return "unrecognised type";
+}
+
+
+//check if journal block is a lost inodeblock local function
+int jb_is_inodetable(unsigned char *buf){
+	struct ext2_inode 	*inode;
+	__u16			mode;
+	__u32   		atime;
+        __u32   		ctime;
+        __u32   		mtime;
+        __u32   		dtime;
+	int 			i;
+	__u32			min = 315601200; // 315601200 = "1980-01-01 20:00:00"
+	__u32			max = (__u32) now_time;
+	int 			ret = 0;
+	int 			i_size = EXT2_INODE_SIZE(current_fs->super);
+	int 			inodes_per_block = (current_fs->blocksize / i_size );
+	int			flag = 0;
+	
+
+	for (i=0; i<inodes_per_block;i++){
+		inode = (struct ext2_inode*) (buf + (i_size * i));
+		mode = ext2fs_le16_to_cpu(inode->i_mode);
+		atime = ext2fs_le32_to_cpu(inode->i_atime);
+		ctime = ext2fs_le32_to_cpu(inode->i_ctime);
+		mtime = ext2fs_le32_to_cpu(inode->i_mtime);
+		dtime = ext2fs_le32_to_cpu(inode->i_dtime);
+		if ((!mode) && (!atime) && (!ctime) && (!mtime) && (!dtime) && (!i))
+			return 0;
+		if ((!dtime) && (ctime > min) && (ctime < max) && (atime > min) && (atime < max) 
+			&& (mtime > min) && (mtime < max) && inode->i_size && inode->i_blocks 
+			&& LINUX_S_ISREG(mode) && inode->i_block[0] )
+			flag++;
+		if (ctime > max)
+			return 0;
+	}
+	return flag;
 }
 
 
@@ -813,6 +854,8 @@ static int init_journal(void)
 		fprintf(stderr,"Error: can't allocate %d Memory\n",maxlen * sizeof(journal_descriptor_tag_t));
 		goto errout;
 	}
+	ptl = (__u32*)(pt_buff + (maxlen * sizeof(journal_descriptor_tag_t)));
+	ptl_count = 0;
 
 #ifdef DEBUG
 	fprintf(stdout, "Journal starts at block %u, transaction %u\n", blocknr, transaction);	
@@ -834,6 +877,12 @@ static int init_journal(void)
 //			fprintf (stdout, "No magic number at block %u: skip this block\n", blocknr);
 			fprintf(stdout,"-");
 #endif
+			if (jb_is_inodetable(buf)){
+//				printf("lost %d\n", blocknr);
+				ptl--;
+				*ptl = blocknr;
+				ptl_count ++;
+			}
 			if ( !  wrapflag ) wrapflag = WRAP_ON ;
 			blocknr++ ;
                   	continue;
@@ -1066,6 +1115,26 @@ return  ( i == len) ? 2 : 1 ;
 
 errout:
 	return 0;
+}
+
+
+
+//read the next journal-lost inode block
+int get_pool_block(unsigned char *buf){
+	int 	retval = 0;
+	int	ret  = 0;
+	int 	got,i ;
+	int	blocksize = current_fs->blocksize;
+
+	if (ptl_count){
+		retval = read_journal_block(*ptl * blocksize ,buf,blocksize,&got);
+		if ((! retval) && (got == blocksize)){
+			ret = 1;
+		}
+		ptl_count--;
+		ptl++;
+	}
+return ret;
 }
 
 

@@ -205,6 +205,7 @@ ext2_ino_t local_namei(struct dir_list_head_t*, char* , __u32, __u32, int);// se
 //public functions recover.c
 void recover_list(char*, char*,__u32, __u32, int); // recover files from a "double quotes" listfile
 int recover_file( char* ,char* , char* , struct ext2_inode* , ext2_ino_t, int); //recover all filetypes
+int check_file_stat(struct ext2_inode*); //check inode; return true if blocks not allocated and not recovered
 int check_file_recover(struct ext2_inode*); // return percentage of not allocated blocks
 void set_dir_attributes(char* ,char* ,struct ext2_inode*); //set owner,file mode bits an timestamps for directory
 int check_dir(char*);//check if the target directory existent
