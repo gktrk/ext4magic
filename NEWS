@@ -1,3 +1,9 @@
+ext4magic 0.3.0 pv2  &  ext4magic 0.2.4
+
+			new : new partial step, recover journal lost inodes
+			new : support for libext2fs 1.41.x and 1.42.x
+			BUG : #018449 #018437
+			elimination of some errors in the process of file systems larger than 8TB
 
 
 ext4magic 0.3.0 pv0	Contains the first experimental version of the magic function for ext4

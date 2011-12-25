@@ -66,7 +66,7 @@ they are skipped for now when searching for file names in this directory.
 Deleted files can not re-assembled, the Inode data are unsuitable for 
 this purpose.  Exactly what the developers say.
 
-But there is the file system journal. Journaling ensures the integrity of the 
+But there is the filesystem Journal. Journaling ensures the integrity of the 
 filesystem by keeping a log of the ongoing disk changes.
 After deleting a file, there you found a copy of the data block in which the 
 deleted Inode is included. Well, this copy is not usable for a recover. 
@@ -87,7 +87,7 @@ moved files or directories. You will also find tables with the block and inode
 allocation. This data are used in the magic functions for controlling the file carving.
 The functions of the file carving matched exactly to the respective properties 
 of the file system types and these functions included into a multi-stage recover process.
-This feature currently usable for ext3 and is in the development for ext4.
+This feature currently only usable for ext3.
 
 ----------------------------------------------------------------------------------
 
@@ -190,7 +190,7 @@ This works only correct for a limited time if you continue to write into the fil
 3.0    A few words about the new magic functions ( since version 0.2.0)
  ======================================================================
  These functions are designed to make undo of recursive deletes. This also works very well 
- if the files have been deleted by a recursive move or deleted by rsync. But in this case, you must set time options.
+ if the files have been deleted by a recursive move. But in this case, you must set time options.
 
  The magic function is a  multi-level recover
  and also restore files if no old journal copies can be found for this file.
@@ -198,12 +198,7 @@ This works only correct for a limited time if you continue to write into the fil
 
    1. recover files of the file system tree with the help of old inode copies.
    2. recover all other inode copies which were not found in first stage. 
-   3. recover the remaining data blocks, using a file carving function (we say magic function)
-      These magic functions are still under development, the support depends on the ext4magic version
-	
-       Version 		0.2.x only ext3 
-       Version 		0.3.0 only ext4 
-       Versions >= 	0.4.0 will support ext3 and ext4
+   3. (currently only ext3) recover the remaining data blocks, using a file carving function (we say magic function)  
  
 
 
@@ -217,13 +212,13 @@ This works only correct for a limited time if you continue to write into the fil
 
 
  The magic functions are very user friendly because very few command options are required.
- If the entire delete operation has only process less than 5 minutes, (e.g. rm -rf ) no time options will need.
+ If the entire delete operation has only process less than 5 minutes, no time options will need.
  In the case that the deletion process has process a long time, or were the files deleted by a move command,
  the exact time of the beginning of the erase operation must be specified.
  
 
  Extensive testing has confirmed that magic-scan-functions are now stable with libmagic.so >= version 5.04.
- Good support exists for: many text file types, a lot of image formats, 
+ Good support exists for: all text file types, a lot of image formats, 
  often-used video and audio file types, Open Office documents,
  PDF, RAR, TAR, CPIO, BZ2, ZIP, GZIP, 7Z ...
  
@@ -232,8 +227,7 @@ This works only correct for a limited time if you continue to write into the fil
 
  Problems still exist with some multimedia formats and some documents. Not every file type
  can be restored only based on head and foot patterns. Some types of multimedia streams, splited or
- truncated files are hard to recover. We are working hard on this problem, and in newer versions is the support
- for these file types are much better.
+ truncated files are hard to recover. 
  The recovery of CD/DVD images and other file system containers is also problematic. This can only work 
  in file systems with 4KB block size.
  Sparse files, and very large files if not deleted in one step, can not be restored with this 
@@ -269,9 +263,8 @@ xz: test.xz: Compressed data is corrupt
 
  
  The magic functions works slowly, but very efficient and can find some files
- that other tools can not recover.  For very large file systems first try other tools.
- In difficult conditions ext4magic could require days or weeks to recover all the data. 
- Newer versions will work much faster and much more accurate.
+ that other tools can not recover. For very large file systems first try other tools.
+ In difficult conditions ext4magic could require days or weeks to recover all the data.
  
  ext4magic can also find very long files when the data are fragmented in the
  file system. Others file carving tools find here often no complete files, or recover data trash.
@@ -303,7 +296,7 @@ Why?
 
 
 Better is the following:
- Use an existing filesystem. The last hours should no run a global "find" or a backup tool
+ Use an existing ext3 filesystem. The last hours should no run a global "find" or a backup tool
  in this file system. That would write to many inode copies and to be easy to recover.
  umount this file system, and create a 1-to-1 copy of the file system.
  Now you can test with that copy.
@@ -509,6 +502,8 @@ two possible causes:
 
 
 7.0   Known Bugs
+
+libext2fs-1.42 has a small bug, it crashed ext4magic. (see e2fstools BUG #3451486) 
 
 Only on big endian environments, there are some incorrect outputs of inode times, and missing of
 deleted directory entries. (BUG #017304 #017305) 
