@@ -28,8 +28,6 @@
 #include <sys/stat.h> 
 #include <errno.h>
 #include <time.h>
-//#include <ext2fs/ext2fs.h>
-//#include <ext2fs/ext2_fs.h>
 #include "magic.h"
 #include "journal.h"
 
