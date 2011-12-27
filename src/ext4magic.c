@@ -1084,7 +1084,7 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 						imap = NULL;
 						if (bmap){
 							if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)){ 
-								printf("MAGIC function for ext3 not available, use ext4magic 0.2.3 instead\n");
+								printf("MAGIC function for ext3 not available, use ext4magic 0.2.4 instead\n");
 //								magic_block_scan3(des_dir, t_after);
 							}
 							else{

@@ -510,6 +510,8 @@ two possible causes:
 
 7.0   Known Bugs
 
+libext2fs-1.42 has a small bug, it crashed ext4magic. (see e2fstools BUG #3451486) 
+
 Only on big endian environments, there are some incorrect outputs of inode times, and missing of
 deleted directory entries. (BUG #017304 #017305) 
 These errors occur only if the journal is not read and so only called the functions of libext2fs for
