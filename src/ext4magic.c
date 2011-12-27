@@ -1086,7 +1086,7 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 							if (!(current_fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)) 
 								magic_block_scan3(des_dir, t_after);
 							else{
-								if (bmap) printf("The MAGIC Funktion is currently only for ext3 filesystems available\n");
+								if (bmap) printf("The MAGIC Funktion for ext4 not available, use ext4magic-0.3.0 instead\n");
 //								magic_block_scan4(des_dir,t_after);
 							}
 						}

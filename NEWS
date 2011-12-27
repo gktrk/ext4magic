@@ -1,9 +1,12 @@
-ext4magic 0.3.0 pv2  &  ext4magic 0.2.4
+ext4magic 0.3.0 pv2  /  ext4magic 0.2.4
+			A new recover sub-step. Inode found in partially overwritten areas of the
+			journal can now also recovers. It is impossible to identify the inode number,
+			the file name and the time of deletion. These files are also restored to the
+			MAGIC-2 directory.
+			ext4magic can now also be compiled with libext2fs-1.42.x  
+			but ext4 file systems >= 16 TByte do not work.
+			Some errors in file system > 8 TByte fixed.
 
-			new : new partial step, recover journal lost inodes
-			new : support for libext2fs 1.41.x and 1.42.x
-			BUG : #018449 #018437
-			elimination of some errors in the process of file systems larger than 8TB
 
 
 ext4magic 0.3.0 pv0	Contains the first experimental version of the magic function for ext4

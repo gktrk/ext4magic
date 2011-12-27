@@ -1,7 +1,7 @@
-0.2.4		new : new partial step, recover journal lost inodes
+0.2.4		new : new partial step, recovers journal lost inodes
 		new : support for libext2fs 1.41.x and 1.42.x
 		BUG : #018449 #018437
-		elimination of some errors in the process of file systems larger than 8TB
+		for file systems > 8TByte some errors fixed	
 
 0.2.3           BUG : 018244
 		change : filetype sorted file names with file extension in the directory MAGIC-2
