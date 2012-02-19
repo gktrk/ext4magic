@@ -48,6 +48,7 @@ extern char *optarg;
 
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
+#include <e2p/e2p.h>
 
 //local header files
 #include "util.h"
@@ -55,6 +56,7 @@ extern char *optarg;
 #include "journal.h"
 #include "inode.h"
 #include "hard_link_stack.h"
+#include "block.h"
 
 
 
@@ -117,13 +119,13 @@ static void print_bg_opts(struct ext2_group_desc *gdp, int mask,
 //print superblock
 void show_super_stats(int header_only)
 {
+#ifdef EXT2_FLAG_64BITS
 	const char *units ="block";
+#endif
         dgrp_t  i;
         FILE    *out;
         struct ext2_group_desc *gdp;
-        int     c;
         int     numdirs = 0, first, gdt_csum;
-
         out=stdout;
 
         list_super2(current_fs->super, out);
@@ -340,7 +342,6 @@ ext4magic -m [-j <journal_file>] [-d <target_dir>] <filesystem> \n\
 ext4magic [-S|-J|-H|-V|-T] [-x] [-j <journal_file>] [-B n|-I n|-f <file_name>|-i <input_list>] [-t n|[[-a n][-b n]]] [-d <target_dir>] [-R|-r|-L|-l] [-Q] <filesystem>";
 int             c;
 int             open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
-int             exit_status = 0 ;
 int		recovermodus = 0 ;
 int 		disaster = 0;
 int 		recoverquality = DELETED_OPT; // default use also delete dir entry
@@ -516,7 +517,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         if ( inode_nr < 1 )
                             {
                               fprintf(stderr,"Error: %s -I: inodeNR \n", progname);
-                              fprintf(stderr,"%lu is out of range\n", inode_nr);
+                              fprintf(stderr,"%lu is out of range\n", (long unsigned int)inode_nr);
 			      exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
@@ -535,7 +536,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         if ( block_nr < 1 )
                             {
                               fprintf(stderr,"Error: %s -B: blockNR \n", progname);
-                              fprintf(stderr,"%lu is out of range\n", block_nr);
+                              fprintf(stderr,"%lu is out of range\n", (long unsigned int)block_nr);
                               exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
@@ -555,7 +556,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         if ( transaction_nr < 1 )
                             {
                               fprintf(stderr,"Error: %s -t: transactionNR \n", progname);
-                              fprintf(stderr,"%lu is out of range\n", transaction_nr);
+                              fprintf(stderr,"%lu is out of range\n", (long unsigned int)transaction_nr);
                               exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
@@ -663,7 +664,7 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
                         if ( t_before < 1 )
                             {
                               fprintf(stderr,"Error: %s -b: time \n", progname);
-                              fprintf(stderr,"%lu is out of range\n", inode_nr);
+                              fprintf(stderr,"%lu is out of range\n", (long unsigned int)inode_nr);
                               exitval = EXIT_FAILURE ; 
                               goto errout;
                             }
@@ -765,7 +766,7 @@ if (mode & INPUT_TIME){
 
 
 //check for the recoverdir
-if ((mode & RECOVER_INODE) && (recovermodus & REC_DIR_NEEDED) || mode & RECOVER_LIST || magicscan) {
+if (((mode & RECOVER_INODE) && (recovermodus & REC_DIR_NEEDED)) || mode & RECOVER_LIST || magicscan) {
 	struct stat     st_buf;
 	dev_t           file_rdev=0;
 	
@@ -885,7 +886,10 @@ if ((recovermodus & (LIST_ALL | LIST_STATUS)) && format)
 	}
 
         inode_buf = malloc(EXT2_INODE_SIZE(current_fs->super));
-        if (intern_read_inode_full(inode_nr, inode_buf,EXT2_INODE_SIZE(current_fs->super))) return;
+        if (intern_read_inode_full(inode_nr, inode_buf,EXT2_INODE_SIZE(current_fs->super))){
+ 		fprintf(stderr,"Fatal Error: can not read InodeNr. %lu \n", (long unsigned int)inode_nr);
+                return EXIT_FAILURE;
+        }
 	
 	allocated = ext2fs_test_inode_bitmap ( current_fs->inode_map, inode_nr );
 
@@ -904,7 +908,8 @@ if ((recovermodus & (LIST_ALL | LIST_STATUS)) && format)
 	block_buf = malloc(EXT2_BLOCK_SIZE(current_fs->super ));
 	if(!read_block ( current_fs , &block_nr , block_buf )){
 		allocated = ext2fs_test_block_bitmap ( current_fs->block_map, block_nr );
-		fprintf(stdout,"Dump Filesystemblock %10lu   Status : %s\n",block_nr,(allocated) ? "Block is Allocated" : "Block is Unallocated");
+		fprintf(stdout,"Dump Filesystemblock %10lu   Status : %s\n",(long unsigned int)block_nr,
+			(allocated) ? "Block is Allocated" : "Block is Unallocated");
 		blockhex ( stdout , block_buf , format , EXT2_BLOCK_SIZE(current_fs->super ));
 	}
 	free(block_buf);
@@ -950,7 +955,7 @@ if (mode & READ_JOURNAL){
 			inode_nr = local_namei(NULL,pathname,t_after,t_before,DELETED_OPT);
 		}
 		if (inode_nr) {
-			printf("Inode found \"%s\"   %lu \n", pathname, inode_nr);
+			printf("Inode found \"%s\"   %lu \n", pathname, (long unsigned int)inode_nr);
 		}
 		else{
 	   		fprintf(stderr,"Error: Inode not found for \"%s\"\n",pathname);
@@ -961,7 +966,7 @@ if (mode & READ_JOURNAL){
 	}
 	else{
 		if (mode & COMMAND_INODE){
-			pathname = malloc(20);
+			if (!pathname) pathname = malloc(20);
 			if (!pathname) {
 				fprintf(stderr,"ERROR: can not allocate memory\n");
 				goto journalout;
@@ -969,7 +974,7 @@ if (mode & READ_JOURNAL){
 			if (inode_nr == EXT2_ROOT_INO)
 				*pathname = 0;
 			else
-				sprintf(pathname,"<%lu>",inode_nr);
+				sprintf(pathname,"<%lu>",(long unsigned int)inode_nr);
 		}
 	}
 
@@ -1022,11 +1027,12 @@ if (mode & READ_JOURNAL){
 		journal_block = get_journal_blocknr(block_nr, transaction_nr);
 		if ( journal_block ){	
 			printf("dump Journalblock %lu  : a copy of Filesystemblock %lu : Transaction %lu\n",
-				journal_block, block_nr, transaction_nr);	
+				(long unsigned int)journal_block, (long unsigned int)block_nr, (long unsigned int)transaction_nr);	
 		 	dump_journal_block( journal_block, format );
 		}
 		else
-			fprintf(stderr,"Error: Filesystemblock %lu not found in Journaltransaction %lu\n",block_nr, transaction_nr);
+			fprintf(stderr,"Error: Filesystemblock %lu not found in Journaltransaction %lu\n",
+				(long unsigned int)block_nr, (long unsigned int)transaction_nr);
 	}
 
 
@@ -1054,7 +1060,7 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 		r_item *item = NULL;
 
 		if (ext2fs_test_inode_bitmap ( current_fs->inode_map, inode_nr )) {
-			fprintf(stdout,"Inode %lu is allocated\n",inode_nr);
+			fprintf(stdout,"Inode %lu is allocated\n",(long unsigned int)inode_nr);
 		}
 
 		i_list = get_j_inode_list(current_fs->super, inode_nr);
@@ -1096,7 +1102,8 @@ if ((mode & COMMAND_INODE) && (mode & RECOVER_INODE))
 					clear_dir_list(dir);
 				}
 				else
-					printf("Inode %lu is a directory but not found after %lu and before %lu\n",inode_nr,t_after,t_before);
+					printf("Inode %lu is a directory but not found after %lu and before %lu\n",
+						(long unsigned int)inode_nr, (long unsigned int)t_after, (long unsigned int)t_before);
 			}
 			else {
 				if (recovermodus & (RECOV_ALL | RECOV_DEL))

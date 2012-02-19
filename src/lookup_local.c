@@ -33,6 +33,7 @@
 #include "dir_list.h"
 #include "util.h"
 #include "inode.h"
+#include "block.h"
 
 #define DIRENT_MIN_LENGTH 12
 extern ext2_filsys     current_fs ;
@@ -597,7 +598,7 @@ void lookup_local(char* des_dir, struct dir_list_head_t * dir, __u32 t_after , _
 					switch (flag & REC_FILTER){
 						case LIST_ALL :
 							if (dir->dir_inode != lp->inode_nr) break;
-							printf("DIR	%lu	%c%s%c\n",lp->inode_nr,c,dir->pathname,c);
+							printf("DIR	%lu	%c%s%c\n",(long unsigned int)lp->inode_nr,c,dir->pathname,c);
 						break;
 						case LIST_STATUS :
 						break;
@@ -634,7 +635,7 @@ void lookup_local(char* des_dir, struct dir_list_head_t * dir, __u32 t_after , _
 //function for all files apart from dir
 					switch (flag & REC_FILTER){
 						case LIST_ALL :
-							printf("---	%lu	%c%s%s%s%c\n",lp->inode_nr,c,dir->pathname,
+							printf("---	%lu	%c%s%s%s%c\n",(long unsigned int)lp->inode_nr,c,dir->pathname,
 								((strlen(dir->pathname) > 0) && strcmp(dir->pathname,"/")) ? "/" : "",
 								lp->filename,c);
 							break;

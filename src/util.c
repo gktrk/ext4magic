@@ -26,11 +26,12 @@
 
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
-//#include <ext2fs/ext2_io.h>
 #include <e2p/e2p.h>
 
 #include "util.h"
 #include "ext2fsP.h"
+#include "block.h"
+#include "inode.h"
 
 // default maxcount for histrogram 
 #define HIST_COUNT 10
@@ -67,7 +68,7 @@ dump_hist_header("c_time  Histogram",after);
 for (i=1;i <= cm ;i++) if (step < (p_hist+i)->c_count) step = (p_hist+i)->c_count;
 step = step / 50;
 for (i=1;i <= cm ;i++){
-	fprintf(stdout,"%10lu : %8lu |", (p_hist+i)->time , (p_hist+i)->c_count);
+	fprintf(stdout,"%10lu : %8lu |", (long unsigned int)(p_hist+i)->time , (long unsigned int)(p_hist+i)->c_count);
 	for (j = 0,x = (p_hist+i)->c_count/50 ; j < 50 ; j++, x+=step )
 	fprintf(stdout,"%c",(x<(p_hist+i)->c_count) ? '*' : ' '); 
 	fprintf(stdout,"|   %s", time_to_string((__u32)(p_hist+i)->time));
@@ -79,7 +80,7 @@ step = 10.1 ;
 for (i=1;i <= cm ;i++) if (step < (p_hist+i)->d_count) step = (p_hist+i)->d_count;
 step = step / 50;
 for (i=1;i <= cm ;i++){
-	fprintf(stdout,"%10lu : %8lu |", (p_hist+i)->time , (p_hist+i)->d_count);
+	fprintf(stdout,"%10lu : %8lu |", (long unsigned int)(p_hist+i)->time , (long unsigned int)(p_hist+i)->d_count);
 	for (j = 0,x = (p_hist+i)->d_count/50 ; j < 50 ; j++, x+=step )
 	fprintf(stdout,"%c",(x<(p_hist+i)->d_count) ? '*' : ' '); 
 	fprintf(stdout,"|   %s", time_to_string((__u32)(p_hist+i)->time));
@@ -92,7 +93,7 @@ if (crt_found){
 	for (i=1;i <= cm ;i++) if (step < (p_hist+i)->cr_count) step = (p_hist+i)->cr_count;
 	step = step / 50;
 	for (i=1;i <= cm ;i++){
-		fprintf(stdout,"%10lu : %8lu |", (p_hist+i)->time , (p_hist+i)->cr_count);
+		fprintf(stdout,"%10lu : %8lu |", (long unsigned int)(p_hist+i)->time , (long unsigned int)(p_hist+i)->cr_count);
 		for (j = 0,x = (p_hist+i)->cr_count/50 ; j < 50 ; j++, x+=step )
 		fprintf(stdout,"%c",(x<(p_hist+i)->cr_count) ? '*' : ' '); 
 		fprintf(stdout,"|   %s", time_to_string((__u32)(p_hist+i)->time));
@@ -233,7 +234,7 @@ void print_coll_list(__u32 t_after, __u32 t_before, int flag){
 		}
 		pointer = collect->list;
 		for (i = 0; i < collect->count; i++ ,pointer++){
-			intern_read_inode_full(*pointer, inode_buf , (inode_size > 256) ? 256 : inode_size );
+			intern_read_inode_full(*pointer, (struct ext2_inode*)inode_buf , (inode_size > 256) ? 256 : inode_size );
 			c_time = inode->i_ctime;
 			d_time = inode->i_dtime;
 			cr_time = ((inode_size > EXT2_GOOD_OLD_INODE_SIZE) && (inode->i_extra_isize >= 24)) ? inode->i_crtime : 0 ;
@@ -274,13 +275,13 @@ __u32 get_last_delete_time(ext2_filsys fs)
 {
 struct ext2_group_desc		*gdp;
 char 				*buf= NULL;
-int 				zero_flag, x , retval;
+int 				zero_flag, x;
 __u32 				blocksize , inodesize , inode_max , inode_per_group, block_count;
 __u32 				inode_per_block , inode_block_group, group;
 blk_t 				block_nr;
 __u32 				i, c_time, d_time;
 __u32				last = 0;
-__u32				first;
+__u32				first = 0;
 int				flag;
 
 struct 	ext2_inode_large *inode;
@@ -404,7 +405,7 @@ void blockhex (FILE *out_file, void *buf, int flag, int blocksize)
         unsigned char c;
 
         intp = (int *) buf;
-        charp_0 = (unsigned char *) buf;
+        charp_0 = (char *) buf;
         charp_1 = (char *) buf;
 
         for (i=0; i<blocksize; i+=16) {
@@ -548,7 +549,8 @@ return;
 int get_ind_block_len(char *buf, blk_t *blk, blk_t *last ,blk_t *next, __u64 *p_len){
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
-	blk_t			block, *p_block;
+	blk_t			block = 0;
+	blk_t			*p_block;
 	int 			flag = 0;
 
 	priv_buf = malloc(current_fs->blocksize);
@@ -587,7 +589,8 @@ int get_dind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p
 	int			ret = 0;
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
-	blk_t			block, *p_block;
+	blk_t			block = 0;
+	blk_t			*p_block;
 
 	priv_buf = malloc(current_fs->blocksize);
 	if (! priv_buf){
@@ -626,7 +629,8 @@ int get_tind_block_len(char *buf, blk_t *blk, blk_t *last, blk_t *next, __u64 *p
 	int 			ret = 0;
 	int			i = (current_fs->blocksize >> 2)- 1;
 	char			*priv_buf = NULL;
-	blk_t			block, *p_block;
+	blk_t			block = 0;
+	blk_t			*p_block;
 
 	priv_buf = malloc(current_fs->blocksize);
 	if (! priv_buf){

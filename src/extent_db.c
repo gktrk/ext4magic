@@ -30,6 +30,9 @@
 
 extern ext2_filsys	current_fs;
 
+static int mark_extent_len(struct extent_db_t*, blk_t, void*);
+
+
 struct extent_area* new_extent_area(){
 	struct extent_area *ea;
 	ea = malloc(sizeof(struct extent_area));
@@ -192,7 +195,7 @@ static int mark_extent_len(struct extent_db_t* db, blk_t blk, void * buf){
  			if (ext2fs_le16_to_cpu(header->eh_depth)){
 				idx = (struct ext3_extent_idx*) (header + entry);
 				if(io_channel_read_blk ( current_fs->io,ext2fs_le32_to_cpu(idx->ei_leaf), 1, buf_tmp )){
-					fprintf(stderr,"Error read block %lu\n",ext2fs_le32_to_cpu(idx->ei_leaf));
+					fprintf(stderr,"Error read block %lu\n", (long unsigned int)ext2fs_le32_to_cpu(idx->ei_leaf));
 					ret = 2;
 				}
 				else{

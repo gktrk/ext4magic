@@ -60,8 +60,8 @@ struct j_bitmap_list_t
 void dump_journal_superblock( void); //print journal superblock
 extern int journal_open(char* , int );// open an extract the blocklist from journal 
 extern int journal_close(void); // close the journal (last function in main() if the journal open)
-static int init_journal(void); // main for extract the journal to the local private data
-static const char *type_to_name(int);
+int init_journal(void); // main for extract the journal to the local private data
+const char *type_to_name(int);
 int get_block_list_count(blk64_t);//get count of journal blocklist 
 __u32 get_trans_time( __u32); //get the transactiontime of a transactionnumber
 int get_block_list(journal_descriptor_tag_t*, blk64_t, int);//get a sortet list of all copys of a filesystemblock
@@ -76,5 +76,5 @@ int get_block_bitmap_list( journal_bitmap_tag_t**);//get a list of all copies of
 int init_block_bitmap_list(ext2fs_block_bitmap* , __u32); //create and init the the journal block bitmap
 void clear_block_bitmap_list(ext2fs_block_bitmap); //destroy the journal block bitmap
 int next_block_bitmap(ext2fs_block_bitmap); //produces a differential block bitmap for a transaction from the Journal
-int get_pool_block(unsigned char*); 
+int get_pool_block(char*); 
 #endif

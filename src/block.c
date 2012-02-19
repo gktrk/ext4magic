@@ -115,7 +115,7 @@ int read_block ( ext2_filsys fs, blk_t *blocknr, void *buf )
 {
         errcode_t retval = io_channel_read_blk ( fs->io,  *blocknr,  1,  buf  );
         if (retval)
-                fprintf(stderr,"Error %d while read block\n", retval);
+                fprintf(stderr,"Error %d while read block\n", (int)retval);
         return retval;
 } 
 #ifdef EXT2_FLAG_64BITS
@@ -123,7 +123,7 @@ int read_block64 ( ext2_filsys fs, blk64_t *blocknr, void *buf )
 {
         errcode_t retval = io_channel_read_blk64 ( fs->io,  *blocknr,  1,  buf  );
         if (retval)
-                fprintf(stderr,"Error %d while read block\n", retval);
+                fprintf(stderr,"Error %d while read block\n", (int)retval);
         return retval;
 }
 #endif
@@ -136,7 +136,7 @@ errcode_t local_ext2fs_extent_open(ext2_filsys fs, struct ext2_inode inode,
 
         struct ext2_extent_handle       *handle;
         struct ext3_extent_header       *eh;
-        int i;
+        int 				i;
         errcode_t                       retval;
         retval = ext2fs_get_mem(sizeof(struct ext2_extent_handle), &handle);
         if (retval)
@@ -194,7 +194,7 @@ errcode_t local_ext2fs_extent_open(ext2_filsys fs, struct ext2_inode inode,
 static int mark_extent_block(ext2_filsys fs, char *extent_block ){
 	struct ext3_extent_header 	*eh;
 	struct ext3_extent_idx		*idx;
-	int i, ret;
+	int 				i, ret = 0 ;
 #ifdef EXT2_FLAG_64BITS
 	blk64_t index_bl;
 #else

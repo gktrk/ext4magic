@@ -35,6 +35,7 @@
 #include "util.h"
 #include "hard_link_stack.h"
 #include "inode.h"
+#include "block.h"
 
 
 //defines for error in recover_file
@@ -51,7 +52,7 @@
 
 
 #ifdef FILE_ATTR
-#include "e2p/e2p.h"
+#include <e2p/e2p.h>
 //#FLAGS_MODIFIABLE = EXT2_NOATIME_FL | EXT2_SYNC_FL | EXT2_DIRSYNC_FL | EXT2_APPEND_FL | EXT2_COMPR_FL | EXT2_NODUMP_FL |
 // EXT2_IMMUTABLE_FL | EXT3_JOURNAL_DATA_FL | EXT2_SECRM_FL | EXT2_UNRM_FL | EXT2_NOTAIL_FL | EXT2_TOPDIR_FL 
 #define FLAGS_MODIFIABLE	0x0001E0FF
@@ -85,9 +86,7 @@ void recover_list(char *des_dir, char *input_file,__u32 t_after, __u32 t_before,
 	char *lineptr = NULL ;
 	char *filename = NULL ;
 	char *p1 , *p2;
-	char c;
 	size_t maxlen;
-	int  l;
 	size_t got;
 	ext2_ino_t inode_nr;
 	struct ring_buf *i_list;
@@ -192,9 +191,9 @@ static int read_syslink_block ( ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t bl
                   blk64_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
 {
 	char *charbuf =((struct privat*)priv)->buf;
-	__u32 nbytes;
+//	__u32 nbytes;
 	errcode_t retval;
-	int blocksize = fs->blocksize;
+//	int blocksize = fs->blocksize;
 
 	if (*blocknr >= fs->super->s_blocks_count)
 		return BLOCK_ERROR;
@@ -527,7 +526,7 @@ int recover_file( char* des_dir,char* pathname, char* filename, struct ext2_inod
 				}
 #ifdef FILE_ATTR
 				if( LINUX_S_ISREG(inode->i_mode)){
-					unsigned long flags;
+					unsigned long flags = 0;
 					if (fgetflags(recovername, &flags) == -1) {
 						rec_error -= ATTRI_ERROR;
 					}
@@ -619,8 +618,9 @@ void set_dir_attributes(char* des_dir,char* pathname,struct ext2_inode *inode){
 	mode_t i_mode;
 	struct stat  filestat;
 	struct utimbuf   touchtime;
-	unsigned long flags;
-
+#ifdef FILE_ATTR
+	unsigned long flags = 0 ;
+#endif
 	fullname = malloc(strlen(des_dir) + strlen(pathname) + 3);
 	if (fullname){
 		p1 = pathname;

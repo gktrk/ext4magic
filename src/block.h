@@ -24,6 +24,8 @@ int read_block ( ext2_filsys, blk_t*, void* ); //read filesystem block
 #ifdef EXT2_FLAG_64BITS
 int read_block64 ( ext2_filsys, blk64_t*, void* ); //read filesystem block64
 #endif
+errcode_t local_ext2fs_extent_open(ext2_filsys, struct ext2_inode, ext2_extent_handle_t*);
+void local_ext2fs_extent_free(ext2_extent_handle_t);
 
 #endif //BLOCK_H
 

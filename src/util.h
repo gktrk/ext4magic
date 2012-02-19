@@ -89,11 +89,6 @@
 //#define RESERVE_FILETYPE    0xF0000000
 
 
-/* Definitions to allow ext4magic compilation with old e2fsprogs */
-//#ifndef EXT4_EXTENTS_FL
-//#define EXT4_EXTENTS_FL                 0x00080000 /* Inode uses extents */
-//#endif
-
 
 #include "ring_buf.h"
 #include "dir_list.h"
@@ -185,8 +180,12 @@ void print_coll_list(__u32, __u32, int); //print the history of collectlist
 void add_coll_list(ext2_ino_t );// add inodenumber in a collectlist
 void blockhex (FILE* , void*, int , int); //hexdump
 char get_inode_mode_type( __u16); //get filetype of inode
+int get_ind_block_len(char*, blk_t*, blk_t*,blk_t*, __u64*);
+int get_dind_block_len(char*, blk_t*, blk_t*, blk_t*, __u64*);
+int get_tind_block_len(char*, blk_t*, blk_t*, blk_t*, __u64*);
 //public helper functions util.c
 char *time_to_string(__u32);
+__u32 get_last_delete_time(ext2_filsys);
 int check_fs_open(char*);
 void reset_getopt(void);
 unsigned long parse_ulong(const char* , const char* , const char* , int* );
@@ -220,7 +219,7 @@ int check_find_dir(char*, ext2_ino_t, char*, char*); //check if the directory al
 //public function file_type.c
 //none   #do not recover this
 int file_none(unsigned char*, int*, __u32, int, struct found_data_t*); //do not recover this
-int ident_file(struct found_data_t*, __u32*, char*, char*); // index of the files corresponding magic result strings
+int ident_file(struct found_data_t*, __u32*, char*, void*); // index of the files corresponding magic result strings
 void get_file_property(struct found_data_t*); //set the file properties and the extension
 
 

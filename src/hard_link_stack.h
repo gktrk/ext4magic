@@ -44,6 +44,6 @@ void add_link_stack(ext2_ino_t , __u32, char*, __u32 );
 char* check_link_stack(ext2_ino_t, __u32);
 int  match_link_stack(ext2_ino_t, __u32 );
 void clear_link_stack();
-
+int rename_hardlink_path(char*, char*);
 
 #endif

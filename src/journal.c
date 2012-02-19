@@ -24,7 +24,7 @@
 #include <string.h>
 #include <time.h>
 
-#ifdef HAVE_ERRNO_H
+#ifndef HAVE_ERRNO_H
 #include <errno.h>
 #endif
 
@@ -41,6 +41,7 @@
 #include "ext4magic.h"
 #include "util.h"
 #include "journal.h"
+#include "inode.h"
 
 enum journal_location {JOURNAL_IS_INTERNAL, JOURNAL_IS_EXTERNAL, JOURNAL_IS_DUMMY};
 
@@ -89,30 +90,30 @@ void dump_journal_superblock( void)
   fprintf(stdout," Signature: 0x%08x \n",jsb->s_header.h_magic);
   fprintf(stdout," Blocktype : %s \n",type_to_name(jsb->s_header.h_blocktype));
 
-  fprintf(stdout," Journal block size: %lu \n",jsb->s_blocksize);
-  fprintf(stdout," Number of journal blocks: %lu \n",jsb->s_maxlen);
-  fprintf(stdout," Journal block where the journal actually starts: %lu\n",jsb->s_first);
-  fprintf(stdout," Sequence number of first transaction: %lu\n", jsb->s_sequence);
-  fprintf(stdout," Journal block of first transaction: %lu\n", jsb->s_start);
-  fprintf(stdout," Error number: %ld\n",jsb->s_errno);
+  fprintf(stdout," Journal block size: %lu \n",(long unsigned int)jsb->s_blocksize);
+  fprintf(stdout," Number of journal blocks: %lu \n",(long unsigned int)jsb->s_maxlen);
+  fprintf(stdout," Journal block where the journal actually starts: %lu\n",(long unsigned int)jsb->s_first);
+  fprintf(stdout," Sequence number of first transaction: %lu\n", (long unsigned int)jsb->s_sequence);
+  fprintf(stdout," Journal block of first transaction: %lu\n", (long unsigned int)jsb->s_start);
+  fprintf(stdout," Error number: %ld\n",(long int)jsb->s_errno);
   if ((jsb->s_header.h_blocktype) != JFS_SUPERBLOCK_V2)
     return ;
 // Remaining fields are only valid in a version-2 superblock
 
 //FIXME: Strings of Features 
-  fprintf(stdout," Compatible Features: %lu\n",jsb->s_feature_compat);
-  fprintf(stdout," Incompatible features: %lu\n",jsb->s_feature_incompat);
-  fprintf(stdout," Read only compatible features: %lu\n",jsb->s_feature_ro_compat);
+  fprintf(stdout," Compatible Features: %lu\n",(long unsigned int)jsb->s_feature_compat);
+  fprintf(stdout," Incompatible features: %lu\n",(long unsigned int)jsb->s_feature_incompat);
+  fprintf(stdout," Read only compatible features: %lu\n",(long unsigned int)jsb->s_feature_ro_compat);
 
   uuid_unparse(jsb->s_uuid, buffer);
   fprintf(stdout," Journal UUID: %s \n",buffer);
   
   nr_users = jsb->s_nr_users;
-  fprintf(stdout," Number of file systems using journal: %lu\n", jsb->s_nr_users);
+  fprintf(stdout," Number of file systems using journal: %lu\n", (long unsigned int)jsb->s_nr_users);
   
-  fprintf(stdout," Location of superblock copy: %lu\n",jsb->s_dynsuper);
-  fprintf(stdout," Max journal blocks per transaction: %lu\n",jsb->s_max_transaction);
-  fprintf(stdout," Max file system blocks per transaction: %lu\n",jsb->s_max_trans_data);
+  fprintf(stdout," Location of superblock copy: %lu\n",(long unsigned int)jsb->s_dynsuper);
+  fprintf(stdout," Max journal blocks per transaction: %lu\n",(long unsigned int)jsb->s_max_transaction);
+  fprintf(stdout," Max file system blocks per transaction: %lu\n",(long unsigned int)jsb->s_max_trans_data);
  
   if (nr_users && (nr_users < 48)) {
 	fprintf(stdout," IDs of all file systems using the journal:\n");
@@ -144,12 +145,14 @@ static void journal_superblock_to_cpu ( __u32 *jsb )
 extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 {
 	char		*journal_dev_name = NULL;
-	char		*dummy_journal = NULL;
 	int		journal_fd = 0;
         ext2_ino_t	journal_inum;
 	struct ext2_inode journal_inode;
 	int		retval;
 	ext2_file_t 	journal_file;
+#ifdef EXPERT_MODE
+	char		*dummy_journal = NULL;
+#endif
 	
 	pt_buff = NULL;
 	ptl = NULL;
@@ -197,7 +200,7 @@ extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 		if (journal_backup_flag){
 			//check the Journal Magic Number
 			char*			jsb_buffer =  NULL;
-			int 			got;
+			unsigned int 		got;
 			journal_superblock_t*	jsb;	
 
 			jsb_buffer = malloc(1024);
@@ -205,8 +208,8 @@ extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 			journal_source.file = journal_file;
 			if ((jsb_buffer) && (! read_journal_block(0,jsb_buffer, 1024, &got))){
 				jsb = (journal_superblock_t *) jsb_buffer;
-				if ((be32_to_cpu(jsb->s_header.h_magic) != JFS_MAGIC_NUMBER) ||
-					 (current_fs->blocksize != be32_to_cpu(jsb->s_blocksize))) {
+				if ((ext2fs_be32_to_cpu(jsb->s_header.h_magic) != JFS_MAGIC_NUMBER) ||
+					 (current_fs->blocksize != ext2fs_be32_to_cpu(jsb->s_blocksize))) {
 					retval =  1;
 				}
 				free(jsb_buffer);
@@ -225,13 +228,13 @@ extern int journal_open(  char *journal_file_name, int journal_backup_flag )
 				if (dummy_journal){
 					memset (dummy_journal,0,current_fs->blocksize *2);
 					jsb = (journal_superblock_t*) dummy_journal;
- 					jsb->s_header.h_magic = htonl(JFS_MAGIC_NUMBER);
-			                jsb->s_header.h_blocktype = htonl(JFS_SUPERBLOCK_V2);
-        				jsb->s_blocksize = htonl(current_fs->blocksize);
-        				jsb->s_maxlen = htonl(2);
-        				jsb->s_nr_users = htonl(1);
-        				jsb->s_first = htonl(1);
-        				jsb->s_sequence = htonl(1);
+ 					jsb->s_header.h_magic = ext2fs_cpu_to_be32(JFS_MAGIC_NUMBER);
+			                jsb->s_header.h_blocktype = ext2fs_cpu_to_be32(JFS_SUPERBLOCK_V2);
+        				jsb->s_blocksize = ext2fs_cpu_to_be32(current_fs->blocksize);
+        				jsb->s_maxlen = ext2fs_cpu_to_be32(2);
+        				jsb->s_nr_users = ext2fs_cpu_to_be32(1);
+        				jsb->s_first = ext2fs_cpu_to_be32(1);
+        				jsb->s_sequence = ext2fs_cpu_to_be32(1);
         				memcpy(jsb->s_uuid, current_fs->super->s_uuid, sizeof(current_fs->super->s_uuid));
 					journal_source.where = JOURNAL_IS_DUMMY;
 					journal_source.file = NULL;
@@ -319,9 +322,10 @@ extern int journal_close(void)
 
 //print hexdump of a journalblock
 int dump_journal_block( __u32 block_nr , int flag){
-	char *buf = NULL;
-	int got,retval = 0;
-	int blocksize = current_fs->blocksize;
+	char 		*buf = NULL;
+	unsigned int 	got;
+	int 		retval = 0;
+	int 		blocksize = current_fs->blocksize;
 
 	buf = (char*) malloc(blocksize);
 	if(! buf) return 1 ;
@@ -340,7 +344,7 @@ int dump_journal_block( __u32 block_nr , int flag){
 //read a journal block
 int read_journal_block(off_t offset, char *buf, int size, unsigned int *got)
 {
-	int retval;
+	int retval = 1;
 	switch (journal_source.where) {
 	case JOURNAL_IS_EXTERNAL :
 		if (lseek(journal_source.fd, offset, SEEK_SET) < 0) {
@@ -381,7 +385,7 @@ int read_journal_block(off_t offset, char *buf, int size, unsigned int *got)
 
 
 
-static const char *type_to_name(int btype)
+const char *type_to_name(int btype)
 {
 	switch (btype) {
 	case JFS_DESCRIPTOR_BLOCK:
@@ -400,7 +404,7 @@ static const char *type_to_name(int btype)
 
 
 //check if journal block is a lost inodeblock local function
-int jb_is_inodetable(unsigned char *buf){
+static int jb_is_inodetable(char *buf){
 	struct ext2_inode 	*inode;
 	__u16			mode;
 	__u32   		atime;
@@ -410,7 +414,6 @@ int jb_is_inodetable(unsigned char *buf){
 	int 			i;
 	__u32			min = 315601200; // 315601200 = "1980-01-01 20:00:00"
 	__u32			max = (__u32) now_time;
-	int 			ret = 0;
 	int 			i_size = EXT2_INODE_SIZE(current_fs->super);
 	int 			inodes_per_block = (current_fs->blocksize / i_size );
 	int			flag = 0;
@@ -472,17 +475,18 @@ return 0;
 static __u32 get_transaction_time( __u32 j_block){
 	char *buf;
 	struct ext2_inode *inode;
-	__u32 t_time = 0;
-	int ino, got ,retval = 0;
-	int inode_size = EXT2_INODE_SIZE(current_fs->super);
-	int blocksize = current_fs->blocksize;
+	__u32 		t_time = 0;
+	int 		ino, retval = 0;
+	unsigned int	got;
+	int 		inode_size = EXT2_INODE_SIZE(current_fs->super);
+	int 		blocksize = current_fs->blocksize;
 
 	buf = (char*) malloc(blocksize);
 	if(! buf) return 0 ;
 
 	retval = read_journal_block(j_block * blocksize ,buf,blocksize,&got);
 	if (retval || got != blocksize){
-		fprintf(stderr,"Error while read journal block %ld\n",j_block);
+		fprintf(stderr,"Error while read journal block %u\n",(unsigned int)j_block);
 		t_time = 0;
 		goto errout;
 	}
@@ -538,11 +542,11 @@ void print_block_list(int flag){
 			else transaction_time = 0;
 		}
 		if (transaction_time)
-			fprintf(stdout,"%12llu	%8lu	%8lu 	%8lu	%s",(__u64) pointer->f_blocknr , pointer->j_blocknr ,
-			 pointer->transaction, transaction_time, time_to_string(transaction_time) );
+			fprintf(stdout,"%12llu	%8lu	%8lu 	%8lu	%s",(__u64) pointer->f_blocknr , (long unsigned int)pointer->j_blocknr ,
+			 (long unsigned int)pointer->transaction, (long unsigned int)transaction_time, time_to_string(transaction_time) );
 		else
-			fprintf(stdout,"%12llu	%8lu	%8lu\n",(__u64) pointer->f_blocknr , pointer->j_blocknr ,
-			 pointer->transaction);
+			fprintf(stdout,"%12llu	%8lu	%8lu\n",(__u64) pointer->f_blocknr , (long unsigned int)pointer->j_blocknr ,
+			 (long unsigned int)pointer->transaction);
 		pointer++ ;
 	}
 }
@@ -564,10 +568,12 @@ void print_block_transaction(blk64_t block_nr, int flag){
 		if (pointer->f_blocknr == block_nr){
 			if (is_inode_block){
 				transaction_time = get_transaction_time(pointer->j_blocknr);
-				fprintf(stdout,"%12llu	%8lu	%8lu 	%8lu	%s",(__u64) pointer->f_blocknr , pointer->j_blocknr ,
-			 		pointer->transaction, transaction_time, time_to_string(transaction_time) );	
+				fprintf(stdout,"%12llu	%8lu	%8lu 	%8lu	%s",(__u64) pointer->f_blocknr ,
+					 (long unsigned int)pointer->j_blocknr, (long unsigned int)pointer->transaction,
+					 (long unsigned int)transaction_time, time_to_string(transaction_time));	
 			}else
-			fprintf(stdout,"%12llu	%8lu	%8lu\n",(__u64) pointer->f_blocknr , pointer->j_blocknr , pointer->transaction);
+			fprintf(stdout,"%12llu	%8lu	%8lu\n",(__u64) pointer->f_blocknr ,
+				(long unsigned int)pointer->j_blocknr , (long unsigned int)pointer->transaction);
 		}
 		pointer++ ;
 	}
@@ -592,12 +598,13 @@ return journal_nr;
 // get the last dir-block for transaction from journal or if not, found the real block
 //FIXME: blk64_t ????
 int get_last_block(char *buf,  blk64_t *block, __u32 t_start, __u32 t_end){
-	int	retval = 0;
-	int i , count , got;
-	char *journal_tag_buf = NULL;
+	int		retval = 0;
+	int 		i , count ;
+	unsigned int 	got;
+	char 		*journal_tag_buf = NULL;
 	journal_descriptor_tag_t *block_list;
-	blk_t j_block = 0;
-	int blksize = current_fs->blocksize;
+	blk_t 		j_block = 0;
+	int 		blksize = current_fs->blocksize;
 
 	if ((!t_start)  && (!t_end)){
 //there is no transaction, it is not from a journal Inode	
@@ -751,8 +758,8 @@ static void extract_descriptor_block(char *buf, journal_superblock_t *jsb,
 		   end of this block. */
 		if (offset > blocksize) break;
 
-		tag_block = be32_to_cpu(tag->t_blocknr) ;
-		tag_flags = be32_to_cpu(tag->t_flags);
+		tag_block = ext2fs_be32_to_cpu(tag->t_blocknr) ;
+		tag_flags = ext2fs_be32_to_cpu(tag->t_flags);
 
 		if (!(tag_flags & JFS_FLAG_SAME_UUID))
 			offset += 16;
@@ -764,7 +771,7 @@ static void extract_descriptor_block(char *buf, journal_superblock_t *jsb,
 		fprintf(stdout,"*");
 #endif
 		pt->f_blocknr = tag_block ;
-		if (tag_size > JBD_TAG_SIZE32) pt->f_blocknr |= (__u64)be32_to_cpu(tag->t_blocknr_high) << 32;
+		if (tag_size > JBD_TAG_SIZE32) pt->f_blocknr |= (__u64)ext2fs_be32_to_cpu(tag->t_blocknr_high) << 32;
 		pt->j_blocknr = blocknr;
 		pt->transaction = transaction;
 		pt++;
@@ -789,7 +796,7 @@ static void extract_descriptor_block(char *buf, journal_superblock_t *jsb,
 
 
 // init and extract the journal in the local private data
-static int init_journal(void)
+int init_journal(void)
 {
 	struct ext2_super_block *sb;
 	char			buf[8192];
@@ -815,7 +822,7 @@ static int init_journal(void)
 	if (sb->s_magic == ext2fs_swab16(EXT2_SUPER_MAGIC)) ext2fs_swap_super(sb);
 #endif
 
-	if ((be32_to_cpu(jsb->s_header.h_magic) != JFS_MAGIC_NUMBER) &&
+	if ((ext2fs_be32_to_cpu(jsb->s_header.h_magic) != JFS_MAGIC_NUMBER) &&
 	    (sb->s_magic == EXT2_SUPER_MAGIC) &&
 	    (sb->s_feature_incompat & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)) {
 		blocksize = EXT2_BLOCK_SIZE(sb);
@@ -834,7 +841,7 @@ static int init_journal(void)
 	if (retval) goto errout;
 
 	jsb = (journal_superblock_t *) jsb_buffer;
-	if (be32_to_cpu(jsb->s_header.h_magic) != JFS_MAGIC_NUMBER) {
+	if (ext2fs_be32_to_cpu(jsb->s_header.h_magic) != JFS_MAGIC_NUMBER) {
 		fprintf(stderr, "Journal superblock magic number invalid!\n");
 		return JOURNAL_ERROR ;
 	}
@@ -851,7 +858,7 @@ static int init_journal(void)
 	pt = pt_buff ;
 	pt_count = 0;
 	if (pt_buff == NULL) {
-		fprintf(stderr,"Error: can't allocate %d Memory\n",maxlen * sizeof(journal_descriptor_tag_t));
+		fprintf(stderr,"Error: can't allocate %lu Memory\n",maxlen * sizeof(journal_descriptor_tag_t));
 		goto errout;
 	}
 	ptl = (__u32*)(pt_buff + (maxlen * sizeof(journal_descriptor_tag_t)));
@@ -868,9 +875,9 @@ static int init_journal(void)
 
 		header = (journal_header_t *) buf;
 
-		magic = be32_to_cpu(header->h_magic);
-		sequence = be32_to_cpu(header->h_sequence);
-		blocktype = be32_to_cpu(header->h_blocktype);
+		magic = ext2fs_be32_to_cpu(header->h_magic);
+		sequence = ext2fs_be32_to_cpu(header->h_sequence);
+		blocktype = ext2fs_be32_to_cpu(header->h_blocktype);
 
 		if (magic != JFS_MAGIC_NUMBER) {
 #ifdef DEBUG
@@ -1036,7 +1043,8 @@ int next_block_bitmap(ext2fs_block_bitmap d_bmap){
 	journal_bitmap_tag_t 				*p1;
 	journal_bitmap_tag_t 				*p2;
 	__u32						blockg, skip,i,len;
-	int						got,retval;
+	unsigned int					got;
+	int						retval;
 	char						*diff_buf;
 
 	if (jbbm.pointer->transaction < jbbm.first_trans)
@@ -1120,14 +1128,14 @@ errout:
 
 
 //read the next journal-lost inode block
-int get_pool_block(unsigned char *buf){
-	int 	retval = 0;
-	int	ret  = 0;
-	int 	got,i ;
-	int	blocksize = current_fs->blocksize;
+int get_pool_block(char *buf){
+	int 		retval = 0;
+	int		ret  = 0;
+	unsigned int 	got ;
+	int		blocksize = current_fs->blocksize;
 
 	if (ptl_count){
-		retval = read_journal_block(*ptl * blocksize ,buf,blocksize,&got);
+		retval = read_journal_block(*ptl * blocksize ,(char*)buf,blocksize,&got);
 		if ((! retval) && (got == blocksize)){
 			ret = 1;
 		}

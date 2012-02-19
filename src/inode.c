@@ -31,6 +31,7 @@
 #include "inode.h"
 #include "ring_buf.h"
 #include "extent_db.h"
+#include "block.h"
 
 extern ext2_filsys	current_fs;
 extern time_t		now_time ;
@@ -65,7 +66,7 @@ int intern_read_inode(ext2_ino_t ino, struct ext2_inode * inode)
 }
 
 
-//#ifdef WORDS_BIGENDIAN
+#ifdef WORDS_BIGENDIAN
 // On my current version of libext2 the extra time fields ar not bigendian corrected
 // We want this solved temporarily here with this function
  static void le_to_cpu_swap_extra_time(struct ext2_inode_large *inode, char *inode_buf){
@@ -77,7 +78,7 @@ int intern_read_inode(ext2_ino_t ino, struct ext2_inode * inode)
 	inode->i_crtime_extra  = ext2fs_le32_to_cpu(((struct ext2_inode_large *)inode_buf)->i_crtime_extra );
 	//inode->i_version_hi  = ext2fs_le32_to_cpu(((struct ext2_inode_large *)inode_buf)->i_version_hi );
 }
-//#endif
+#endif
 
 //subfunction for dump_inode_extra
 static void dump_xattr_string(FILE *out, const char *str, int len)
@@ -374,6 +375,7 @@ void dump_inode(FILE *out, const char *prefix,
         fprintf(out, "%sMode:  %04o   Flags: 0x%x ",
                 prefix, inode->i_mode & 0777, inode->i_flags);
 #ifdef FILE_ATTR
+#include <e2p/e2p.h>
 	if (do_dump_blocks && inode->i_flags) {
 		fprintf(out,"[");
 		print_flags(out, inode->i_flags, 0);
@@ -433,27 +435,27 @@ void dump_inode(FILE *out, const char *prefix,
                 prefix, inode->i_faddr, frag, fsize);
         if (is_large_inode && large_inode->i_extra_isize >= 24) {
 		fprintf(out, "%s ctime: %10lu:%010lu -- %s", prefix,
-                        inode->i_ctime, large_inode->i_ctime_extra,
+                        (long unsigned int)inode->i_ctime, (long unsigned int)large_inode->i_ctime_extra,
                         time_to_string(inode->i_ctime));
                 fprintf(out, "%s atime: %10lu:%010lu -- %s", prefix,
-                        inode->i_atime, large_inode->i_atime_extra,
+                        (long unsigned int)inode->i_atime, (long unsigned int)large_inode->i_atime_extra,
                         time_to_string(inode->i_atime));
                 fprintf(out, "%s mtime: %10lu:%010lu -- %s", prefix,
-                        inode->i_mtime, large_inode->i_mtime_extra,
+                        (long unsigned int)inode->i_mtime, (long unsigned int)large_inode->i_mtime_extra,
                         time_to_string(inode->i_mtime));
                 fprintf(out, "%scrtime: %10lu:%010lu -- %s", prefix,
-                        large_inode->i_crtime, large_inode->i_crtime_extra,
+                        (long unsigned int)large_inode->i_crtime, (long unsigned int)large_inode->i_crtime_extra,
                         time_to_string(large_inode->i_crtime));
         } else {
-           fprintf(out, "%sctime: %10lu -- %s", prefix, inode->i_ctime,
+           fprintf(out, "%sctime: %10lu -- %s", prefix, (long unsigned int)inode->i_ctime,
                         time_to_string(inode->i_ctime));
-                fprintf(out, "%satime: %10lu -- %s", prefix, inode->i_atime,
+                fprintf(out, "%satime: %10lu -- %s", prefix, (long unsigned int)inode->i_atime,
                         time_to_string(inode->i_atime));
-                fprintf(out, "%smtime: %10lu -- %s", prefix, inode->i_mtime,
+                fprintf(out, "%smtime: %10lu -- %s", prefix, (long unsigned int)inode->i_mtime,
                         time_to_string(inode->i_mtime));
         }
         if (inode->i_dtime)
-          fprintf(out, "%sdtime: %10lu -- %s", prefix, inode->i_dtime,
+          fprintf(out, "%sdtime: %10lu -- %s", prefix, (long unsigned int)inode->i_dtime,
                   time_to_string(inode->i_dtime));
         if (EXT2_INODE_SIZE(current_fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
                 dump_inode_extra(out, prefix, inode_num,
@@ -515,18 +517,20 @@ blk_t get_inode_pos(struct ext2_super_block *es ,struct inode_pos_struct *pos, e
 
 // get journalinode from transactionnumber 
 int get_transaction_inode(ext2_ino_t inode_nr, __u32 transaction_nr, struct ext2_inode_large *inode){
-	struct inode_pos_struct pos;
-	__u32 journal_block;
-	blk_t	block_nr;
-	struct ext2_inode_large *inode_buf;
-	char *buf = NULL;
-	int got,retval = 0;
-	int blocksize = current_fs->blocksize;
+	struct inode_pos_struct 	pos;
+	__u32 				journal_block;
+	blk_t				block_nr;
+	struct ext2_inode_large 	*inode_buf;
+	char 				*buf = NULL;
+	int 				retval = 0;
+	unsigned int			got;
+	int 				blocksize = current_fs->blocksize;
 
 	block_nr = get_inode_pos(current_fs->super, &pos , inode_nr, 0);
 	journal_block = get_journal_blocknr(block_nr, transaction_nr);
 	if (! journal_block){
-		fprintf(stdout,"No journalblock found for inode %lu by transaction %lu\n",inode_nr,transaction_nr);
+		fprintf(stdout,"No journalblock found for inode %lu by transaction %lu\n",
+			(long unsigned int)inode_nr,(long unsigned int)transaction_nr);
 		retval = -1;
 	}
 	else {
@@ -627,7 +631,7 @@ r_item* get_last_undel_inode(struct ring_buf* buf){
  r_item* get_undel_inode(struct ring_buf* buf, __u32 after, __u32 before){
 	r_item* item;
 	int i, count;
-	__u32 generation;
+//	__u32 generation;
 
 	if (!buf) return NULL;
 	item = r_last(buf);
@@ -658,21 +662,22 @@ r_item* get_last_undel_inode(struct ring_buf* buf){
 
 //fill all inode found in the Journal in the inode-ringbuffer
 struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_nr){
-	struct inode_pos_struct pos;
-	blk_t	block;
-	char * inode_buf = NULL ;
-	struct ext2_inode *inode_pointer;
-	struct ring_buf* buf = NULL;
-	r_item *item = NULL;
-//	struct ext2_inode_large *inode = NULL;
-	int count, got, retval = 0;	
-	off_t offset;
-	char *journal_tag_buf = NULL;
-	journal_descriptor_tag_t *block_list;
-	__u32 ctime = 1;
-	__u32 same_size = 1;
-	__u32 same_block_count = 0;
-	__u16 same_link_count = 0;
+	struct inode_pos_struct 	pos;
+	blk_t				block;
+	char 				*inode_buf = NULL ;
+	struct ext2_inode 		*inode_pointer;
+	struct ring_buf			*buf = NULL;
+	r_item 				*item = NULL;
+//	struct ext2_inode_large 	*inode = NULL;
+	int 				count, retval = 0;
+	unsigned int			got;	
+	off_t 				offset;
+	char 				*journal_tag_buf = NULL;
+	journal_descriptor_tag_t 	*block_list;
+	__u32 				ctime = 1;
+	__u32 				same_size = 1;
+	__u32 				same_block_count = 0;
+	__u16 				same_link_count = 0;
 
 	if ((inode_nr > es->s_inodes_count) || (inode_nr == 0))
 	{
@@ -1042,9 +1047,8 @@ return 1;
 
 
 //add the ext3  indirect Blocks to the inode
-int inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *last, blk_t  *next, unsigned char *buf ){
+int inode_add_meta_block(struct ext2_inode_large* inode , blk_t blk, blk_t *last, blk_t  *next, char *buf ){
 	blk_t 				block_count = 0;
-	//blk_t				b_blk,count=0;
 	int 				i = 0;
 	__u64				i_size = 0;
 	int 				ret = 0;

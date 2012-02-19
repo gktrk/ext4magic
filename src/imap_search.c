@@ -30,6 +30,8 @@
 #include <time.h>
 #include "magic.h"
 #include "journal.h"
+#include "block.h"
+#include "hard_link_stack.h"
 
 extern ext2_filsys 	current_fs;
 extern time_t		now_time ;
@@ -48,14 +50,13 @@ int first_blocks ( ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
                   blk64_t /*ref_blk*/x, int /*ref_offset*/y, void *priv )
 {
         char *charbuf = NULL;
-  			((struct privat*)priv)->buf;
-	__u32 nbytes;
+
 	errcode_t retval;
 	int blocksize = fs->blocksize;
 
 	if ((blockcnt >= 12) || ((struct privat*)priv)->count >=12)
 		return BLOCK_ABORT;
-	charbuf = ((struct privat*)priv)->buf + (blocksize * blockcnt);
+	charbuf = (char*)((struct privat*)priv)->buf + (blocksize * blockcnt);
 
 	if (((struct privat*)priv)->flag){
         	int allocated = ext2fs_test_block_bitmap ( fs->block_map, *blocknr );
@@ -108,7 +109,7 @@ static char* get_pathname(blk_t inode_nr, char* i_pathname, char *magic_buf, uns
 	else{
 		strcpy(help_data->scan_result,magic_buf);
 		strncpy(help_data->name, magic_buf , name_len - def_len+1);
-		sprintf(name_str,"/I_%010lu",inode_nr);
+		sprintf(name_str,"/I_%010lu",(long unsigned int)inode_nr);
 		strcat(help_data->name,name_str);
 		get_file_property(help_data);
 	}
@@ -151,7 +152,7 @@ static void search_imap_inode(char* des_dir, __u32 t_after, __u32 t_before, int 
 {
 struct ext2_group_desc 			*gdp;
 struct 	ext2_inode_large 		*inode;
-struct dir_list_head_t 			*dir = NULL;
+//struct dir_list_head_t 			*dir = NULL;
 struct ring_buf* 			i_list = NULL;
 r_item*					item = NULL;
 int  					zero_flag, retval, load, x ,i ;
@@ -247,7 +248,7 @@ for (group = 0 ; group < current_fs->group_desc_count ; group++){
 					}
 // 1. magical step 
 					if (LINUX_S_ISDIR(mode) && ( flag & 0x01) && (pathname)){ 
-						sprintf(pathname,"<%lu>",inode_nr);
+						sprintf(pathname,"<%lu>",(long unsigned int)inode_nr);
 
 	
 						struct dir_list_head_t * dir = NULL;
@@ -281,7 +282,7 @@ for (group = 0 ; group < current_fs->group_desc_count ; group++){
 							if (! LINUX_S_ISDIR(item->inode->i_mode) ) {
 								i_pathname = identify_filename(i_pathname, tmp_buf,
 										(struct ext2_inode*)item->inode, inode_nr);
-								sprintf(pathname,"<%lu>",inode_nr);
+								sprintf(pathname,"<%lu>",(long unsigned int)inode_nr);
 								recover_file(des_dir,"MAGIC-2", ((i_pathname)?i_pathname : pathname),
 									     (struct ext2_inode*)item->inode, inode_nr, 0);
 								if(i_pathname){
@@ -332,7 +333,7 @@ int retval = 0;
 recovername = malloc(strlen(des_dir) + strlen(pathname) + 30);
 dirname = malloc(strlen(des_dir) + strlen(pathname) + strlen(filename) +10);
 if (recovername && dirname){
-	sprintf(recovername,"%s/MAGIC-1/<%lu>",des_dir,inode_nr);
+	sprintf(recovername,"%s/MAGIC-1/<%lu>",des_dir,(long unsigned int)inode_nr);
 	sprintf(dirname,"%s/%s/%s",des_dir,pathname,filename);
 
 	retval = stat (recovername, &filestat);
@@ -359,6 +360,7 @@ if (recovername && dirname){
 
 return retval;
 }
+return 0;
 }
 
 
@@ -367,7 +369,7 @@ void search_journal_lost_inode(char* des_dir, __u32 t_after, __u32 t_before, int
 
 struct 	ext2_inode	*p_inode;
 struct  ext2_inode	inode;
-int  			retval,i ;
+int  			i;
 char 			*pathname = NULL;
 char			*i_pathname = NULL;
 char 			*buf= NULL;
@@ -411,7 +413,7 @@ while ( get_pool_block(buf) ){
 			continue;
 		if (check_file_stat(&inode)){
 			i_pathname = identify_filename(i_pathname, tmp_buf, &inode, inode_nr);
-			sprintf(pathname,"<%lu>",inode_nr);
+			sprintf(pathname,"<%lu>",(long unsigned int)inode_nr);
 			recover_file(des_dir,"MAGIC-2", ((i_pathname)?i_pathname : pathname), &inode, inode_nr, 1);
 		}
 		if(i_pathname){

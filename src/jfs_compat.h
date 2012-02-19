@@ -5,7 +5,7 @@
 /* ext3/4 libraries */
 #include <ext2fs/ext2fs.h>
 
-#include "kernel-list.h"
+/*#include "kernel-list.h"
 #include <errno.h>
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -15,10 +15,10 @@
 #define KERN_DEBUG ""
 
 #define READ 0
-#define WRITE 1
+#define WRITE 1*/
 
-#define cpu_to_be32(n) htonl(n)
-#define be32_to_cpu(n) ntohl(n)
+//#define cpu_to_be32(n) htonl(n)
+//#define be32_to_cpu(n) ntohl(n)
 
 typedef unsigned int tid_t;
 typedef struct journal_s journal_t;
@@ -50,7 +50,7 @@ struct journal_s
 	tid_t			j_failed_commit;
 };
 
-#define J_ASSERT(assert)						\
+/*#define J_ASSERT(assert)						\
 	do { if (!(assert)) {						\
 		printf ("Assertion failure in %s() at %s line %d: "	\
 			"\"%s\"\n",					\
@@ -62,9 +62,9 @@ struct journal_s
 
 #define BUFFER_TRACE(bh, info)	do {} while (0)
 
-/* Need this so we can compile with configure --enable-gcc-wall */
+// Need this so we can compile with configure --enable-gcc-wall 
 #ifdef NO_INLINE_FUNCS
 #define inline
-#endif
+#endif*/
 
 #endif /* _JFS_COMPAT_H */

@@ -58,14 +58,6 @@ struct extent_area {
 };
 */
 
-//private an helper functions
-static void dump_xattr_string(FILE*, const char*, int);//subfunction for dump_inode_extra
-static void local_dump_extents(FILE*, const char*, struct ext2_inode *,int , int, int );//print Blocks of inode (ext4)
-static void dump_inode_extra(FILE*, const char* , ext2_ino_t, struct ext2_inode_large*);//print extended attribute of Inode 
-static void finish_range(struct list_blocks_struct*);//subfunction for dump_blocks
-static int list_blocks_proc(ext2_filsys, blk64_t* , e2_blkcnt_t,blk64_t, int, void*);//subfunction for dump_blocks
-static void dump_blocks(FILE*, const char*, struct ext2_inode *);// print the  Datablocks from Inode (ext3)
-
 
 //functions for external use
 int intern_read_inode_full(ext2_ino_t, struct ext2_inode*, int);// read real fs inode 128++
@@ -84,7 +76,7 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block*, ext2_ino_t);//fill a
 //functions for the magic scanner
 struct ext2_inode_large* new_inode(); //create a new inode
 int inode_add_block(struct ext2_inode_large* , blk_t); //add a block to inode
-int inode_add_meta_block(struct ext2_inode_large*, blk_t, blk_t*, blk_t*,unsigned char* ); //add the ext3  indirect Blocks to the inode
+int inode_add_meta_block(struct ext2_inode_large*, blk_t, blk_t*, blk_t*,char* ); //add the ext3  indirect Blocks to the inode
 
 //functions in develop
 int inode_add_extent(struct ext2_inode_large*, struct extent_area*, __u32*, int );

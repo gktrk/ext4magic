@@ -84,6 +84,7 @@ int rename_hardlink_path(char *old, char *neu){
 		}
 		head.pointer = head.pointer->next;
 	}
+	return 0;
 }
 
 
@@ -107,7 +108,7 @@ char* check_link_stack(ext2_ino_t inode_nr, __u32 generation){
 }
 
 
-
+// not used ; gcc warning okay
 static void del_link_stack(struct link_entry* entry){
 	if(entry->name)	
 		free(entry->name);
@@ -146,7 +147,7 @@ void clear_link_stack(){
 
 	fflush(stdout);
 	if (head.count){
-		fprintf(stderr,"Hardlink Database\n", head.count);
+		fprintf(stderr,"Hardlink Database : %lu entries\n", (long unsigned int)head.count);
 	
 		head.pointer = head.begin;
 		while (head.pointer){

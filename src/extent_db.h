@@ -59,8 +59,6 @@ struct extent_db_t {
 	
 
 struct extent_area* new_extent_area();
-//int check_extent_len(struct ext3_extent_header*, struct extent_area* , blk_t );
-static int mark_extent_len(struct extent_db_t*, blk_t, void*);
 struct extent_db_t* extent_db_init(ext2fs_block_bitmap);
 int extent_db_add (struct extent_db_t* db, struct extent_area*, int);
 int extent_db_del(struct extent_db_t* ,blk_t);

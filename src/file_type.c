@@ -42,7 +42,7 @@
 extern ext2_filsys     current_fs ;
 
 // index of the files corresponding magic result strings
-int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, char *buf){
+int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, void *buf){
 
 //Please do not modify the following lines.
 //they are used for indices to the filestypes
@@ -789,16 +789,16 @@ static int follow_bz2lib(unsigned char *buf, __u16 blockcount, __u32 *offset, __
 //----------------------  Decompress
 	p_offset = *offset;
 	total = priv->b_strm.total_in_lo32;
-	priv->b_strm.next_in = buf + p_offset ;
+	priv->b_strm.next_in = (char*)buf + p_offset ;
 	priv->b_strm.avail_in = end - p_offset;
-	priv->b_strm.next_out = out;
+	priv->b_strm.next_out = (char*)out;
 	priv->b_strm.avail_out = OUTLEN;
 
 	while ((z_ret >=0) && (z_ret != BZ_STREAM_END) && (priv->b_strm.avail_in)){
 		z_ret = BZ2_bzDecompress ( &(priv->b_strm) );
 		p_offset = priv->b_strm.total_in_lo32 - total + *offset ;
 		if ((z_ret == BZ_OUTBUFF_FULL) || (!priv->b_strm.avail_out)){
-			priv->b_strm.next_out = out;
+			priv->b_strm.next_out = (char*)out;
 			priv->b_strm.avail_out = OUTLEN;
 			*last_match = p_offset ;
 			z_ret = 0;
@@ -826,8 +826,7 @@ int file_gzip(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 	int			z_flags, b_count, ret = 0;
 	__u32			offset;
 	__u32			last_match = 0;
-	struct priv_zlib_t 	*priv = NULL;
-	
+
 
 	switch (flag){
 		case 0 :
@@ -899,7 +898,7 @@ int file_gzip(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 
 //bzip2
 int file_bzip2(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	int		z_flags, b_count, ret = 0;
+	int		 b_count, ret = 0;
 	__u32		offset;
 	__u32		last_match = 0;
 	
@@ -958,7 +957,7 @@ int file_bzip2(unsigned char *buf, int *size, __u32 scan , int flag, struct foun
 int file_zip(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int			ret = 0;
 	int			j,i, b_count;
-	unsigned char		token[5];
+	char			token[5];
 	__u32			last_match = 0;
 	struct zip_priv_t	*z_priv = NULL;
 	__u32			offset;
@@ -1047,7 +1046,7 @@ int file_lzw(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			return (scan & (M_IS_META | M_CLASS_1)) ? 0 :1 ;
 			break;
 		case 2 :
-			if ((buf[2] & 0x60) || ((buf[2] & 0xF)<12) || ((buf[2] & 0x1F)>16))
+			if ((buf[2] & 0x60) || ((buf[2] & 0x1F)<12) || ((buf[2] & 0x1F)>16))
 				f_data->first = 0;
 			break;
 	}
@@ -1065,7 +1064,6 @@ int file_rpm(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	int			i, z_flags, b_count, ret = 0;
 	__u32			offset;
 	__u32			last_match = 0;
-	struct priv_zlib_t 	*priv = NULL;
 	__u32			h_count,h_size;
 	__u32			p_size = 0;
 	
@@ -1192,7 +1190,7 @@ int file_rpm(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 int file_ttf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	__u32		table_id[9] = {0x70616d63,0x66796c67,0x64616568,0x61656868,0x78746d68,0x61636f6c,0x7078616d,0x656d616e,0x74736f70};
 	int		i,j,id_count,ret = 0;
-	__u16		tables, s_range, shift;
+	__u16		tables ; //s_range, shift;
 	__u32		*p, id, tmp;
 	unsigned char	*c;
 
@@ -1260,7 +1258,7 @@ int file_iso9660(unsigned char *buf, int *size, __u32 scan , int flag , struct f
 	__u16		*p_16;
 	int		ssize;
 	int		ret = 0;
-	unsigned char		cd_str[] = "CD001";
+	char		cd_str[] = "CD001";
 
 	switch (flag){
 		case 0 :
@@ -1288,7 +1286,7 @@ int file_iso9660(unsigned char *buf, int *size, __u32 scan , int flag , struct f
 			if (current_fs->blocksize > 2048){
 				p_32 = (__u32*)(buf + 0x8050);
 				p_16 = (__u16*)(buf + 0x8080);
-				if ((!strncmp((buf+0x8001),cd_str,5)) && (ext2fs_le32_to_cpu(*(p_32 +1)) == ext2fs_be32_to_cpu(*p_32))){
+				if ((!strncmp(((char*)buf+0x8001),cd_str,5)) && (ext2fs_le32_to_cpu(*(p_32 +1)) == ext2fs_be32_to_cpu(*p_32))){
 					lsize = (__u64)(ext2fs_le32_to_cpu(*p_32)) * ext2fs_le16_to_cpu(*p_16);
 					f_data->size = lsize & 0xFFFFFFFF;
 					f_data->h_size = lsize >> 32;
@@ -1539,8 +1537,8 @@ static int follow_cpio(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 		   char    c_namesize[8];
 		   char    c_check[8];
 	   };
-	unsigned char	footer[]="TRAILER!!!";
-	int				i, j,ret = 1;
+	char				footer[]="TRAILER!!!";
+	int				i, ret = 1; //j;
 	__u64 				f_offset = (__u64) *offset;
 	__u32				n_len ;
 	__u64				f_len ;
@@ -1555,7 +1553,7 @@ static int follow_cpio(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 		f_len = 0;
 		old_cpio = (struct header_old_cpio*) (buf+f_offset) ;
 		if ((old_cpio->c_magic == 0xc771)||(old_cpio->c_magic == 0x71c7)){
-			if (strstr(buf+f_offset+sizeof(struct header_old_cpio),footer))
+			if (strstr((char*)buf+f_offset+sizeof(struct header_old_cpio),footer))
 				ret=2;
 
 			if (old_cpio->c_magic == 0xc771)
@@ -1574,7 +1572,7 @@ static int follow_cpio(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 		else{
 			if( (buf[f_offset] == 0x30)&&(buf[f_offset+1] == 0x37)&&(buf[f_offset+2] == 0x30)&&(buf[f_offset+3] == 0x37)&&(buf[f_offset+4] == 0x30)){
 				if (buf[f_offset+5] == 0x37){
-					if (strstr(buf+f_offset+sizeof(struct cpio_odc_header),footer))
+					if (strstr((char*)buf+f_offset+sizeof(struct cpio_odc_header),footer))
 						ret=2;
 					odc_header = (struct cpio_odc_header*) old_cpio;
 					o_str = (__u8*) &(odc_header->c_namesize);
@@ -1596,7 +1594,7 @@ static int follow_cpio(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 					}
 				}
 				else {
-					if (strstr(buf+f_offset+sizeof(struct cpio_newc_header),footer))
+					if (strstr((char*)buf+f_offset+sizeof(struct cpio_newc_header),footer))
 						ret=2;
 					newc_header = (struct cpio_newc_header*) old_cpio;
 					memcpy(help,newc_header->c_namesize,8);
@@ -1628,7 +1626,7 @@ int file_cpio(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 	int 	ret = 0;
 	__u32	offset;
 	__u32	last_match = 0;
-	unsigned char	token[]="TRAILER!!!";
+	char	token[]="TRAILER!!!";
 
 	switch (flag){
 		case 0 :
@@ -1676,8 +1674,8 @@ int file_cpio(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 	return ret;
 }	 
 
-
-static int a2u(unsigned char *buf, __u32 *value){
+//function currently not used 
+/*static int a2u(unsigned char *buf, __u32 *value){
 	int		count=0;
 	__u32		tmp=0;
 	
@@ -1699,7 +1697,7 @@ static int a2u(unsigned char *buf, __u32 *value){
 		return count;
 	}
 	return 0;
-}
+}*/
 
 
 
@@ -2007,7 +2005,7 @@ int file_pdf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	__u32	last_match = 0;
 	int	b_count;
 	struct priv_pdf_t *priv = NULL;
-	unsigned char	token[6];
+	char	token[6];
 	sprintf(token,"%c%c%c%c%c",0x25,0x45,0x4f,0x46,0x0a);
 
 	switch (flag){
@@ -2021,7 +2019,7 @@ int file_pdf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 					else{ 
 					j = strlen(token) -2;
 					i = (*size) -2;
-					if(buf[i] != (char)0x46)
+					if(buf[i] != 0x46)
 						i--;
 		
 					while ((i >= 0) && (j >= 0) && (buf[i] == token[j])){
@@ -2108,7 +2106,7 @@ __u16	save_flag = flag;
 				return 0;
 			break;
 			case 0x800:
-				if (((i-f_offset)==8) && (!(strncmp("Subject:", buf+f_offset, 8)))){
+				if (((i-f_offset)==8) && (!(strncmp("Subject:", (char*)buf+f_offset, 8)))){
 					flag = 0x200; 
 					exception = 2;
 				}
@@ -2172,7 +2170,7 @@ static int read_smtp_codestr(unsigned char *buf,__u32 f_offset, int len){
 		}
 		token[i] = 0;
 		type++;
-		if (!strncmp(buf + 27 + f_offset,token,strlen(token))){
+		if (!strncmp((char*)buf + 27 + f_offset,token,strlen(token))){
 			flag = 1;	
 			break;
 		}
@@ -2186,7 +2184,7 @@ static int read_smtp_codestr(unsigned char *buf,__u32 f_offset, int len){
 static int smtp_decode_content_type(unsigned char * buf, __u32 offset, int len, struct priv_smtp_t *priv){
 	int i,j,slot;	
 		
-	if (!strncmp("Content-Type:",buf+offset,12)) {
+	if (!strncmp("Content-Type:",(char*)buf+offset,12)) {
 		i = 13;
 		while ((i<(len-6)) && (buf[offset +i] != ';')) i++;
 		while ((i<(len-6)) && (!((buf[offset +i] == 'd') && // dary=
@@ -2229,7 +2227,7 @@ static int follow_smtp(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 	__u32		end = (blockcount * current_fs->blocksize)-20;
 	int		len = 0;
 	int		tmp_slot,slot = 0;
-	__u16		tmp_flag,crc,crc_d ;
+	__u16		tmp_flag = 0; //crc,crc_d ;
 		
 	if (end == f_offset)
 		end++;
@@ -2261,16 +2259,16 @@ static int follow_smtp(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 						priv->flag = (priv->flag & ~0x0f) | 1;
 					break;
 					default :
-						if (!strncmp("From: ", buf+f_offset, 6)
-						 || !strncmp("From ", buf+f_offset, 5)
-						 || !strncmp("To: ", buf+f_offset, 4)
-						 || !strncmp("Reply-", buf+f_offset, 6)
-						 || !strncmp("Cc: ", buf+f_offset, 4)
-						 || !strncmp("Bcc: ", buf+f_offset, 5)
-						 || !strncmp("Content-", buf+f_offset, 8)
-						 || !strncmp("MIME-Version: ", buf+f_offset, 14)){
+						if (!strncmp("From: ", (char*)buf+f_offset, 6)
+						 || !strncmp("From ", (char*)buf+f_offset, 5)
+						 || !strncmp("To: ", (char*)buf+f_offset, 4)
+						 || !strncmp("Reply-", (char*)buf+f_offset, 6)
+						 || !strncmp("Cc: ", (char*)buf+f_offset, 4)
+						 || !strncmp("Bcc: ", (char*)buf+f_offset, 5)
+						 || !strncmp("Content-", (char*)buf+f_offset, 8)
+						 || !strncmp("MIME-Version: ", (char*)buf+f_offset, 14)){
 							 if(buf[f_offset + 8] == 'T') {
-								if (!strncmp("Content-Transfer-Encoding:",buf+f_offset,26)){ 
+								if (!strncmp("Content-Transfer-Encoding:",(char*)buf+f_offset,26)){ 
 									priv->flag = ((priv->flag & 0xff)|(read_smtp_codestr(buf,f_offset,len)<<8));
 //FIXME									if (priv->flag & 0xff00
 								}
@@ -2311,12 +2309,12 @@ static int follow_smtp(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 						return 0;	
 					
 				}
-				if (!strncmp("--", buf+f_offset, 2)){
+				if (!strncmp("--", (char*)buf+f_offset, 2)){
 					tmp_flag = (priv->flag & ~0x0f) | 3;
 					priv->flag = (priv->flag & ~0x0f) | 2;
 					break;
 				}
-				if (!strncmp("From ", buf+f_offset, 5)){
+				if (!strncmp("From ", (char*)buf+f_offset, 5)){
 					for(i=0;i<MAX_SMTP_CONTENT;i++)
 						if (priv->slot[i].c_flag)
 								break;
@@ -2353,9 +2351,9 @@ static int follow_smtp(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 						f_offset++;
 					break;
 					default:
-						if ((len > 30) && (!strncmp("This ", buf+f_offset, 5))){
+						if ((len > 30) && (!strncmp("This ", (char*)buf+f_offset, 5))){
 							for(i=6;((i<len) && (!(buf[f_offset +i] == 'M')));i++);
-							if ((i<len) && (!strncmp("MIME format", buf+f_offset+i, 11))){
+							if ((i<len) && (!strncmp("MIME format", (char*)buf+f_offset+i, 11))){
 								*last_match = f_offset;
 								priv->flag = (priv->flag & ~0x0f) | 1;
 							}
@@ -2461,7 +2459,7 @@ static int follow_smtp(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 					break;
 					default:
 						if(buf[f_offset + 8] == 'T'){
-							if(!strncmp("Content-Transfer-Encoding:",buf+f_offset,26)){ 
+							if(!strncmp("Content-Transfer-Encoding:",(char*)buf+f_offset,26)){ 
 								priv->slot[slot].c_flag = 3;
 								priv->slot[slot].c_code = (read_smtp_codestr(buf,f_offset,len)<<8);
 							}
@@ -2503,7 +2501,7 @@ static int follow_smtp(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 						if (!priv->len)
 							priv->len = len;
 						
-						if ((len > 7)&&(!strncmp("--", buf+f_offset, 2))){
+						if ((len > 7)&&(!strncmp("--", (char*)buf+f_offset, 2))){
 							tmp_flag = priv->flag;
 							priv->flag = (priv->flag & ~0x0f) | 2;
 							break;
@@ -2577,9 +2575,9 @@ int file_smtp(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 
 //ps   switch only to pdf or txt
 int file_ps(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	unsigned char *c;
 	int 	ret = 1;
-	unsigned char	token[9] = "PS-Adobe";
+//	unsigned char *c;
+//	unsigned char	token[9] = "PS-Adobe";
 
 	switch (flag){
 		case 0 :
@@ -2685,7 +2683,7 @@ static int follow_tar(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 
 //tar
 int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-	int 	i,ret = 0;
+	int 	ret = 0;
 	int	b_count;
 	__u32	offset;
 	__u32	last_match = 0;
@@ -2699,7 +2697,8 @@ int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				else
 					*size = ((*size) + 1023) & ~1023 ;
 	
-				if (((f_data->inode->i_flags & EXT4_EXTENTS_FL) &&(f_data->inode->i_block[12])) || (f_data->size < f_data->inode->i_size))  //FIXME 
+				if (((!(f_data->inode->i_flags & EXT4_EXTENTS_FL)) &&(f_data->inode->i_block[12])) || (f_data->size < f_data->inode->i_size)
+				 || (f_data->scantype & DATA_READY))  //FIXME 
 					ret = 1;
 			}
 			break;
@@ -2707,7 +2706,7 @@ int file_tar(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			if (scan & M_TAR)
 				ret = 1;
 			 else 
-				ret = ((scan & M_IS_META | M_CLASS_1 )||(f_data->scantype & DATA_READY)) ? 0 :1 ;
+				ret = ((scan & (M_IS_META | M_CLASS_1))||(f_data->scantype & DATA_READY)) ? 0 :1 ;
 			break;
 		case 2 :
 			offset = 0;
@@ -3600,7 +3599,7 @@ int file_bmp(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				}
 				else{
 					wi = ((__u32)*(buf+18)) | ((__u32)*(buf+19))<<8 | ((__u32)*(buf+20))<<16 | ((__u32)*(buf+21))<<24 ;
-					colors = colors = ((__u16)*(buf+28)) | ((__u16)*(buf+29))<<8 ;
+					colors = ((__u16)*(buf+28)) | ((__u16)*(buf+29))<<8 ;
 					switch (colors){
 					case 1:
 						wi = (((((wi+0x7) & ~0x7) / 8) + 1) & ~1);
@@ -3693,12 +3692,12 @@ int file_png(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				else{
 //				if((!(f_data->inode->i_flags & EXT4_EXTENTS_FL))){
 					if (*size > 8){
-						if (strstr(buf + (*size) -8,"END"))	
+						if (strstr((char*)buf + (*size) -8,"END"))	
 							ret=1;
 					}
 					else{
 						if (*size >= 5){
-							if (strtok(buf,"D" ))
+							if (strtok((char*)buf,"D" ))
 							ret=1;
 						}
 						else
@@ -3841,6 +3840,7 @@ static int follow_pcx(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 	__u32			end = blockcount * current_fs->blocksize;
 	__u16	w,h,p;
 	struct pcx_priv_t 	*p_data = (struct pcx_priv_t*) priv;
+	w = h = p = 0;
 
 	while ( (ret == 1) && (f_offset < (end-1))){
 		for (p = ((flag) ? p_data->p:0) ; p < p_data->planes ; p++){
@@ -4250,7 +4250,6 @@ return ret;
 //xcf
 int file_xcf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 			i,ret = 0;
-	struct xcf_priv_t  	*priv;
 	__u32			offset;
 	__u32			last_match = 0;
 	__u32			b_count;
@@ -4399,7 +4398,7 @@ int file_tga(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	__u32	ssize = 0;
 	__u32	psize = 0;
 	int 	ret = 0;
-	unsigned char	token[]="-XFILE.";
+	char	token[]="-XFILE.";
 
 	switch (flag){
 		case 0 :	
@@ -4528,7 +4527,7 @@ int file_mkv(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			break;
 		case 2 :
 			p = buf;
-			if (strncmp(p,header,4))
+			if (strncmp((char*)p,(char*)header,4))
 				break;
 			p +=4;
 			i = read_ebml(&result,(void*)p);
@@ -4537,7 +4536,7 @@ int file_mkv(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 			offset = result + 4 + i;
 			p += (__u32) result + i;
 			 
-			if (strncmp(p,segment,4))
+			if (strncmp((char*)p,(char*)segment,4))
 				break;	
 			p +=4;
 			i = read_ebml(&result,(void*)p);
@@ -4799,7 +4798,7 @@ static int follow_flac(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 	__u32			blocksize;
 	__u32			bits_per_sample;
 	__u32			channel;
-	__u64			total_samples;
+//	__u64			total_samples;
 	__u32			f_offset = *offset;
 
 
@@ -4820,7 +4819,7 @@ static int follow_flac(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 			else{  //meta data
 				size = (buf[f_offset+1]<<16) + (buf[f_offset+2]<<8) + buf[f_offset+3] +4;
 				if(!(buf[f_offset] & 0x7f)){ //stream info
-					blocksize = buf[f_offset+4]<<8 + buf[f_offset+5];
+					blocksize = (buf[f_offset+4]<<8) + buf[f_offset+5];
 					bits_per_sample = ((buf[f_offset+16] & 0x01) << 4) + ((buf[f_offset+17] & 0xf0) >> 4) +1 ;
 					channel = ((buf[f_offset+16] & 0x0e) >>1) +1;
 //					total_samples = (((__u64)(buf[f_offset+17] & 0x0f0))<<32)+(buf[f_offset+18] <<24)+(buf[f_offset+19] <<16)+
@@ -4989,7 +4988,7 @@ int file_flac(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 	__u32	b_count;
 	int 	ret = 0;
 	
-static const unsigned char 	token[4]= {0x66,0x4c,0x61,0x43};
+//static const unsigned char 	token[4]= {0x66,0x4c,0x61,0x43};
 
 switch (flag){
 		case 0 :
@@ -5054,7 +5053,8 @@ static int follow_mpeg(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 	int 		ret =1;
     	__u32	 	end;
 	__u32		frame_offset = *offset;
-    	__u32	 	tmp, i ;
+    	__u32	 	tmp = 0;
+	__u32		i ;
 	int		tolerance = 64; //for incorrect zero-byte padding
 	
 	end = blockcount * current_fs->blocksize ;
@@ -5480,7 +5480,7 @@ int file_psd(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 //pnm
 int file_pnm(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int		x,y,d,s ;
-	unsigned char	*c, *txt;
+	char	*c, *txt;
 	__u32		ssize = 0;
 	int 		ret = 0;
 
@@ -5504,7 +5504,7 @@ case 1:
 	break;
 
 case 2:
-	c = buf;
+	c = (char*)buf;
 	if (*c =='P'){
 		c++;
 		txt = c + 1;
@@ -5536,7 +5536,7 @@ case 2:
 					 break;
 				case 52 :
 					ssize = ((x*y)+7) / 8 ;
-					ssize += (__u32)(txt -buf);
+					ssize += (__u32)(txt - (char*)buf);
 					break;
 				case 53 :
 					d = atoi(txt);
@@ -5549,7 +5549,7 @@ case 2:
 							ssize = 2;
 					if (ssize){
 						ssize *= (x*y);
-						ssize += (__u32)(txt - buf);
+						ssize += (__u32)(txt - (char*)buf);
 					}
 					break;
 				case 54 :
@@ -5563,7 +5563,7 @@ case 2:
 							ssize = 6;
 					if (ssize){
 						ssize *= (x*y);
-						ssize += (__u32)(txt - buf);
+						ssize += (__u32)(txt - (char*)buf);
 					}
 					break;
 			}
@@ -6164,7 +6164,7 @@ int file_CDF(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	__u32			FAT_blocks,extra_FAT_blocks;
 	__u32			last_match = 0;
 	__u16			shift;
-	__u32			offset,last_match_blk = 0;
+	__u32			offset; //,last_match_blk = 0;
 
 	switch (flag){
 		case 0 :
@@ -6365,7 +6365,7 @@ int file_luks(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 		case 1 :return (scan & (M_IS_META | M_CLASS_1 )) ? 0 :1 ;
 			break;
 		case 2 :
-			if (!(strncmp(buf,luksmagic,6))){
+			if (!(strncmp((char*)buf,(char*)luksmagic,6))){
 				f_data->size = ext2fs_be32_to_cpu(phdr->payloadOffset) * 512;	
 				f_data->scantype = DATA_MIN_LENGTH ;
 				ret = 1;
@@ -6626,7 +6626,7 @@ static const unsigned char avr_header[4]= {'2','B','I','T'};
 
 //au (NeXT)
 int file_au(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
-static const unsigned char au_header[4]= {'.','s','n','d'};
+//static const unsigned char au_header[4]= {'.','s','n','d'};
 struct au_header_t
 {
 	__u32 	magic;
@@ -6999,7 +6999,7 @@ int file_fli(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 				ret =  1;
 			}
 			else 
-				f_data->func == file_none;
+				f_data->func = file_none;
 			break;
 	}
 	return ret;
@@ -7055,8 +7055,7 @@ static int follow_ac3(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 //ac3  
 int file_ac3(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	
-	int 			i, ret = 0;
-	unsigned char		*ogg_h;
+	int 			ret = 0;
 	__u32			b_count;	
 	__u32			offset = 0;
 	__u32			last_match = 0;
@@ -7160,7 +7159,7 @@ static int follow_ogg(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32
 //ogg  
 int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	
-	int 			i, ret = 0;
+	int 			ret = 0;
 	unsigned char 		token[2][7]= {{0x80, 't', 'h', 'e', 'o', 'r', 'a'},
 					      {0x01, 'v', 'i', 'd' ,'e', 'o', 0x00}};
 	unsigned char		*ogg_h;
@@ -7224,7 +7223,7 @@ int file_ogg(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 }
 
 
-static int follow_mp3(unsigned char *buf, __u16 blockcount, int *offset, int *flag, __u32 *last_match, unsigned char* head){
+static int follow_mp3(unsigned char *buf, __u16 blockcount, __u32 *offset, int *flag, __u32 *last_match, unsigned char* head){
 	#define MPEG_V25        0
 	#define MPEG_V2         2
 	#define MPEG_V1         3
@@ -7444,8 +7443,8 @@ switch (flag){
 				__u32 		 b_size = current_fs->blocksize;
 				unsigned char	 *v_buf = buf - b_size; 
 				if (reverse < (b_size -1)){
-					if (((v_buf[b_size-reverse] == head[0]) && (v_buf[b_size-reverse +1 ] == head[1]) && (v_buf[b_size-reverse+2] == head[2] & ~0x2)) ||
-					((v_buf[b_size-reverse-1] == head[0]) && (v_buf[b_size-reverse] == (head[1])) && (v_buf[b_size-reverse+1] == head[2] | 0x2))){
+					if (((v_buf[b_size-reverse] == head[0]) && (v_buf[b_size-reverse +1 ] == head[1]) && (v_buf[b_size-reverse+2] == (head[2] & ~0x2))) ||
+					((v_buf[b_size-reverse-1] == head[0]) && (v_buf[b_size-reverse] == (head[1])) && (v_buf[b_size-reverse+1] == (head[2] | 0x2)))){
 #ifdef DEBUG_MAGIC_MP3_STREAM
 						fprintf(stderr,"MP3-CHECK: Block %lu : is mp3-data but not begin of file\n", f_data->first);
 						blockhex(stderr,(void*)(v_buf+b_size-reverse-16),0,64);
