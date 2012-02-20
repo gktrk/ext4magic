@@ -365,8 +365,8 @@ __u32		t_after = 0;
 struct stat  filestat;
 
 
- // Sanity checks on the user.
-if ( argc < 3 )  
+ // Sanity checks on the user. 
+if ((argc == 1) || ((argc == 2) && (!(strstr(argv[1],"-V")))))    // allow '-V' as single argument
    { 
      printf("%s : Error: Missing device name and options.\n", progname);
      printf("%s \n", usage);
