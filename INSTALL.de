@@ -48,8 +48,8 @@ libext2fs-devel                 e2fslibs-dev        e2fsprogs-devel
 libuuid-devel                   uuid-dev            libuuid-devel 
 libblkid-devel                  libblkid-dev        libblkid-devel 
 file-devel			libmagic-dev	    file-devel
-zlib-devel			?		    ?
-libbz2-devel			?		    ?
+zlib-devel			zlib1g-dev		    ?
+libbz2-devel			libbz2-dev		    ?
 
 Entpacke das Archive und mit cd in das Verzeichnis wechseln
 

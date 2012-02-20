@@ -17,18 +17,19 @@ Furthermore, there are dependencies to following libraries:
  
  libmagic
  libext2fs
-Versions >= 0.3.0
  libz
  libbz2
 
-These libraries are present on any Linux, but you need actual versions.
+These libraries are present on any Linux, but you need some actual versions.
 Check the version with the following commands:
 
    # file -v
    # /sbin/fsck.ext3 -V
 
 the version of "file" must be > 5.03
-and the EXT2FS Library version >= 1.41.9
+and the EXT2FS Library version >= 1.41.9       (libext2fs-1.42 see Known Bugs) 
+
+
 
 Under these conditions, installation is fairly simple.
 Install the following devel packages:
@@ -40,8 +41,8 @@ libext2fs-devel                 e2fslibs-dev        e2fsprogs-devel
 libuuid-devel                   uuid-dev            libuuid-devel 
 libblkid-devel                  libblkid-dev        libblkid-devel 
 file-devel			libmagic-dev	    file-devel
-zlib-devel			?		    ?
-libbz2-devel			?		    ?
+zlib-devel			zlib1g-dev		    ?
+libbz2-devel			libbz2-dev		    ?
 
 unzip the archive and cd into the directory
 
@@ -60,16 +61,26 @@ and install as root
 
 this is everything, and it installs the following files
 
-/usr/local/sbin/ext4magic  
+/usr/local/sbin/ext4magic
 /usr/local/share/man/man8/ext4magic.8
-----------------------------------------------------------------------------------
 
 
 
+Optional extensions
+====================
+with configure the following extensions can be activated
+
+--enable-expert-mode      # use of file system superblock copies 
+                            and recover from partially destroyed file systems
+
+--enable-file-attr        # restore also file attributes
 
 
-Detailed Install Howto
-============================
+===================================================================================
+
+
+Detailed Install Howto for special cases
+========================================
 
 Following detailed instructions for installing considered special cases,
 depends on the library versions also on older operating systems or
@@ -77,7 +88,7 @@ if the devel package can not be found or if certain libraries to be statically l
 
 
 
-The file-command an the library libmagic
+The file-command and the library libmagic
 ========================================
 In versions ext4magic > 0.1.4  you need the package of the  Linux command "file".
 Needed a version > 5.03 (see also BUG:#017561) for stabil magic-functions in ext4magic.

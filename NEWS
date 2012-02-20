@@ -1,3 +1,8 @@
+ext4magic 0.3.0		switch to BETA status
+			Some minor bugs been fixed. compiler warnings eliminated
+			English documentation translation is started
+			http://openfacts2.berlios.de/wikien/index.php/BerliosProject:Ext4magic
+
 
 ext4magic 0.3.0 pv2	A new recover sub-step. Inode found in partially overwritten areas of the
 			journal can now also recovers. It is impossible to identify the inode number,

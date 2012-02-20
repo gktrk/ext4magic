@@ -1,6 +1,41 @@
+TODO over of the next year ;-)
+
+- English documentation
+	we working on it, but we need help !!!!!!!
+	http://openfacts2.berlios.de/wikien/index.php/BerliosProject:Ext4magic
+
+	
+- support for ecrypfs in the Magic-function
+	is particularly interesting for Ubuntu user
+
+
+- the new Magic-function for ext3
+	old 0.2.x function is very slow and inaccurate
+	and is not compatible with the Magic-functions of the ext4 in 0.3.x
+	a support for both file systems is planned with 0.4.x
+
+
+- better support for source code and other text files
+	"file" can not detect the text file type if a long comment at begin of the file
+	therefore the Magic-function recovers not all
+	
+	shell example : for a possibility solution approach
+	# file -i ext4magic.c
+	ext4magic.c: text/plain; charset=us-ascii
+
+	# sed '1,/^$/d' ext4magic.c | file -i -
+	/dev/stdin: text/x-c; charset=us-ascii
+
+
+- ext4 : with the Magic-function it should be possible to recover also some file types
+  if the deleted file has existed with 2 to 4 extents
+	the conditions and preparations are already included
+	the possible individual extents are already collected in the database
+	a function is needed to find out and check the correct order
+
+
+
 Currently known issues
-
-
 - on big-endian the crtime and deleted directory entry not correct if use the
   real libfunction for read the inode.
   The modified version to read the Journal inode works. BUG:#017304 ; #017304

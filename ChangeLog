@@ -1,5 +1,5 @@
-
-
+0.3.0		switch to BETA status
+		Some minor bugs been fixed. compiler warnings eliminated
 
 
 0.3.0.pv2	new : a new partial step, recovers journal lost inodes
