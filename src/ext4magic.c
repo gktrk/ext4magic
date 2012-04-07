@@ -340,7 +340,7 @@ char		defaultdir[] = "RECOVERDIR" ;
 const char      *usage = "\next4magic -M [-j <journal_file>] [-d <target_dir>] <filesystem> \n\
 ext4magic -m [-j <journal_file>] [-d <target_dir>] <filesystem> \n\
 ext4magic [-S|-J|-H|-V|-T] [-x] [-j <journal_file>] [-B n|-I n|-f <file_name>|-i <input_list>] [-t n|[[-a n][-b n]]] [-d <target_dir>] [-R|-r|-L|-l] [-Q] <filesystem>";
-int             c;
+int             l,c ;
 int             open_flags = EXT2_FLAG_SOFTSUPP_FEATURES;
 int		recovermodus = 0 ;
 int 		disaster = 0;
@@ -584,7 +584,8 @@ while ((c = getopt (argc, argv, "TJRMLlmrSxi:t:j:f:Vd:B:b:a:I:H")) != EOF) {
 			}				
 			mode |= COMMAND_INODE ;
 			mode |= COMMAND_PATHNAME ;
-			pathname = malloc(512);
+			l = strlen(optarg);
+			pathname = malloc( l+1 );
 			strcpy(pathname,optarg);
 			break;
 

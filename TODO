@@ -3,16 +3,19 @@ TODO over of the next year ;-)
 - English documentation
 	we working on it, but we need help !!!!!!!
 	http://openfacts2.berlios.de/wikien/index.php/BerliosProject:Ext4magic
+  Current stat 04.2012: not ready but looks good  
 
 	
 - support for ecrypfs in the Magic-function
 	is particularly interesting for Ubuntu user
+  Current stat 04.2012: ready for test
 
 
 - the new Magic-function for ext3
 	old 0.2.x function is very slow and inaccurate
 	and is not compatible with the Magic-functions of the ext4 in 0.3.x
 	a support for both file systems is planned with 0.4.x
+  Current stat 04.2012: open
 
 
 - better support for source code and other text files
@@ -25,6 +28,8 @@ TODO over of the next year ;-)
 
 	# sed '1,/^$/d' ext4magic.c | file -i -
 	/dev/stdin: text/x-c; charset=us-ascii
+  Current stat 04.2012: The current libmagic-5.11 eliminated the problem.
+			Changes within ext4magic therefore, not required
 
 
 - ext4 : with the Magic-function it should be possible to recover also some file types
@@ -32,7 +37,7 @@ TODO over of the next year ;-)
 	the conditions and preparations are already included
 	the possible individual extents are already collected in the database
 	a function is needed to find out and check the correct order
-
+  Current stat 04.2012: open
 
 
 Currently known issues

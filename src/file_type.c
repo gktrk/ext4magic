@@ -55,7 +55,7 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, void *buf
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf x-7z-compressed ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm x-python x-java PEM SGML libtool M3U tcl POD PPD configure ruby sed expect ssh text ";
 //Files not found as mime-type
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image Composite SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS python ESRI=Shape CDF ";
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image Composite SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS python ESRI=Shape CDF ecryptfs ";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -7005,6 +7005,63 @@ int file_fli(unsigned char *buf, int *size, __u32 scan , int flag, struct found_
 	return ret;
 }
 
+//file_ecryptfs
+int file_ecryptfs(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 		ret = 0;
+	__u32		blz,count;
+	__u64		lsize,ssize;
+	
+
+	switch (flag){
+		case 0: 
+			if (f_data->size || f_data->h_size) {
+				if (f_data->scantype & DATA_METABLOCK){
+					f_data->inode->i_size_high = f_data->h_size;
+					f_data->inode->i_size = f_data->size;
+					*size = current_fs->blocksize;
+					ret = 1;
+				}
+				else { 
+					lsize = (__u64)f_data->h_size << 32;
+					lsize += f_data->size;
+					ssize = (__u64)f_data->inode->i_size_high << 32;
+					ssize += f_data->inode->i_size;
+					if (lsize > ssize)
+						ret = 0;
+					else{
+						f_data->inode->i_size = f_data->size;
+						*size = current_fs->blocksize;
+						ret = 1;
+					}
+				}
+			}
+		break;
+		case 1:
+			return (scan & (M_IS_META | M_CLASS_1 | M_BLANK | M_TXT)) ? 0 : 1 ;
+		break;
+		case 2:
+			lsize = ((__u64)buf[0]<<56)+((__u64)buf[1]<<48)+((__u64)buf[2]<<40)+((__u64)buf[3]<<32)+
+			        (buf[4]<<24)+(buf[5]<<16)+(buf[6]<<8)+buf[7];
+			blz = (buf[20]<<24)+(buf[21]<<16)+(buf[22]<<8)+buf[23];
+			count = (buf[24]<<8)+buf[25];
+			if (!(blz & 0x3ff)){
+		//		if (!lsize) lsize++;
+				lsize += (blz *count);
+
+				f_data->size = lsize & 0xFFFFFFFF;
+				f_data->size = (f_data->size + (blz-1)) & (~(blz-1)); 
+				f_data->h_size = lsize >> 32;
+				f_data->scantype = DATA_LENGTH;
+				ret =1;
+			}
+		break;
+	}
+	return ret;
+}
+
+
+
+
 
 static int follow_ac3(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32 *last_match,  int flag){
 	static const __u16	tab[38][3] = {
@@ -8690,6 +8747,11 @@ void get_file_property(struct found_data_t* this){
 		case 0x0827     :               //CDF
 	              this->func = file_CDF ;
 	              strncat(this->name,".doc",7);
+		break;
+
+		case 0x0828     :               //ecryptfs
+	              this->func = file_ecryptfs ;
+	              strncat(this->name,".ecrypt",8);
 		break;
 	//----------------------------------------------------------------
 		default:

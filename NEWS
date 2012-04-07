@@ -1,3 +1,5 @@
+			new : support for ecryptfs by Magic-function
+
 ext4magic 0.3.0		switch to BETA status
 			Some minor bugs been fixed. compiler warnings eliminated
 			English documentation translation is started

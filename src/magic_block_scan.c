@@ -509,6 +509,15 @@ return flag;
 } 
 
 
+static int is_ecryptfs(unsigned char* buf){
+	int ret = 0;
+	if ((!buf[0]) && (!buf[20]) && (!buf[21]) && (buf[22]) && (!buf[23]) && (!buf[24]) &&  
+	    ((buf[8] ^ buf[12]) == 0x3c) && ((buf[9] ^ buf[13]) == 0x81) && ((buf[10] ^ buf[14]) == 0xb7) && ((buf[11] ^ buf[15]) == 0xf5))
+		ret =1;
+	return ret;
+}
+
+
 //magic scanner 
 //FIXME 
 static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_f, char *magic_buf, __u32 size, blk_t blk, int deep){
@@ -647,7 +656,10 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	}
 	else{
 		if ((strstr(magic_buf,"application/octet-stream")) && (!(strncmp(text,"data",4)))){
-			retval |= M_DATA;
+			if (is_ecryptfs (buf))
+				strncpy(text,"ecryptfs ",9);
+			else
+				retval |= M_DATA;
 		}
 	}
 
@@ -693,7 +705,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	}
 
 	if (strstr(magic_buf,"application/octet-stream")){
-		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker matroska LZMA Audio=Visual Sample=Vision ISO=Media ext2 ext3 ext4 LUKS python ESRI=Shape ";
+		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker matroska LZMA Audio=Visual Sample=Vision ISO=Media ext2 ext3 ext4 LUKS python ESRI=Shape ecryptfs ";
 		p_search = searchstr;
 		while (*p_search){
 			len=0;
