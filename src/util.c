@@ -176,20 +176,20 @@ for (group = 0 ; group < fs->group_desc_count ; group++){
 					ext2fs_le32_to_cpu(inode->i_crtime) : 0 ;
 
 			for (j=1;j <= cm ; j++){
-				if ((d_time < hist[j].time) && (d_time > hist[j-1].time)){
+				if ((d_time <= hist[j].time) && (d_time > hist[j-1].time)){
 			 		hist[j].d_count++; 
 			 break;
 				}
 
 				if (cr_time){
-					if ((cr_time < hist[j].time) && (cr_time > hist[j-1].time)){
+					if ((cr_time <= hist[j].time) && (cr_time > hist[j-1].time)){
 							hist[j].cr_count++;
 							crt_found = 1;
 							cr_time = 0 ;
 					}
 				}
 
-				if ((c_time < hist[j].time) && (c_time > hist[j-1].time)){
+				if ((c_time <= hist[j].time) && (c_time > hist[j-1].time)){
 		 			hist[j].c_count++; 
 			 break;
 				}
