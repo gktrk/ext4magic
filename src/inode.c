@@ -739,6 +739,18 @@ struct ring_buf* get_j_inode_list(struct ext2_super_block *es, ext2_ino_t inode_
 #endif
 			continue;
 		}
+//Correct d_time anomalies if directory delete process not completed  BUG: #18730
+		if ((LINUX_S_ISDIR(ext2fs_le16_to_cpu(inode_pointer->i_mode))) &&
+			ext2fs_le32_to_cpu(inode_pointer->i_dtime) && ext2fs_le32_to_cpu(inode_pointer->i_blocks) &&
+			ext2fs_le32_to_cpu(inode_pointer->i_size) && (!ext2fs_le16_to_cpu(inode_pointer->i_links_count)) &&
+			ext2fs_le32_to_cpu(inode_pointer->i_ctime) != ext2fs_le32_to_cpu(inode_pointer->i_dtime)){
+			if ( buf->count && LINUX_S_ISDIR(item->inode->i_mode) && item->inode->i_blocks){
+				continue;
+			}
+			else{
+				inode_pointer->i_dtime = 0;
+			}
+		}
 //inode with the same ctime + the same size and links and <= block_count, skipped
  		if (ext2fs_le32_to_cpu(inode_pointer->i_ctime) == ctime){
 			if (item) {  
