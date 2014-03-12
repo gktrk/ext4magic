@@ -378,7 +378,7 @@ _________________________________________________________________________
 # Help-Script for ext4magic (needed is dump2fs >= 1.41.9)
 # to identify options for the backup superblocks
 # to restore of a partially damaged filesystem with ext4magic
-# Autor robi@users.berlios.de (Version 1.1 vom 03.06.2011)
+# Autor robi6@users.sf.net (Version 1.1 vom 03.06.2011)
 
 if [ -b "$1" -o -f "$1" ]
 then
