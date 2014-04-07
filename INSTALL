@@ -96,10 +96,10 @@ Which version is installed displays the following command
 
 # file -v
 
-If found 5.04 on your Linux, install also the devel package, or you must create a symlink of the library. (see follow)
+If found >=  5.04 on your Linux, install also the devel package, or you must create a symlink of the library. (see follow)
 
 
-No version 5.04 for your Linux available? You can also install version file-5.04  from source.
+No version >= 5.04 for your Linux available? You can also install version file-5.??  from source.
 download ftp://ftp.astron.com/pub/file/
 
 You can uninstall the older version of "file" (not recommended) if it has no dependencies to other packages. (eg. perl,apache,...)
@@ -112,7 +112,7 @@ The following illustrates the installation of a second version
 
  # tar -xzf file-5.04.tar.gz
  # cd file-5.04
- # ./configure
+ # ./configure 
  # make
  # su -
  # cd ????/file-5.04
@@ -171,6 +171,7 @@ another version of libmagic should not have this symlink.
 
 
 
+
 Devel packages and librarys of libext2fs
 ========================================
 First check your current version of libext2fs with the following command
@@ -178,8 +179,8 @@ First check your current version of libext2fs with the following command
 
 
 
-if Version >= 1.41.9  
-===================
+if Version >= 1.41.9  and not  1.42 
+==================================
 Install the following devel packages:
 There are possibley different names according your Linux distribution
 
@@ -188,36 +189,52 @@ openSuse                        debian                 Fedora
 libext2fs-devel                 e2fslibs-dev        e2fsprogs-devel 
 libuuid-devel                   uuid-dev            libuuid-devel 
 libblkid-devel                  libblkid-dev        libblkid-devel 
+file-devel                      libmagic-dev        file-devel
+zlib-devel                      zlib1g-dev                  ?
+libbz2-devel                    libbz2-dev                  ?
+
+
 
 
 then compile ext4magic
- # tar -xzf ext4magic-0.3.0.tar.gz
- # cd ext4magic-0.3.0
- # ./configure
+ # tar -xzf ext4magic-0.3.1.tar.gz
+ # cd ext4magic-0.3.1
+ # ./configure --enable-expert-mode
  # make
  # su 
  # make install
 
 
 
-if Version < 1.41.9
+if Version < 1.41.9 ( or if 1.42 )
 ===================
+Install the following devel packages:
+There are possibley different names according your Linux distribution
+
+openSuse                        debian                 Fedora
+----------------------------------------------------------------------
+file-devel                      libmagic-dev        file-devel
+zlib-devel                      zlib1g-dev                  ?
+libbz2-devel                    libbz2-dev                  ?
+
+
 download a actual version of e2fsprogs from http://e2fsprogs.sourceforge.net/
- # tar -xzf e2fsprogs-1.41.9.tar.gz
- # cd e2fsprogs-1.41.9
+ # tar -xzf e2fsprogs-1.42.9.tar.gz
+ # cd e2fsprogs-1.42.9
  # ./configure
  # make
-Important: Please do not install this version. 
-This could create problems with programs of your current distribution ..
+Important: Please do not install this version. ( !!! do not "make install" !!! 
+this could create problems with programs of your current distribution ..)
 
 
 save the actual directory path of lib/ in a variable for future use in configure commandline.
 # EXT2LIB="$(pwd)/lib"
 
-After this, change into the code directory of ext4magic
- # tar -xzf ext4magic-0.3.0.tar.gz
- # cd ext4magic-0.3.0
- # ./configure CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread"
+
+After this, change into the code directory of ext4magic ( Importent: use the same shell where you set EXT2LIB )
+ # tar -xzf ext4magic-0.3.1.tar.gz
+ # cd ext4magic-0.3.1
+ # ./configure --enable-expert-mode CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread -lmagic -lz -lbz2"
  # make
  # su
  # make install
