@@ -703,7 +703,7 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 	}
 
 	if (strstr(magic_buf,"application/octet-stream")){
-		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker matroska LZMA Audio=Visual Sample=Vision ISO=Media ext2 ext3 ext4 LUKS python ESRI=Shape ecryptfs ";
+		char	searchstr[] = "7-zip cpio CD-ROM MPEG 9660 Targa Kernel boot SQLite OpenOffice.org VMWare3 VMware4 JPEG ART PCX IFF DIF RIFF ATSC ScreamTracker matroska LZMA Audio=Visual Sample=Vision ISO=Media ext2 ext3 ext4 LUKS python ESRI=Shape ecryptfs Matlab=v5 ";
 		p_search = searchstr;
 		while (*p_search){
 			len=0;

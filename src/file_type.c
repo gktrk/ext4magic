@@ -53,7 +53,7 @@ int ident_file(struct found_data_t *new, __u32 *scan, char *magic_buf, void *buf
 	char	applistr[] ="dicom mac-binhex40 msword octet-stream ogg pdf pgp pgp-encrypted pgp-keys pgp-signature postscript unknown+zip vnd.google-earth.kml+xml vnd.google-earth.kmz vnd.lotus-wordpro vnd.ms-cab-compressed vnd.ms-excel vnd.ms-tnef vnd.oasis.opendocument. vnd.rn-realmedia vnd.symbian.install x-123 x-adrift x-archive x-arc x-arj x-bittorrent x-bzip2 x-compress x-coredump x-cpio x-dbf x-dbm x-debian-package x-dosexec x-dvi x-eet x-elc x-executable x-gdbm x-gnucash x-gnumeric x-gnupg-keyring x-gzip x-hdf x-hwp x-ichitaro4 x-ichitaro5 x-ichitaro6 x-iso9660-image x-java-applet x-java-jce-keystore x-java-keystore x-java-pack200 x-kdelnk x-lha x-lharc x-lzip x-mif xml xml-sitemap x-msaccess x-ms-reader x-object x-pgp-keyring x-quark-xpress-3 x-quicktime-player x-rar x-rpm x-sc x-setupscript x-sharedlib x-shockwave-flash x-stuffit x-svr4-package x-tar x-tex-tfm x-tokyocabinet-btree x-tokyocabinet-fixed x-tokyocabinet-hash x-tokyocabinet-table x-xz x-zoo zip x-font-ttf x-7z-compressed ";
 	char	textstr[] = "html PGP rtf texmacs troff vnd.graphviz x-awk x-diff x-fortran x-gawk x-info x-lisp x-lua x-msdos-batch x-nawk x-perl x-php x-shellscript x-texinfo x-tex x-vcard x-xmcd plain x-pascal x-c++ x-c x-mail x-makefile x-asm x-python x-java PEM SGML libtool M3U tcl POD PPD configure ruby sed expect ssh text ";
 //Files not found as mime-type
-	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image Composite SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS python ESRI=Shape CDF ecryptfs ";
+	char	undefstr[] ="MPEG Targa 7-zip cpio CD-ROM DVD 9660 Kernel boot ext2 ext3 ext4 Image Composite SQLite OpenOffice.org Microsoft VMWare3 VMware4 JPEG ART PCX RIFF DIF IFF ATSC ScreamTracker EBML LZMA Audio=Visual Sample=Vision ISO=Media Linux filesystem x86 LUKS python ESRI=Shape CDF ecryptfs Matlab=v5 ";
 //-----------------------------------------------------------------------------------
 	char* 		p_search;
 	char		token[30];
@@ -6378,6 +6378,124 @@ int file_luks(unsigned char *buf, int *size, __u32 scan , int flag, struct found
 }
 
 
+static int follow_matlab(unsigned char *buf, __u16 blockcount, __u32 *offset, __u32 *last_match,  int flag){
+	int	ret = 1 ;
+	__u32	m_type ;
+	__u32	*m_pt;
+	__u32	*m_ps;
+	__u32	m_size ;
+	__u32	f_offset = *offset;
+	
+	while ((ret ==1) && (f_offset < ((blockcount * current_fs->blocksize)-8))){
+		m_pt=(__u32*) (buf+f_offset);
+		if ((!(*m_pt))&& (zero_space(buf,f_offset))){
+			ret = 2;
+			continue;
+		}
+		m_ps=m_pt+1;
+		if (flag & DATA_BIG_END){ // BIG Endian
+			m_type = ext2fs_be32_to_cpu(*m_pt);
+			m_size = ext2fs_be32_to_cpu(*m_ps);
+		}
+		else { //Little Endian
+			m_type = ext2fs_le32_to_cpu(*m_pt);
+			m_size = ext2fs_le32_to_cpu(*m_ps);
+		}
+		if (m_type && (m_type < 19)){
+			*last_match = f_offset;
+			f_offset+=((m_type == 14)||(m_type == 15)) ? m_size : ((m_size +7) & ~7);
+			f_offset+=8;
+		}
+		else{   // Check "Compressed Data Element Format"
+			__u16	ms_type ;
+			__u16	*ms_pt;
+			__u16	*ms_ps;
+			__u16	ms_size ;
+			if ((m_type > 15) && (m_type < 19)){
+				ms_ps=(__u16*) (buf+f_offset);
+				ms_pt=ms_ps+1;
+				if (flag & DATA_BIG_END){ // BIG Endian
+					ms_type = ext2fs_be16_to_cpu(*ms_pt);
+					ms_size = ext2fs_be16_to_cpu(*ms_ps);
+				}
+				else { //Little Endian
+					ms_type = ext2fs_le16_to_cpu(*ms_pt);
+					ms_size = ext2fs_le16_to_cpu(*ms_ps);
+				}
+				if (ms_size && ms_type && (ms_size < 5)&&( ms_type <12)){
+					f_offset+=8;
+					*last_match = f_offset;
+				}
+				else{
+					ret = 0;
+				}
+			} else ret = 0;
+		}
+		
+	}
+	*offset = f_offset;
+	return ret;
+}
+
+//matlab (only Level 5)
+int file_matlab(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
+	int 	b_count;
+	int 	ret = 0;
+	__u32	offset;
+	__u32	last_match = 0;
+	char header[16]={0x4d,0x41,0x54,0x4c,0x41,0x42,0x20,0x35,0x2e,0x30,0x20,0x4d,0x41,0x54,0x2d,0x66};
+
+	switch (flag){
+		case 0 :
+			if ((f_data->size) && (f_data->size <= f_data->inode->i_size)){
+				if(f_data->scantype & DATA_READY){
+					*size = (f_data->next_offset)?f_data->next_offset : *size;
+					ret = 1;
+					break;
+				}//FIXME
+				if((!(f_data->inode->i_flags & EXT4_EXTENTS_FL))&&(f_data->size < (12 * current_fs->blocksize))){
+					f_data->inode->i_size = (f_data->size + current_fs->blocksize -1) & ~(current_fs->blocksize-1);
+					*size = f_data->size % current_fs->blocksize;
+					ret = 1;
+				}
+			}
+			else {
+				ret =0;
+			}
+			break;
+		case 1 :	
+			return ((scan & (M_IS_META | M_CLASS_1 | M_BLANK))||(f_data->scantype & DATA_READY)) ? 0 :1 ;
+			break;
+		case 2 :
+			if (strncmp((char*)buf,header,16)){
+				f_data->first = 0;
+				break;
+			}
+			if ((buf[126] == 0x4d) && (buf[127] == 0x49) && ( buf[124] == 0x01) && (! buf[125])){
+				f_data->scantype |= DATA_BIG_END ;
+			}
+			else
+			if (!((buf[126] == 0x49) && (buf[127] == 0x4d)&&( buf[125] == 0x01)&&(! buf[124]))){
+				f_data->first = 0;
+				break;
+			}
+			offset = 128;
+			b_count = (f_data->buf_length > 12) ? 12 : f_data->buf_length ;
+			ret = follow_matlab(buf, b_count, &offset, &last_match,f_data->scantype);
+			ret = analysis_ret1("MAT", f_data, ret , b_count, offset, last_match);
+	  	break;
+
+		case 3 :
+			offset = f_data->next_offset ;
+			ret = follow_matlab(buf, f_data->buf_length, &offset, &last_match,f_data->scantype);
+			ret = analysis_ret2("MAT", f_data, ret, offset, last_match);
+		break;
+	}
+	return ret;
+}	 
+
+
+
 //dbf
 int file_dbf(unsigned char *buf, int *size, __u32 scan , int flag, struct found_data_t* f_data){
 	int 			ret = 0;
@@ -8754,6 +8872,13 @@ void get_file_property(struct found_data_t* this){
 	              this->func = file_ecryptfs ;
 	              strncat(this->name,".ecrypt",8);
 		break;
+
+		case 0x0829     :               //Matlab v5
+	              this->func = file_matlab ;
+	              strncat(this->name,".mat",8);
+		break;
+
+
 	//----------------------------------------------------------------
 		default:
 			this->func = file_default ;
