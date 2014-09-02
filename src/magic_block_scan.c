@@ -731,6 +731,11 @@ static int magic_check_block(unsigned char* buf,magic_t cookie , magic_t cookie_
 			else{
 				if((!strstr(magic_buf,"x-archive")) &&((strstr(magic_buf,"x-elc") || strstr(magic_buf,"keyring") || strstr(magic_buf,"x-arc")||strstr(magic_buf,"keystore")||strstr(magic_buf,"x-123")||
 				strstr(magic_buf,"fontobject")))){ //FIXME fontobject
+					//conflict x-123 <-> Targa on many file-versions
+					if (strstr(magic_buf,"x-123") && (strstr(text,"Targa"))){
+						strncpy(magic_buf,text,60);
+						retval |= ( M_APPLI | M_ARCHIV | M_CLASS_1 );
+					}else
 					retval = M_DATA;
 				}
 				else {
