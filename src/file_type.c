@@ -8726,7 +8726,8 @@ void get_file_property(struct found_data_t* this){
 	
 		case 0x0823     :               //x86
 	//              this->func = file_x86 ;
-		strncat(this->name,".iso",7);
+			this->func = file_none ;     //do not recover this
+	//	strncat(this->name,".iso",7);
 		break;
 
 		case 0x0824     :               //LUKS
