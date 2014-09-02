@@ -1045,7 +1045,7 @@ int next_block_bitmap(ext2fs_block_bitmap d_bmap){
 	int						retval;
 	char						*diff_buf;
 
-	if (jbbm.pointer->transaction < jbbm.first_trans)
+	if ((jbbm.pointer->transaction < jbbm.first_trans)||(jbbm.pointer < jbbm.list))
 		return 0;
 
 	fs_bitmap = (struct ext2fs_struct_loc_generic_bitmap*) current_fs->block_map;
@@ -1079,7 +1079,7 @@ int next_block_bitmap(ext2fs_block_bitmap d_bmap){
 		p1 = jbbm.pointer;
 		diff_buf = jbbm.block_buf + jbbm.blocksize ;
 
-		while ((p1->transaction >= jbbm.first_trans) && (p1->transaction == jbbm.pointer->transaction)){
+		while ((p1->transaction >= jbbm.first_trans) && (p1->transaction == jbbm.pointer->transaction) && (p1 >= jbbm.list)){
 			p2 = p1 -1;
 			blockg = (__u32)p1->blockgroup;
 			skip = (jbbm.blocklen * blockg);
@@ -1091,7 +1091,7 @@ int next_block_bitmap(ext2fs_block_bitmap d_bmap){
 				fprintf(stderr,"Error: while reading journal\n");
 				goto errout;
 			}
-			if ((p2 == jbbm.list) && ((__u32)p2->blockgroup != blockg)){
+			if ((p2 < jbbm.list) || ((p2 == jbbm.list) && ((__u32)p2->blockgroup != blockg))){
 				//no previous block copy found, create difference to the entire block group
 				for (i = 0 ; i < len ; i++){
 					*((df_bitmap->bitmap)+skip+i) = *(jbbm.block_buf + i) ^ 0xFF ;
