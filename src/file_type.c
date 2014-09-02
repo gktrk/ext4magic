@@ -4839,6 +4839,7 @@ static int follow_flac(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 			f_offset += 4;
 			p_data->flag = 3;
 		case 3:  
+			if (p_data->begin == f_offset) f_offset += 2;
 			while (( f_offset < (end -4)) && ((f_offset - p_data->begin)< p_data->max_blocks) &&
 					(!((buf[f_offset] == 0xff) && ((buf[f_offset+1] & 0xfd) == 0xf8) &&
 					(p_data->b_head[2] == buf[f_offset+2]) && ((p_data->b_head[3]&0x0f) == (buf[f_offset+3]&0x0f))))){
@@ -5237,7 +5238,8 @@ static int follow_mpeg(unsigned char *buf, __u16 blockcount, __u32 *offset, __u3
 						while (((frame_offset + tmp + 4) < end) && (buf[frame_offset + tmp] || buf[frame_offset + tmp +1] || (buf[frame_offset+ tmp +2] != 0x01)))
 							tmp++;
 						if ((frame_offset + tmp + 4) >= end)
-							ret = 8;
+//							ret=8;
+							ret =((10*current_fs->blocksize)<=tmp)?0:8;
 						else{
 							if (((buf[frame_offset + tmp +3]) < 0xb9) && (tmp < 9500))  //max slice size ???????
 								frame_offset += tmp;
