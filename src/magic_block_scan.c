@@ -33,6 +33,7 @@
 //#define DEBUG_MAGIC_SCAN
 
 extern ext2_filsys 		current_fs ;
+extern				char* magicfile;
 ext2fs_block_bitmap 		d_bmap = NULL ; 
 
 
@@ -1367,7 +1368,7 @@ blk[0] = 1;
 cookie = magic_open(MAGIC_MIME | MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF | MAGIC_CONTINUE);
 cookie_f = magic_open(MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_ELF | MAGIC_RAW );
 
-if ((! cookie) ||  magic_load(cookie, NULL) || (! cookie_f) || magic_load(cookie_f, NULL)){
+if ((! cookie) ||  magic_load(cookie, magicfile) || (! cookie_f) || magic_load(cookie_f, magicfile)){
 	fprintf(stderr,"ERROR: can't find libmagic\n");
 	goto errout;
 }

@@ -57,7 +57,7 @@ extern char *optarg;
 #include "block.h"
 
 
-
+extern				char* magicfile = NULL;
 ext2_filsys     		current_fs = NULL;
 ext2_ino_t      		root, cwd;
 ext2fs_inode_bitmap 		imap = NULL ;
@@ -739,6 +739,20 @@ if ((mode && magicscan) || disaster){
 			}
 			mode |= INPUT_TIME;
 		}
+		magicfile = malloc(64);
+		strncpy (magicfile,"/usr/share/misc/ext4magic",25); 
+		retval = stat (magicfile, &filestat);
+		if (retval){ 
+			strncpy (magicfile,"/usr/local/share/misc/ext4magic",31); 
+			retval = stat (magicfile, &filestat);
+		}
+		if ((! retval) && (S_ISREG(filestat.st_mode) && (! access(magicfile,R_OK)))) {
+			printf("use magic-db on \"%s\"\n",magicfile);
+		}
+		else {
+			free(magicfile);
+			magicfile=NULL;
+		}
 	}
 }
 
@@ -1181,6 +1195,8 @@ errout:
 	if (bmap) ext2fs_free_inode_bitmap(bmap);
 	imap = NULL;
 	bmap = NULL;
+	if (magicfile) free(magicfile);
+	magicfile = NULL;
         retval = ext2fs_close(current_fs);
         if (retval) {
            fprintf(stderr, "ext2fs_close\n");
