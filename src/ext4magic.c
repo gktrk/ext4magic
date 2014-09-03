@@ -57,7 +57,7 @@ extern char *optarg;
 #include "block.h"
 
 
-extern				char* magicfile;
+char*                           magicfile = NULL;
 ext2_filsys     		current_fs = NULL;
 ext2_ino_t      		root, cwd;
 ext2fs_inode_bitmap 		imap = NULL ;
@@ -361,7 +361,6 @@ int 		journal_backup = 0;
 __u32		t_before = 0;
 __u32		t_after = 0;
 struct stat  filestat;
-magicfile = NULL;
 
 
  // Sanity checks on the user. 
