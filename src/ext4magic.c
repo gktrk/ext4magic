@@ -740,6 +740,7 @@ if ((mode && magicscan) || disaster){
 			mode |= INPUT_TIME;
 		}
 		magicfile = malloc(64);
+		memset(magicfile,0,64);
 		strncpy (magicfile,"/usr/share/misc/ext4magic",25); 
 		retval = stat (magicfile, &filestat);
 		if (retval){ 
