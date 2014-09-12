@@ -26,7 +26,7 @@ Check the version with the following commands:
    # file -v
    # /sbin/fsck.ext3 -V
 
-the version of "file" must be > 5.03
+the version of "file" must be > 5.03           (file-5.05 and file-5.17 see Known Bugs)
 and the EXT2FS Library version >= 1.41.9       (libext2fs-1.42 see Known Bugs) 
 
 
@@ -70,7 +70,7 @@ Optional extensions
 ====================
 with configure the following extensions can be activated
 
---enable-expert-mode      # use of file system superblock copies 
+--enable-expert-mode      #  (recommended) use of file system superblock copies 
                             and recover from partially destroyed file systems
 
 --enable-file-attr        # restore also file attributes
@@ -197,8 +197,8 @@ libbz2-devel                    libbz2-dev                  ?
 
 
 then compile ext4magic
- # tar -xzf ext4magic-0.3.1.tar.gz
- # cd ext4magic-0.3.1
+ # tar -xzf ext4magic-0.3.2.tar.gz
+ # cd ext4magic-0.3.2
  # ./configure --enable-expert-mode
  # make
  # su 
@@ -232,8 +232,8 @@ save the actual directory path of lib/ in a variable for future use in configure
 
 
 After this, change into the code directory of ext4magic ( Importent: use the same shell where you set EXT2LIB )
- # tar -xzf ext4magic-0.3.1.tar.gz
- # cd ext4magic-0.3.1
+ # tar -xzf ext4magic-0.3.2.tar.gz
+ # cd ext4magic-0.3.2
  # ./configure --enable-expert-mode CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread -lmagic -lz -lbz2"
  # make
  # su

@@ -508,8 +508,10 @@ two possible causes:
 
 7.0   Known Bugs
 
-libext2fs-1.42 has a small bug, it crashed ext4magic. (see e2fstools BUG #3451486) 
-
+libext2fs-1.42   has a small bug, it crashed ext4magic. (see e2fstools BUG #3451486) 
+file-5.05        libmagic is stable in ext4magic, but the magic-function produce on some 
+		 video- and auto-formats many small erroneous files
+file-5.17        libmagic is not stable enough for ext4magic and often produce segfaults 
 
 
 Only on big endian environments, there are some incorrect outputs of inode times, and missing of

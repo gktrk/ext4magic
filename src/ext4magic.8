@@ -1,4 +1,4 @@
-.TH ext4magic 1 "Oct 2013" "version 0.3.1" "Administrations Tool"
+.TH ext4magic 8 "Oct 2014" "version 0.3.2" "Administrations Tool"
 .SH NAME
 ext4magic \- recover deleted files on ext3/4 filesystems
 .SH SYNOPSIS
@@ -31,8 +31,8 @@ extensive information about the filesytem Journal.
 .SH OPTIONS
 .B
 Magic Options: 
-(new in version 0.2.0) These options are for a mulit-stage recover especially for file restore after a recursiv deletion of parts or the whole file system. 
-(third step currently available for ext3 by versions 0.2.x ; a new experimental function for ext4 is included in version 0.3.0-pv0.)
+These options are for a mulit-stage recover especially for file restore after a recursiv deletion of parts or the whole file system. 
+(third step currently available for ext3 by versions 0.2.x ; a for ext4 is included in version 0.3.x )
 
 Umount the file system directly after an accidentally destroy and use these options with the umount file system or with a copy of this file system. 
 The program automatically determines the correct time options if the deletion has only worked a short time (< 5 min) .  For very large deletions, you must use the "
@@ -534,7 +534,7 @@ ACL, SEL and other extended attribute can not recovered in the current version.
 
 The output starts at line with a string "--------" before the recovered file name. This is a sign of successful recover. Are not enough permissions to write the recovered files, then you will see there some "x" in the string. 
 
-At the end of the process, possibly an issue comes from the hardlink database. A positive number before a file name means : not found all hardlinks to this file. A negative number means : it created too many hardlinks to this file (possible are, reused filenames or reused Inodes, and so, too many or wrong old filenames for this hardlink. -  But also possible - all files for this hardlink are correct, the time-options was not set correct and because of that, the selected inode for the recover was not up to date.  You should check such reports.)
+At the end of the process, possibly an issue comes from the hardlink database. A positive number before a file name means : not found all hardlinks to this file. A negative number means : it created too many hardlinks to this file (possible are, reused filenames or reused Inodes, and so, too many or wrong old filenames for this hardlink. But also possible, all files for this hardlink are correct, the time options was not set correct and because of that, the selected inode for the recover was not up to date.  You should check such reports.)
 
 Re-used data blocks can't realize and so it's possible, it ends in some corrupted files.
 Check in any case, all the recoverd files before you use them.

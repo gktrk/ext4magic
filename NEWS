@@ -1,5 +1,8 @@
-
-                        ext4magic is moved to https://sourceforge.net/projects/ext4magic/
+ext4magic 0.3.2		some minor bugs fixed
+			support for matlab5 files in magic-function
+			interface for furter use of a privat magic pattern file 
+				(see http://ext4magic.sourceforge.net/magic-pattern-interface.html)
+                        ext4magic is moved to http://sourceforge.net/projects/ext4magic/
  
 
 ext4magic 0.3.1		new : support for ecryptfs by Magic-function

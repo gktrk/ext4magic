@@ -36,7 +36,7 @@ Diese Libraries sind zwar auf jedem Linux vorhanden, doch es werden aktuelle Ver
    # file -v
    # /sbin/fsck.ext3 -V
 
-Die Version von "file" muss > 5.03 sein
+Die Version von "file" muss > 5.03 sein  (Achtung file-5.05 und file-5.17, siehe "Known Bugs" in README
 und die EXT2FS Library Version >= 1.41.9 (Achtung Version 1.42 hat einen Bug und ist für ext4magic unbrauchbar)
 
 In diesem Fall ist die Installation recht einfach.
@@ -208,8 +208,8 @@ libbz2-devel                    libbz2-dev                  ?
 
 Das ext4magic Archiv downloaden und entpacken und in das so entstehende Verzeichnis wechseln
 
- # tar -xzf ext4magic-0.3.1.tar.gz 
- # cd ext4magic-0.3.1
+ # tar -xzf ext4magic-0.3.2.tar.gz 
+ # cd ext4magic-0.3.2
 
 Das Paket wird jetzt kompiliert.
 
@@ -273,8 +273,8 @@ ext4magic angelegt wird. Jetzt die gleiche Shell benutzen in der die EXT2LIB Var
 
  wie folgt compilieren ( die selbe Shell benutzen in der die Variabel EXT2LIB angelegt wurde )
 
- # tar -xzf ext4magic-0.3.1.tar.gz 
- # cd ext4magic-0.3.1
+ # tar -xzf ext4magic-0.3.2.tar.gz 
+ # cd ext4magic-0.3.2
  # ./configure --enable-expert-mode CFLAGS="-I$EXT2LIB" LDFLAGS="-L$EXT2LIB" LIBS="-luuid -lcom_err -lpthread -lmagic -lz -lbz2"
  # make
 
