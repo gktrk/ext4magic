@@ -1391,10 +1391,10 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
-  --enable-debug            Turn on debugging
-  --enable-debug-magic            Turn on debugging magic-scan-engine
-  --enable-file-attr            enable restore of file attribute
-  --enable-expert-mode            enable advanced options for expert mode
+  --enable-debug          Turn on debugging
+  --enable-debug-magic    Turn on debugging magic-scan-engine
+  --enable-file-attr      enable restore of file attribute
+  --enable-expert-mode    enable advanced options for expert mode
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -11592,22 +11592,22 @@ as_fn_error $? "library libmagic.so >= 5.04 not found, install package \"file-5.
 
 # Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then :
-  enableval=$enable_debug; if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG"; fi
+  enableval=$enable_debug; if test x$enableval == xyes && test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG"; fi
 fi
 
 # Check whether --enable-debug-magic was given.
 if test "${enable_debug_magic+set}" = set; then :
-  enableval=$enable_debug_magic; if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG_MAGIC_SCAN"; fi
+  enableval=$enable_debug_magic; if test x$enableval == xyes && test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG_MAGIC_SCAN"; fi
 fi
 
 # Check whether --enable-file-attr was given.
 if test "${enable_file_attr+set}" = set; then :
-  enableval=$enable_file_attr; if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DFILE_ATTR"; fi
+  enableval=$enable_file_attr; if test x$enableval == xyes && test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DFILE_ATTR"; fi
 fi
 
 # Check whether --enable-expert-mode was given.
 if test "${enable_expert_mode+set}" = set; then :
-  enableval=$enable_expert_mode; if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DEXPERT_MODE"; fi
+  enableval=$enable_expert_mode; if test x$enableval == xyes && test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DEXPERT_MODE"; fi
 fi
 
 

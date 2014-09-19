@@ -35,13 +35,13 @@ AC_MSG_ERROR([library libmagic.so >= 5.04 not found, install package "file-5.04"
 
 
 
-AC_ARG_ENABLE(debug,[  --enable-debug            Turn on debugging ],
-         [if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG"; fi])
-AC_ARG_ENABLE(debug-magic,[  --enable-debug-magic            Turn on debugging magic-scan-engine ],
-         [if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG_MAGIC_SCAN"; fi])
-AC_ARG_ENABLE(file-attr,[  --enable-file-attr            enable restore of file attribute ],
-         [if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DFILE_ATTR"; fi])
-AC_ARG_ENABLE(expert-mode,[  --enable-expert-mode            enable advanced options for expert mode ],
-         [if test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DEXPERT_MODE"; fi])
+AC_ARG_ENABLE(debug,[  --enable-debug          Turn on debugging ],
+         [if test x$enableval == xyes && test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG"; fi])
+AC_ARG_ENABLE(debug-magic,[  --enable-debug-magic    Turn on debugging magic-scan-engine ],
+         [if test x$enableval == xyes && test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DDEBUG_MAGIC_SCAN"; fi])
+AC_ARG_ENABLE(file-attr,[  --enable-file-attr      enable restore of file attribute ],
+         [if test x$enableval == xyes && test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DFILE_ATTR"; fi])
+AC_ARG_ENABLE(expert-mode,[  --enable-expert-mode    enable advanced options for expert mode ],
+         [if test x$enableval == xyes && test "$GCC" = "yes"; then CPPFLAGS="$CPPFLAGS -DEXPERT_MODE"; fi])
 
 AC_OUTPUT(Makefile src/Makefile)
