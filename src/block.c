@@ -12,6 +12,10 @@
  * %End-Header%
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 /*
  This is a workaround to allow compilation, but the one line that uses
  this constant will never run because we open the fs read-only.

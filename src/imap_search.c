@@ -19,6 +19,10 @@
  * C Implementation: imap_search                                           *
  ***************************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 //header  util.h
 
 #include "util.h"
